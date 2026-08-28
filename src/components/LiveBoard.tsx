@@ -1,0 +1,260 @@
+import { motion } from "framer-motion";
+import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, Vote, ArrowRight, Activity, Crown, MapPin, Check } from "lucide-react";
+import { useApp, levelFromAura } from "../store";
+import { useT } from "../i18n";
+import { countryById } from "../data";
+import { Avatar, AuraBar, AnimatedNumber, SectionHead, LiveBadge } from "./ui";
+
+const reveal = {
+  initial: { opacity: 0, y: 22 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-40px" },
+  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+};
+
+export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
+  const t = useT();
+  const { users, farmProg, feed, challenges, streak, totalAura, events, lang, enterArena, toggleChallenge, setTab } = useApp();
+
+  const online = users.filter((u) => u.online);
+  const liveEvents = events.filter((e) => e.status === "live");
+  const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled").map((e) => e.country))];
+  const doneCount = challenges.filter((c) => c.done).length;
+  const top5 = [...users].sort((a, b) => b.aura - a.aura).slice(0, 5);
+  const medal = ["#FFD700", "#c9d4e3", "#cd8b4a", "#9B30FF", "#00BFFF"];
+  const mins = (ts: number) => Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  const feedIcon = { farm: Zap, vote: Vote, join: Users, badge: Trophy, win: Crown };
+  const feedText = (f: (typeof feed)[number]) => {
+    const map = { farm: t("feed_farm", { u: f.user, n: f.n ?? 0 }), join: t("feed_join", { u: f.user, e: f.event ?? "" }), vote: t("feed_vote", { u: f.user, e: f.event ?? "" }), badge: t("feed_badge", { u: f.user }), win: t("feed_win", { u: f.user, e: f.event ?? "" }) };
+    return map[f.type];
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* ===== Signature opener: network aura counter + VOTE NOW ===== */}
+      <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
+        <motion.div {...reveal} className="panel p-6 sm:p-7 relative overflow-hidden">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-gold/8 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -left-10 w-52 h-52 rounded-full bg-violet/10 blur-3xl pointer-events-none" />
+          <div className="relative">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gold/80">
+              <Radio size={13} className="animate-pulse" /> {t("live_global")} · {t("live_global_sub")}
+            </div>
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <AnimatedNumber value={totalAura} className="display text-3xl sm:text-5xl font-extrabold tracking-tight text-white" />
+              <span className="display text-sm font-bold text-gold">{t("c_aura")}</span>
+            </div>
+            <p className="text-[12px] text-white/45 mt-1.5">{t("live_total_aura")}</p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {[
+                { icon: Users, n: online.length, label: t("live_users_farming"), c: "#00FF7F" },
+                { icon: Radio, n: liveEvents.length, label: t("live_events_live"), c: "#FF4444" },
+                { icon: Globe2, n: byCountry.length, label: t("live_countries"), c: "#00BFFF" },
+              ].map((s, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/4 border border-white/8">
+                  <s.icon size={14} style={{ color: s.c }} />
+                  <span className="display text-sm font-bold" style={{ color: s.c }}>
+                    <AnimatedNumber value={s.n} />
+                  </span>
+                  <span className="text-[11px] text-white/50">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.08 }} className="panel p-6 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute inset-0 conic-ring opacity-[0.05]" />
+          <div className="relative flex items-start justify-between">
+            <div>
+              <h3 className="display text-lg font-extrabold leading-tight">{t("live_vote_now_sub")}</h3>
+              <div className="flex items-center gap-2 mt-2 text-[11.5px] text-white/50">
+                <LiveBadge label={t("c_live")} />
+                <span>{liveEvents.length} {t("live_events_live")}</span>
+              </div>
+            </div>
+            <div className="w-12 h-12 rounded-full conic-ring grid place-items-center floaty shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#0d0d1c] grid place-items-center">
+                <Vote size={18} className="text-gold" />
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => enterArena(liveEvents[0]?.id ?? events[0].id)}
+            className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
+          </button>
+        </motion.div>
+      </div>
+
+      {/* ===== Users farming right now ===== */}
+      <motion.section {...reveal}>
+        <SectionHead hue={152} icon={<Zap size={17} />} title={t("live_farming_now")} sub={t("live_farming_sub")} />
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+          {online.slice(0, 12).map((u, i) => {
+            const c = countryById(u.country);
+            const delta = Math.floor((farmProg[u.id] ?? 0) / 8) + 4;
+            return (
+              <motion.div
+                key={u.id}
+                initial={{ opacity: 0, x: 24 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05, duration: 0.4 }}
+                className="panel panel-hover shrink-0 w-[168px] p-4 relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, hsl(${u.hue} 95% 60%), transparent)` }} />
+                <div className="flex items-center gap-2.5">
+                  <Avatar name={u.name} hue={u.hue} size={40} />
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-bold truncate">{u.name}</p>
+                    <p className="text-[10.5px] text-white/45">{c.flag} {c.name[lang]} · {t("c_online")}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline justify-between">
+                  <AnimatedNumber value={u.aura} className="display text-[13px] font-bold" />
+                  <span key={delta} className="tick-in text-[10.5px] font-bold text-mint">+{delta}</span>
+                </div>
+                <AuraBar value={farmProg[u.id] ?? 0} className="mt-2" />
+                <p className="text-[9.5px] text-white/35 mt-1.5 uppercase tracking-wider">{t("c_level")} {levelFromAura(u.aura)}</p>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* ===== Middle grid: active users / challenges / feed+top ===== */}
+      <div className="grid lg:grid-cols-3 gap-4 items-start">
+        <motion.section {...reveal} className="panel p-5">
+          <SectionHead hue={200} icon={<Users size={16} />} title={t("live_active_users")} sub={t("live_active_users_sub")} />
+          <div className="space-y-3">
+            {[...users].sort((a, b) => b.aura - a.aura).slice(0, 7).map((u, i) => {
+              const c = countryById(u.country);
+              return (
+                <div key={u.id} className="flex items-center gap-3 group">
+                  <span className="display text-[11px] w-4 text-white/30 font-bold">{i + 1}</span>
+                  <Avatar name={u.name} hue={u.hue} size={34} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[12.5px] font-semibold truncate">{u.name} <span className="text-[11px]">{c.flag}</span></p>
+                      <AnimatedNumber value={u.aura} className="display text-[11.5px] font-bold text-white/80" />
+                    </div>
+                    <AuraBar value={farmProg[u.id] ?? 0} className="mt-1.5" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+
+        <motion.section {...reveal} transition={{ ...reveal.transition, delay: 0.06 }} className="panel p-5">
+          <div className="flex items-start justify-between">
+            <SectionHead hue={46} icon={<Flame size={16} />} title={t("live_challenges")} sub={t("live_challenges_sub")} />
+          </div>
+          <div className="flex items-center gap-3 mb-4 -mt-1">
+            <div className="flex-1">
+              <div className="flex justify-between text-[10.5px] font-bold text-white/50 mb-1">
+                <span>{t("live_day_progress")}</span>
+                <span className="text-gold">{doneCount}/{challenges.length}</span>
+              </div>
+              <AuraBar value={(doneCount / challenges.length) * 100} color="#FFD700" />
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-ember/12 border border-ember/30">
+              <Flame size={14} className="text-ember" />
+              <span className="display text-sm font-extrabold text-ember">{streak}</span>
+              <span className="text-[10px] text-white/50">{t("live_streak")}</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            {challenges.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => toggleChallenge(ch.id)}
+                disabled={ch.done}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${ch.done ? "bg-mint/6" : "bg-white/3 hover:bg-white/7 cursor-pointer"}`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-md grid place-items-center shrink-0 transition-all ${ch.done ? "bg-mint text-[#03150c]" : "border border-white/20"}`}
+                >
+                  {ch.done && <Check size={12} strokeWidth={3.5} />}
+                </span>
+                <span className={`flex-1 text-[12.5px] ${ch.done ? "text-white/35 line-through" : "text-white/85"}`}>{t(ch.id)}</span>
+                <span className="display text-[11px] font-bold text-gold">+{ch.points}</span>
+              </button>
+            ))}
+          </div>
+        </motion.section>
+
+        <div className="space-y-4">
+          <motion.section {...reveal} transition={{ ...reveal.transition, delay: 0.1 }} className="panel p-5">
+            <SectionHead hue={268} icon={<Crown size={16} />} title={`${t("live_global")} · Top 5`} />
+            <div className="space-y-2.5">
+              {top5.map((u, i) => {
+                const c = countryById(u.country);
+                return (
+                  <div key={u.id} className="flex items-center gap-2.5">
+                    <span className="display text-[12px] font-extrabold w-5" style={{ color: medal[i] }}>{i + 1}</span>
+                    <Avatar name={u.name} hue={u.hue} size={30} />
+                    <span className="flex-1 text-[12.5px] font-semibold truncate">{u.name}</span>
+                    <span className="text-[11.5px]">{c.flag}</span>
+                    <AnimatedNumber value={u.aura} className="display text-[11.5px] font-bold" />
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={() => setTab("rank")} className="mt-4 w-full py-2 rounded-xl text-[11.5px] font-bold text-violet border border-violet/30 bg-violet/8 hover:bg-violet/16 transition-colors cursor-pointer flex items-center justify-center gap-1">
+              {t("live_view_all")} <ArrowRight size={12} />
+            </button>
+          </motion.section>
+
+          <motion.section {...reveal} transition={{ ...reveal.transition, delay: 0.14 }} className="panel p-5">
+            <SectionHead hue={336} icon={<Activity size={16} />} title={t("live_recent")} />
+            <div className="space-y-1 overflow-hidden">
+              {feed.slice(0, 6).map((f) => {
+                const I = feedIcon[f.type];
+                return (
+                  <div key={f.id} className="tick-in flex items-start gap-2.5 py-1.5 border-b border-white/5 last:border-0">
+                    <span className="mt-0.5 w-6 h-6 rounded-lg bg-white/5 grid place-items-center shrink-0">
+                      <I size={12} className="text-gold" />
+                    </span>
+                    <p className="flex-1 text-[11.5px] text-white/65 leading-snug">{feedText(f)}</p>
+                    <span className="text-[9.5px] text-white/25 shrink-0 mt-0.5">{mins(f.ts)}m</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.section>
+        </div>
+      </div>
+
+      {/* ===== Active competitions by country ===== */}
+      <motion.section {...reveal}>
+        <SectionHead hue={316} icon={<MapPin size={16} />} title={t("live_by_country")} sub={t("live_by_country_sub")} />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {byCountry.map((cid) => {
+            const c = countryById(cid);
+            const evs = events.filter((e) => e.country === cid && e.status !== "cancelled");
+            const live = evs.filter((e) => e.status === "live").length;
+            return (
+              <button
+                key={cid}
+                onClick={() => onBrowseCountry(cid)}
+                className="panel panel-hover p-4 flex items-center gap-3 text-left cursor-pointer group"
+              >
+                <span className="text-2xl">{c.flag}</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13.5px] font-bold truncate">{c.name[lang]}</span>
+                  <span className="block text-[10.5px] text-white/45">
+                    {evs.length} {t("nav_events").toLowerCase()} · {live > 0 ? <span className="text-ember font-bold">{live} {t("c_live").toLowerCase()}</span> : `${t("c_upcoming").toLowerCase()}`}
+                  </span>
+                </span>
+                <ChevronRight size={16} className="text-white/25 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+              </button>
+            );
+          })}
+        </div>
+      </motion.section>
+    </div>
+  );
+}

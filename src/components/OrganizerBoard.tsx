@@ -1,0 +1,385 @@
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus } from "lucide-react";
+import { useApp, userNameById } from "../store";
+import { useT } from "../i18n";
+import { CITIES, COUNTRIES, countryById } from "../data";
+import type { EventItem } from "../data";
+import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, Stars } from "./ui";
+
+const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
+const BANNER_COMBOS: [string, string][] = [
+  ["#FFD700", "#9B30FF"], ["#00FF7F", "#00BFFF"], ["#FF4444", "#FFD700"],
+  ["#9B30FF", "#FF69B4"], ["#00BFFF", "#00FF7F"], ["#FF69B4", "#9B30FF"],
+];
+
+export default function OrganizerBoard() {
+  const t = useT();
+  const s = useApp();
+  const { orgUnlocked, organizer, events, users, lang } = s;
+
+  /* ---------- access gate ---------- */
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [pin, setPin] = useState("");
+  const [reg, setReg] = useState({ name: "", contact: "", country: "mx", refs: "", pin: "" });
+
+  const doUnlock = () => {
+    if (s.unlockOrganizer(pin)) {
+      if (!useApp.getState().organizer) {
+        s.registerOrganizer({ name: "Valentina Cruz", contact: "@valen.aura", country: "mx", refs: "Aura League MX 2024 ★ 4.9 · Copa Neón CDMX ★ 4.7", pin: "1234", collaborators: [{ name: "Marco Díaz", perm: "full" }, { name: "Ana López", perm: "vote" }] });
+      }
+      setPin("");
+    }
+  };
+
+  /* ---------- create form ---------- */
+  const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", city: "cdmx", address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
+  const [formErr, setFormErr] = useState("");
+  const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me"), [events]);
+  const [manageId, setManageId] = useState<string | null>(null);
+  const managed = events.find((e) => e.id === manageId) ?? myEvents[0] ?? null;
+
+  const [collab, setCollab] = useState({ name: "", perm: "vote" as "vote" | "edit" | "full" });
+  const [cancelAsk, setCancelAsk] = useState(false);
+  const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
+
+  const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
+
+  const submitCreate = () => {
+    if (!form.name.trim() || !form.desc.trim() || !form.address.trim() || !form.date) {
+      setFormErr("⚠️ " + t("org_create_sub"));
+      return;
+    }
+    const city = CITIES.find((c) => c.id === form.city)!;
+    const ev: EventItem = {
+      id: "ev" + Date.now(), name: form.name.trim(),
+      desc: { es: form.desc, pt: form.desc, fr: form.desc, en: form.desc },
+      country: city.country, city: city.id, lat: city.lat, lng: city.lng, address: form.address.trim(),
+      dateISO: form.date, time: form.time,
+      organizer: organizer?.name ?? s.profile.name, organizerId: "me", organizerRating: 5,
+      organizerRefs: organizer?.refs ? organizer.refs.split("·") : [t("c_free")],
+      collaborators: organizer?.collaborators.map((c) => ({ name: c.name, perm: c.perm })) ?? [],
+      maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
+      status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
+      votes: {}, bracket: [], currentMatchId: null, chat: [], notes: form.notes,
+    };
+    s.createEvent(ev);
+    setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "" });
+    setFormErr("");
+  };
+
+  /* ================= GATE UI ================= */
+  if (!orgUnlocked) {
+    return (
+      <div className="max-w-md mx-auto">
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="panel p-6 sm:p-7 relative overflow-hidden">
+          <div className="absolute -top-14 -right-14 w-44 h-44 rounded-full bg-violet/15 blur-3xl" />
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl grid place-items-center bg-violet/12 border border-violet/35 mb-4">
+              <Lock size={20} className="text-violet" />
+            </div>
+            <h2 className="display text-lg font-extrabold">{t("org_locked_title")}</h2>
+            <p className="text-[12px] text-white/45 mt-1">{t("org_locked_sub")}</p>
+
+            <div className="flex gap-1.5 mt-5 p-1 rounded-xl bg-white/4 border border-white/8">
+              {(["login", "register"] as const).map((m) => (
+                <button key={m} onClick={() => setMode(m)} className={`flex-1 py-2 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${mode === m ? "bg-violet text-white" : "text-white/50 hover:text-white"}`}>
+                  {m === "login" ? t("org_login_tab") : t("org_register_tab")}
+                </button>
+              ))}
+            </div>
+
+            {mode === "login" ? (
+              <div className="mt-5 space-y-3">
+                <Field label={t("org_pin")}>
+                  <input type="password" inputMode="numeric" maxLength={4} className={inputCls + " tracking-[0.5em] text-center display"} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} placeholder="••••" onKeyDown={(e) => e.key === "Enter" && doUnlock()} />
+                </Field>
+                <p className="text-[10.5px] text-white/35 flex items-center gap-1"><KeyRound size={11} /> {t("c_demo_hint")}</p>
+                <button onClick={doUnlock} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">{t("org_unlock")}</button>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                <Field label={t("org_reg_name")}><input className={inputCls} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Valentina Cruz" /></Field>
+                <Field label={t("org_reg_contact")}><input className={inputCls} value={reg.contact} onChange={(e) => setReg({ ...reg, contact: e.target.value })} placeholder="@usuario / +52 …" /></Field>
+                <Field label={t("org_reg_country")}>
+                  <select className={inputCls + " cursor-pointer"} value={reg.country} onChange={(e) => setReg({ ...reg, country: e.target.value })}>
+                    {COUNTRIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>)}
+                  </select>
+                </Field>
+                <Field label={t("org_reg_refs")}><textarea className={inputCls + " resize-none"} rows={2} value={reg.refs} onChange={(e) => setReg({ ...reg, refs: e.target.value })} placeholder="…" /></Field>
+                <Field label={t("org_reg_pin")}><input type="password" maxLength={4} className={inputCls + " tracking-[0.5em] text-center display"} value={reg.pin} onChange={(e) => setReg({ ...reg, pin: e.target.value.replace(/\D/g, "") })} placeholder="••••" /></Field>
+                <button
+                  onClick={() => {
+                    if (!reg.name.trim() || reg.pin.length < 4) { setFormErr("⚠️"); return; }
+                    s.registerOrganizer({ name: reg.name.trim(), contact: reg.contact, country: reg.country, refs: reg.refs, pin: reg.pin, collaborators: [] });
+                  }}
+                  className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  {t("org_create_org")}
+                </button>
+                {formErr && <p className="text-ember text-[11.5px] font-semibold">{formErr}</p>}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  /* ================= DASHBOARD UI ================= */
+  const totalVotes = myEvents.reduce((acc, e) => acc + Object.values(e.votes).reduce((a, b) => a + b, 0), 0);
+  const totalAssist = myEvents.reduce((a, e) => a + e.attendees, 0);
+  const totalPart = myEvents.reduce((a, e) => a + e.participants.length, 0);
+  const R = managed ? Math.max(...managed.bracket.map((m) => m.round + 1), 0) : 0;
+  const roundName = (r: number) => t(roundKeys.slice(4 - R)[r] ?? "org_final");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-11 h-11 rounded-2xl grid place-items-center bg-violet/12 border border-violet/35"><ShieldCheck size={19} className="text-violet" /></div>
+        <div className="flex-1 min-w-0">
+          <h2 className="display text-base font-extrabold leading-tight">{t("org_title")}</h2>
+          <p className="text-[11.5px] text-white/45">{organizer?.name} · {countryById(organizer?.country ?? "mx").flag} <Stars value={4.8} size={10} /></p>
+        </div>
+        <button onClick={() => s.setTab("events")} className="text-[11.5px] font-bold text-white/50 hover:text-white border border-white/12 px-3 py-1.5 rounded-full transition-colors cursor-pointer">{t("c_back")}</button>
+      </div>
+
+      {/* stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { icon: Users, n: totalAssist, label: t("org_assist_count"), c: "#00BFFF" },
+          { icon: Swords, n: totalPart, label: t("org_part_count"), c: "#FF4444" },
+          { icon: Vote, n: totalVotes, label: t("org_vote_count"), c: "#FFD700" },
+        ].map((x, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="panel p-4 text-center">
+            <x.icon size={16} style={{ color: x.c }} className="mx-auto" />
+            <p className="display text-lg font-extrabold mt-1" style={{ color: x.c }}>{x.n.toLocaleString()}</p>
+            <p className="text-[10px] text-white/45 font-semibold uppercase tracking-wider">{x.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {/* ===== create event ===== */}
+        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="panel p-5">
+          <SectionHead hue={46} icon={<Plus size={16} />} title={t("org_create_title")} sub={t("org_create_sub")} />
+          <div className="space-y-3">
+            <Field label={t("org_ev_name") + " *"}><input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+            <Field label={t("org_ev_desc") + " *"}><textarea rows={2} className={inputCls + " resize-none"} value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} /></Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("org_ev_date") + " *"}><input type="date" className={inputCls} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
+              <Field label={t("org_ev_time")}><input type="time" className={inputCls} value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("org_ev_city")}>
+                <select className={inputCls + " cursor-pointer"} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
+                  {CITIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.label}</option>)}
+                </select>
+              </Field>
+              <Field label={t("org_ev_address") + " *"}><input className={inputCls} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("org_ev_max_att")}><input type="number" min={1} className={inputCls} value={form.maxAtt} onChange={(e) => setForm({ ...form, maxAtt: +e.target.value })} /></Field>
+              <Field label={t("org_ev_max_part")}><input type="number" min={2} max={16} className={inputCls} value={form.maxPart} onChange={(e) => setForm({ ...form, maxPart: +e.target.value })} /></Field>
+            </div>
+            <Field label={t("org_ev_notes")}><input className={inputCls} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{t("org_ev_features")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {FEATURE_TAGS.map((f) => {
+                  const on = form.features.includes(f);
+                  return (
+                    <button key={f} onClick={() => setForm({ ...form, features: on ? form.features.filter((x) => x !== f) : [...form.features, f] })} className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold transition-all cursor-pointer ${on ? "bg-gold text-[#171200]" : "bg-white/5 border border-white/10 text-white/55"}`}>
+                      {t(f)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{t("org_ev_banner")} <span className="normal-case font-medium text-white/30">· {t("org_ev_banner_sub")}</span></p>
+              <div className="flex gap-2">
+                {BANNER_COMBOS.map((b, i) => (
+                  <button key={i} onClick={() => setForm({ ...form, banner: i })} aria-label={`banner ${i}`} className={`w-10 h-7 rounded-lg transition-all cursor-pointer ${form.banner === i ? "ring-2 ring-white scale-110" : "opacity-60 hover:opacity-100"}`} style={{ background: `linear-gradient(120deg, ${b[0]}, ${b[1]})` }} />
+                ))}
+              </div>
+            </div>
+            {formErr && <p className="text-ember text-[11.5px] font-semibold">{formErr}</p>}
+            <button onClick={submitCreate} className={btnGold + " w-full"}><Zap size={15} /> {t("org_ev_create")}</button>
+          </div>
+        </motion.section>
+
+        <div className="space-y-4">
+          {/* ===== collaborators ===== */}
+          <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-5">
+            <SectionHead hue={316} icon={<UserPlus size={16} />} title={t("org_collab_title")} />
+            <div className="space-y-2 mb-3">
+              {organizer?.collaborators.map((c, i) => (
+                <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/3 border border-white/7">
+                  <Avatar name={c.name} hue={(i * 90 + 200) % 360} size={30} />
+                  <span className="flex-1 text-[12.5px] font-semibold truncate">{c.name}</span>
+                  <select value={c.perm} onChange={(e) => s.setCollabPerm(i, e.target.value as typeof c.perm)} className="text-[10.5px] font-bold px-2 py-1 rounded-lg bg-violet/10 border border-violet/30 text-white/75 outline-none cursor-pointer" aria-label={t("org_perm")}>
+                    <option value="vote" className="bg-[#0d0d1c]">🗳️ vote</option>
+                    <option value="edit" className="bg-[#0d0d1c]">✏️ edit</option>
+                    <option value="full" className="bg-[#0d0d1c]">👑 full</option>
+                  </select>
+                  <button onClick={() => s.removeCollab(i)} aria-label={t("org_remove")} className="text-white/30 hover:text-ember transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                </div>
+              ))}
+              {(organizer?.collaborators.length ?? 0) === 0 && <p className="text-[11.5px] text-white/35">—</p>}
+            </div>
+            <div className="flex gap-2">
+              <input className={inputCls} placeholder={t("org_invite") + "…"} value={collab.name} onChange={(e) => setCollab({ ...collab, name: e.target.value })} />
+              <select value={collab.perm} onChange={(e) => setCollab({ ...collab, perm: e.target.value as typeof collab.perm })} className="px-2 rounded-xl bg-white/5 border border-white/10 text-[11px] outline-none cursor-pointer">
+                <option value="vote" className="bg-[#0d0d1c]">vote</option>
+                <option value="edit" className="bg-[#0d0d1c]">edit</option>
+                <option value="full" className="bg-[#0d0d1c]">full</option>
+              </select>
+              <button onClick={() => { if (collab.name.trim()) { s.inviteCollab({ name: collab.name.trim(), perm: collab.perm }); setCollab({ name: "", perm: "vote" }); } }} className="px-3.5 rounded-xl bg-violet text-white display text-[11px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_invite")}</button>
+            </div>
+          </motion.section>
+
+          {/* ===== manage events ===== */}
+          <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-5">
+            <SectionHead hue={0} icon={<Swords size={16} />} title={t("org_my_events")} sub={t("org_control")} />
+            {myEvents.length === 0 ? (
+              <p className="text-[12px] text-white/40">{t("org_no_events")}</p>
+            ) : (
+              <>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+                  {myEvents.map((e) => (
+                    <Chip key={e.id} active={managed?.id === e.id} onClick={() => setManageId(e.id)} hue={0}>{e.name}</Chip>
+                  ))}
+                </div>
+
+                {managed && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full ${managed.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : managed.status === "cancelled" ? "bg-white/6 text-white/40 border border-white/12" : "bg-azure/12 text-azure border border-azure/35"}`}>
+                        {managed.status === "live" ? t("c_live") : managed.status === "cancelled" ? t("ev_cancelled").toUpperCase() : t("c_upcoming").toUpperCase()}
+                      </span>
+                      <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
+                      <div className="flex-1" />
+                      {managed.status !== "cancelled" && (
+                        <>
+                          <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
+                          <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* bracket */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5"><Trophy size={12} className="text-gold" /> {t("org_bracket_title")}</p>
+                        <button onClick={() => s.generateBracket(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-gold/12 border border-gold/35 text-gold hover:bg-gold/20 transition-colors cursor-pointer">{t("org_gen_bracket")}</button>
+                      </div>
+                      {managed.bracket.length === 0 ? (
+                        <p className="text-[11.5px] text-white/35">— {t("org_gen_bracket")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
+                      ) : (
+                        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${R}, minmax(150px, 1fr))`, overflowX: "auto" }}>
+                          {Array.from({ length: R }).map((_, r) => (
+                            <div key={r} className="space-y-2 min-w-[150px]">
+                              <p className="display text-[10px] font-extrabold tracking-wider text-white/45 uppercase text-center">{roundName(r)}</p>
+                              {managed.bracket.filter((m) => m.round === r).map((m) => {
+                                const isCurrent = managed.currentMatchId === m.id;
+                                return (
+                                  <div key={m.id} className={`rounded-xl border p-2 transition-all ${isCurrent ? "border-gold/60 bg-gold/8" : "border-white/9 bg-white/3"}`}>
+                                    {isCurrent && <p className="text-[8.5px] font-extrabold tracking-widest text-gold mb-1 flex items-center gap-1"><Radio size={8} className="animate-pulse" /> {t("org_current").toUpperCase()}</p>}
+                                    {(["a", "b"] as const).map((side) => {
+                                      const pid = side === "a" ? m.a : m.b;
+                                      const v = side === "a" ? m.votesA : m.votesB;
+                                      const won = m.winner === side;
+                                      return (
+                                        <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
+                                          <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(users, pid)}</span>
+                                          <span className="display text-[10px] font-bold text-white/40">{v}</span>
+                                          {isCurrent && !m.winner && pid && (
+                                            <button onClick={() => s.pickWinner(managed.id, m.id, side)} aria-label={t("org_pick_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer">✓</button>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
+                                      <span className="text-[9px] text-white/35">{t("c_min")}</span>
+                                      <div className="flex-1" />
+                                      {!isCurrent && !m.winner && m.a && m.b && (
+                                        <button onClick={() => s.setCurrentMatch(managed.id, m.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                      )}
+                                      {m.votesA + m.votesB > 0 && (
+                                        <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* votes table */}
+                    {Object.keys(managed.votes).length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1.5"><Vote size={12} className="text-azure" /> {t("org_votes_tbl")}</p>
+                        <div className="space-y-1.5">
+                          {Object.entries(managed.votes).sort((a, b) => b[1] - a[1]).map(([pid, v], i) => {
+                            const max = Math.max(...Object.values(managed.votes), 1);
+                            return (
+                              <div key={pid} className="flex items-center gap-2">
+                                <span className="display text-[10px] w-4 text-white/30">{i + 1}</span>
+                                <span className="text-[11.5px] font-semibold w-28 truncate">{userNameById(users, pid)}</span>
+                                <div className="flex-1 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                                  <div className="h-full rounded-full bg-azure transition-all duration-700" style={{ width: `${(v / max) * 100}%` }} />
+                                </div>
+                                <span className="display text-[10.5px] font-bold text-azure w-10 text-right">{v}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button onClick={() => s.voidEventVotes(managed.id)} className="mt-2.5 text-[10.5px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_void_votes")} · {t("c_all")}</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </motion.section>
+        </div>
+      </div>
+
+      {/* ===== edit modal ===== */}
+      <Modal open={!!edit} onClose={() => setEdit(null)}>
+        {edit && managed && (
+          <div className="space-y-3">
+            <h3 className="display text-base font-extrabold">{t("org_modify")} · {managed.name}</h3>
+            <Field label={t("org_ev_name")}><input className={inputCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("org_ev_date")}><input type="date" className={inputCls} value={edit.date} onChange={(e) => setEdit({ ...edit, date: e.target.value })} /></Field>
+              <Field label={t("org_ev_time")}><input type="time" className={inputCls} value={edit.time} onChange={(e) => setEdit({ ...edit, time: e.target.value })} /></Field>
+            </div>
+            <Field label={t("org_ev_notes")}><input className={inputCls} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} /></Field>
+            <button onClick={() => { s.updateEvent(managed.id, { name: edit.name, dateISO: edit.date, time: edit.time, notes: edit.notes }); setEdit(null); }} className={btnGold + " w-full"}><Save size={14} /> {t("c_save")}</button>
+          </div>
+        )}
+      </Modal>
+
+      {/* ===== cancel confirm ===== */}
+      <Modal open={cancelAsk} onClose={() => setCancelAsk(false)}>
+        {managed && (
+          <div className="space-y-4 text-center">
+            <AlertTriangle size={30} className="mx-auto text-ember" />
+            <p className="text-[13px] text-white/80">{t("org_cancel_confirm")}</p>
+            <p className="display text-sm font-extrabold">{managed.name}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setCancelAsk(false)} className="flex-1 py-2.5 rounded-xl border border-white/12 text-[12px] font-bold text-white/60 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
+              <button onClick={() => { s.cancelEvent(managed.id); setCancelAsk(false); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("ev_cancel")}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

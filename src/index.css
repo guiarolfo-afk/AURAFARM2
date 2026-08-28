@@ -1,1 +1,158 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: "Unbounded", sans-serif;
+  --font-body: "Sora", sans-serif;
+  --color-night: #06060e;
+  --color-panel: #0d0d1c;
+  --color-panel2: #121226;
+  --color-line: rgba(255, 255, 255, 0.07);
+  --color-gold: #ffd700;
+  --color-violet: #9b30ff;
+  --color-azure: #00bfff;
+  --color-mint: #00ff7f;
+  --color-ember: #ff4444;
+  --color-rose: #ff69b4;
+}
+
+html {
+  background: #06060e;
+}
+
+body {
+  font-family: var(--font-body);
+  color: #e8e6f5;
+  background: #06060e;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ---------- ambient background layers ---------- */
+.aura-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(55rem 38rem at 8% -10%, rgba(155, 48, 255, 0.14), transparent 60%),
+    radial-gradient(48rem 34rem at 100% 12%, rgba(255, 215, 0, 0.09), transparent 62%),
+    radial-gradient(50rem 40rem at 50% 115%, rgba(0, 191, 255, 0.1), transparent 60%),
+    radial-gradient(34rem 30rem at 85% 85%, rgba(255, 105, 180, 0.07), transparent 65%),
+    #06060e;
+}
+.aura-noise {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.025 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.aura-particle {
+  position: fixed;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(26px);
+  opacity: 0.34;
+  pointer-events: none;
+  animation: drift 16s ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(26px, -34px, 0) scale(1.18); }
+  100% { transform: translate3d(-18px, 22px, 0) scale(0.92); }
+}
+
+/* ---------- animated conic ring (vote button / logo) ---------- */
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.conic-ring {
+  background: conic-gradient(from 0deg, #ffd700, #ff4444, #9b30ff, #00bfff, #00ff7f, #ffd700);
+  animation: spin-slow 7s linear infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 22px rgba(255, 215, 0, 0.32), 0 0 60px rgba(155, 48, 255, 0.16); }
+  50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.55), 0 0 90px rgba(155, 48, 255, 0.3); }
+}
+.pulse-glow { animation: pulse-glow 2.6s ease-in-out infinite; }
+
+@keyframes live-ping {
+  0% { transform: scale(1); opacity: 0.9; }
+  80%, 100% { transform: scale(2.4); opacity: 0; }
+}
+.live-ping::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes shimmer-x {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background-image: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.16) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer-x 2.4s linear infinite;
+}
+
+@keyframes ticker-up {
+  0% { transform: translateY(8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.tick-in { animation: ticker-up 0.45s ease-out both; }
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.floaty { animation: floaty 5s ease-in-out infinite; }
+
+/* ---------- panels & controls ---------- */
+.panel {
+  background: linear-gradient(160deg, rgba(20, 20, 40, 0.82), rgba(10, 10, 22, 0.9));
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+.panel-hover { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
+.panel-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.8);
+}
+
+.display { font-family: var(--font-display); }
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(155, 48, 255, 0.35); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(155, 48, 255, 0.6); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+input[type="range"] { accent-color: #ffd700; }
+
+/* ---------- leaflet dark ---------- */
+.leaflet-container {
+  background: #0a0a16;
+  font-family: var(--font-body);
+  border-radius: 0.75rem;
+}
+.leaflet-popup-content-wrapper {
+  background: #121226;
+  color: #e8e6f5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+}
+.leaflet-popup-tip { background: #121226; }
+.leaflet-popup-content { margin: 8px 12px; font-size: 12px; }
+.leaflet-control-attribution { background: rgba(6, 6, 14, 0.7) !important; color: #777 !important; font-size: 9px !important; }
+.leaflet-control-attribution a { color: #9b30ff !important; }

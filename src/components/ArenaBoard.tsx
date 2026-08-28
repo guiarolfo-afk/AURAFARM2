@@ -1,0 +1,254 @@
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap } from "lucide-react";
+import { useApp, userNameById, levelFromAura } from "../store";
+import { useT } from "../i18n";
+import { countryById } from "../data";
+import { Avatar, AuraBar, AnimatedNumber, Chip, SectionHead, Stars, LiveBadge } from "./ui";
+
+export default function ArenaBoard() {
+  const t = useT();
+  const s = useApp();
+  const { events, users, lang, activeEventId, myVotes, battleVotes, myRatings, profile } = s;
+  const ev = events.find((e) => e.id === activeEventId) ?? events[0];
+  const [tab, setTab] = useState<"chat" | "vote" | "rank">("vote");
+  const [msg, setMsg] = useState("");
+  const [sliders, setSliders] = useState<Record<string, number>>({});
+  const chatEnd = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [ev?.chat.length]);
+
+  if (!ev) return null;
+
+  const currentMatch = ev.bracket.find((m) => m.id === ev.currentMatchId) ?? null;
+  const hueOf = (pid: string | null) => (pid && pid !== "me" ? users.find((u) => u.id === pid)?.hue ?? 46 : 46);
+  const auraOf = (pid: string | null) => (pid === "me" ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
+
+  const ranking = ev.participants
+    .map((pid) => {
+      const votes = ev.votes[pid] ?? 0;
+      const aura = auraOf(pid);
+      return { pid, name: userNameById(users, pid), hue: hueOf(pid), aura, votes, total: Math.round(aura / 120) + votes * 5 };
+    })
+    .sort((a, b) => b.total - a.total);
+  const maxTotal = Math.max(...ranking.map((r) => r.total), 1);
+
+  const send = () => {
+    if (!msg.trim()) return;
+    s.sendChat(ev.id, msg.trim());
+    setMsg("");
+  };
+
+  const matchVote = currentMatch ? battleVotes[ev.id]?.[currentMatch.id] : undefined;
+  const totalAB = currentMatch ? currentMatch.votesA + currentMatch.votesB : 0;
+  const pct = (v: number) => (totalAB === 0 ? 50 : Math.round((v / totalAB) * 100));
+
+  return (
+    <div className="space-y-5">
+      {/* header + event picker */}
+      <div>
+        <SectionHead hue={0} icon={<Swords size={17} />} title={t("ar_title")} sub={t("ar_sub")} />
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {events.filter((e) => e.status !== "cancelled").map((e) => (
+            <Chip key={e.id} active={e.id === ev.id} onClick={() => s.enterArena(e.id)} hue={0}>
+              {e.status === "live" && <span className="inline-block w-1.5 h-1.5 rounded-full bg-ember mr-1.5 animate-pulse" />}
+              {e.name}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="panel p-4 sm:p-5 relative overflow-hidden">
+        <div className="absolute -top-10 right-0 w-48 h-32 rounded-full blur-3xl opacity-25 pointer-events-none" style={{ background: ev.banner[0] }} />
+        <div className="relative flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[180px]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="display text-[15px] font-extrabold">{ev.name}</h3>
+              {ev.status === "live" && <LiveBadge label={t("c_live")} />}
+            </div>
+            <p className="text-[11.5px] text-white/45 mt-0.5">{countryById(ev.country).flag} {ev.address.split(",")[0]} · {ev.attendees} {t("ev_attendees").toLowerCase()}</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/4 border border-white/8">
+            <span className="text-[11px] text-white/50 font-semibold">{t("ar_rate_org")}:</span>
+            <Stars value={myRatings[ev.id] ?? ev.organizerRating} onChange={(n) => s.rateEvent(ev.id, n)} size={15} />
+            <span className="display text-[11px] font-bold text-gold">{ev.organizerRating.toFixed(1)}</span>
+          </div>
+        </div>
+
+        <div className="relative flex gap-1.5 mt-4 p-1 rounded-xl bg-white/4 border border-white/8 w-fit">
+          {([["chat", MessageCircle, t("ar_tab_chat")], ["vote", SlidersHorizontal, t("ar_tab_vote")], ["rank", Trophy, t("ar_tab_rank")]] as const).map(([k, I, label]) => (
+            <button key={k} onClick={() => setTab(k)} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${tab === k ? "bg-ember text-white" : "text-white/50 hover:text-white"}`}>
+              <I size={13} /> {label}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      <AnimatePresence mode="wait">
+        {/* ================= CHAT ================= */}
+        {tab === "chat" && (
+          <motion.div key="chat" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="panel p-4">
+            <div className="h-[380px] overflow-y-auto space-y-3 pr-1">
+              {ev.chat.map((m) => (
+                <div key={m.id} className={`tick-in flex gap-2.5 ${m.mine ? "flex-row-reverse" : ""}`}>
+                  <Avatar name={m.user} hue={m.mine ? 46 : m.hue} size={30} />
+                  <div className={`max-w-[75%] ${m.mine ? "text-right" : ""}`}>
+                    <p className="text-[10px] font-bold text-white/40 mb-0.5">{m.mine ? `${t("c_you")} · ` : ""}{m.user}</p>
+                    <div className={`inline-block px-3 py-2 rounded-2xl text-[12.5px] leading-snug ${m.mine ? "bg-gold/15 border border-gold/30 rounded-tr-sm" : "bg-white/6 border border-white/8 rounded-tl-sm"}`}>
+                      {m.text}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEnd} />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <input
+                value={msg}
+                onChange={(e) => setMsg(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+                placeholder={t("ar_chat_ph")}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[13px] outline-none focus:border-ember/50 transition-colors"
+              />
+              <button onClick={send} aria-label={t("ar_send")} className="w-11 h-11 rounded-xl grid place-items-center bg-ember text-white hover:brightness-110 active:scale-90 transition-all cursor-pointer">
+                <Send size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ================= VOTE ================= */}
+        {tab === "vote" && (
+          <motion.div key="vote" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+            <div className="panel p-4 flex flex-wrap items-start gap-3">
+              <ListChecks size={16} className="text-gold mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-[220px] grid sm:grid-cols-3 gap-2 text-[11px] text-white/55">
+                <p><b className="text-white/80">1.</b> {t("ar_rule1")}</p>
+                <p><b className="text-white/80">2.</b> {t("ar_rule2")}</p>
+                <p><b className="text-white/80">3.</b> {t("ar_rule3")}</p>
+              </div>
+            </div>
+
+            {currentMatch ? (
+              <div className="panel p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-ember flex items-center gap-1.5 mb-4">
+                  <Zap size={13} className="animate-pulse" /> {t("ar_current_battle")}
+                </p>
+                <div className="relative grid grid-cols-2 items-stretch gap-2 sm:gap-3">
+                  <span className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-10 display text-sm sm:text-lg font-black px-2 py-1 rounded-lg bg-night border border-white/12 text-gold" style={{ textShadow: "0 0 14px #FFD700" }}>{t("c_vs")}</span>
+                  {(["a", "b"] as const).map((side) => {
+                    const isB = side === "b";
+                    const pid = side === "a" ? currentMatch.a : currentMatch.b;
+                    const v = side === "a" ? currentMatch.votesA : currentMatch.votesB;
+                    const mine = matchVote === side;
+                    const col = isB ? ev.banner[1] : ev.banner[0];
+                    const card = (
+                      <button
+                        key={side}
+                        onClick={() => pid && s.voteBattle(ev.id, currentMatch.id, side)}
+                        className={`w-full p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer active:scale-95 text-left ${mine ? "border-gold/70 bg-gold/10" : "border-white/10 bg-white/4 hover:bg-white/8"}`}
+                      >
+                        <div className={`flex items-center gap-2.5 ${isB ? "flex-row-reverse" : ""}`}>
+                          <Avatar name={userNameById(users, pid)} hue={hueOf(pid)} size={44} />
+                          <div className={`min-w-0 ${isB ? "text-right" : ""}`}>
+                            <p className="text-[12.5px] sm:text-[13px] font-extrabold leading-tight truncate">{userNameById(users, pid)}</p>
+                            <p className="display text-[10.5px] sm:text-[11px] font-bold mt-0.5" style={{ color: mine ? "#FFD700" : "rgba(255,255,255,.45)" }}>
+                              {mine ? `✓ ${t("ar_voted")}` : `${v} ${t("ar_battle_votes")}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-white/8 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-700 ${isB ? "ml-auto" : ""}`} style={{ width: `${pct(v)}%`, background: col, boxShadow: `0 0 12px ${col}66` }} />
+                        </div>
+                        <p className={`display text-[15px] font-extrabold mt-1.5 ${isB ? "text-right" : ""}`}>{pct(v)}%</p>
+                      </button>
+                    );
+                    return card;
+                  })}
+                </div>
+                {matchVote && (
+                  <div className="flex items-center justify-between mt-4 text-[11.5px] text-white/50">
+                    <span>{t("ar_rule2")}</span>
+                    <button onClick={() => s.voidMyBattleVote(ev.id, currentMatch.id)} className="font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="panel p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
+                <p className="text-[12px] text-white/50 mb-4">{t("ar_open_vote")} · {t("ar_open_sub")}</p>
+                <div className="space-y-3">
+                  {ev.participants.map((pid) => {
+                    const my = myVotes[ev.id]?.[pid];
+                    const val = sliders[pid] ?? 7;
+                    return (
+                      <div key={pid} className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/7">
+                        <Avatar name={userNameById(users, pid)} hue={hueOf(pid)} size={36} />
+                        <div className="flex-1 min-w-[140px]">
+                          <p className="text-[12.5px] font-bold">{userNameById(users, pid)}</p>
+                          <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(users, pid)}</p>
+                        </div>
+                        {my ? (
+                          <div className="flex items-center gap-2.5">
+                            <span className="display text-lg font-extrabold text-gold">{my}<span className="text-[10px] text-white/40">/10</span></span>
+                            <span className="text-[10px] font-bold text-mint bg-mint/10 border border-mint/30 px-2 py-0.5 rounded-full">{t("ar_voted")}</span>
+                            <button onClick={() => s.removeVote(ev.id, pid)} className="text-[10.5px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2.5 flex-1 sm:flex-none">
+                            <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-28" aria-label={t("ar_score_for")} />
+                            <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
+                            <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-1.5 rounded-lg display text-[10.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
+                              {t("ar_cast_vote")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ================= RANKING ================= */}
+        {tab === "rank" && (
+          <motion.div key="rank" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="panel p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Crown size={16} className="text-gold" />
+              <h3 className="display text-[14px] font-extrabold">{t("ar_rank_live")}</h3>
+              <span className="relative w-1.5 h-1.5 rounded-full bg-mint live-ping text-mint" />
+            </div>
+            <p className="text-[11px] text-white/45 mb-4">{t("ar_rank_sub")}</p>
+            <div className="grid grid-cols-[24px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 text-[10px] font-extrabold uppercase tracking-wider text-white/30 pb-2 border-b border-white/8">
+              <span>#</span><span></span><span className="text-right">{t("ar_aura_col")}</span><span className="text-right">{t("ar_votes_col")}</span><span className="text-right">{t("ar_total_col")}</span>
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {ranking.map((r, i) => (
+                <motion.div key={r.pid} layout transition={{ type: "spring", damping: 26, stiffness: 240 }} className={`grid grid-cols-[24px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 items-center p-2 rounded-xl ${i === 0 ? "bg-gold/8 border border-gold/25" : "bg-white/2"}`}>
+                  <span className="display text-[12px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>{i + 1}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar name={r.name} hue={r.hue} size={30} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-bold truncate">{r.name} {r.pid === "me" && <span className="text-[9px] text-gold">({t("c_you")})</span>}</p>
+                      <AuraBar value={(r.total / maxTotal) * 100} color={i === 0 ? "#FFD700" : undefined} className="mt-1 !h-1.5" />
+                    </div>
+                  </div>
+                  <AnimatedNumber value={r.aura} className="display text-[11px] font-bold text-right text-white/75" />
+                  <AnimatedNumber value={r.votes} className="display text-[11px] font-bold text-right text-azure" />
+                  <AnimatedNumber value={r.total} className="display text-[12px] font-extrabold text-right text-gold" />
+                </motion.div>
+              ))}
+            </div>
+            <p className="text-[10.5px] text-white/35 mt-3 flex items-center gap-1.5"><Zap size={11} className="text-mint" /> {t("ar_rank_sub")}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="text-center text-[10.5px] text-white/25">{t("c_level")} {levelFromAura(profile.aura)} · {profile.aura.toLocaleString()} {t("c_aura")} · {lang.toUpperCase()}</p>
+    </div>
+  );
+}
