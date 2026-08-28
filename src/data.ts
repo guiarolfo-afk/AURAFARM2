@@ -17,7 +17,12 @@ export const COUNTRIES: Country[] = [
   { id: "kr", flag: "🇰🇷", name: { es: "Corea del Sur", pt: "Coreia do Sul", fr: "Corée du Sud", en: "South Korea" }, region: "ASIA" },
 ];
 
-export const countryById = (id: string) => COUNTRIES.find((c) => c.id === id) ?? COUNTRIES[0];
+export const countryById = (id: string): Country => {
+  const found = COUNTRIES.find((c) => c.id === id);
+  if (found) return found;
+  if (!id || id === "world") return { id: "world", flag: "🌍", name: { es: "Global", pt: "Global", fr: "Mondial", en: "Global" }, region: "—" };
+  return { id, flag: "🌍", name: { es: id.toUpperCase(), pt: id.toUpperCase(), fr: id.toUpperCase(), en: id.toUpperCase() }, region: "—" };
+};
 export const countryName = (id: string, lang: Lang) => countryById(id).name[lang];
 
 export interface City { id: string; label: string; country: string; lat: number; lng: number }

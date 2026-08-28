@@ -119,6 +119,18 @@ const es: Dict = {
   t_banner_del: "Banner eliminado", t_admin_ok: "Modo administrador activo", t_admin_bad: "Contraseña incorrecta",
   t_registered: "Registro de organizador creado ✓", t_collab_added: "Colaborador invitado",
   t_collab_removed: "Colaborador eliminado", t_current_set: "Batalla puesta en disputa ⚡",
+  // ---- location picker ----
+  org_ev_location: "Ubicación del evento (cualquier lugar del mundo)",
+  org_pick_search: "Busca cualquier ciudad, estado o provincia…",
+  org_pick_searching: "Buscando…",
+  org_pick_no_results: "Sin resultados. Prueba con un nombre más completo.",
+  org_pick_error: "Búsqueda no disponible ahora. Haz clic en el mapa para ubicar el evento.",
+  org_pick_selected: "Ubicación seleccionada",
+  org_pick_click_map: "Busca un lugar o haz clic en el mapa para soltar el pin",
+  org_pick_drag: "Arrastra el pin para afinar el punto exacto",
+  org_pick_custom: "Punto personalizado en el mapa",
+  org_pick_powered: "Búsqueda global vía OpenStreetMap · Nominatim",
+  geo_city: "Ciudad", geo_state: "Estado", geo_province: "Provincia", geo_country: "País",
 };
 
 const pt: Dict = {
@@ -229,6 +241,18 @@ const pt: Dict = {
   t_banner_del: "Banner excluído", t_admin_ok: "Modo administrador ativo", t_admin_bad: "Senha incorreta",
   t_registered: "Cadastro de organizador criado ✓", t_collab_added: "Colaborador convidado",
   t_collab_removed: "Colaborador removido", t_current_set: "Batalha colocada em disputa ⚡",
+  // ---- location picker ----
+  org_ev_location: "Localização do evento (qualquer lugar do mundo)",
+  org_pick_search: "Pesquise qualquer cidade, estado ou província…",
+  org_pick_searching: "Pesquisando…",
+  org_pick_no_results: "Sem resultados. Tente um nome mais completo.",
+  org_pick_error: "Pesquisa indisponível agora. Clique no mapa para localizar o evento.",
+  org_pick_selected: "Localização selecionada",
+  org_pick_click_map: "Pesquise um lugar ou clique no mapa para soltar o pin",
+  org_pick_drag: "Arraste o pin para ajustar o ponto exato",
+  org_pick_custom: "Ponto personalizado no mapa",
+  org_pick_powered: "Pesquisa global via OpenStreetMap · Nominatim",
+  geo_city: "Cidade", geo_state: "Estado", geo_province: "Província", geo_country: "País",
 };
 
 const fr: Dict = {
@@ -339,6 +363,18 @@ const fr: Dict = {
   t_banner_del: "Bannière supprimée", t_admin_ok: "Mode administrateur actif", t_admin_bad: "Mot de passe incorrect",
   t_registered: "Inscription organisateur créée ✓", t_collab_added: "Collaborateur invité",
   t_collab_removed: "Collaborateur retiré", t_current_set: "Combat mis en jeu ⚡",
+  // ---- location picker ----
+  org_ev_location: "Lieu de l'événement (n'importe où dans le monde)",
+  org_pick_search: "Recherchez n'importe quelle ville, état ou province…",
+  org_pick_searching: "Recherche…",
+  org_pick_no_results: "Aucun résultat. Essayez un nom plus complet.",
+  org_pick_error: "Recherche indisponible. Cliquez sur la carte pour situer l'événement.",
+  org_pick_selected: "Lieu sélectionné",
+  org_pick_click_map: "Recherchez un lieu ou cliquez sur la carte pour poser le pin",
+  org_pick_drag: "Faites glisser le pin pour affiner le point exact",
+  org_pick_custom: "Point personnalisé sur la carte",
+  org_pick_powered: "Recherche mondiale via OpenStreetMap · Nominatim",
+  geo_city: "Ville", geo_state: "État", geo_province: "Province", geo_country: "Pays",
 };
 
 const en: Dict = {
@@ -449,6 +485,18 @@ const en: Dict = {
   t_banner_del: "Banner deleted", t_admin_ok: "Admin mode active", t_admin_bad: "Wrong password",
   t_registered: "Organizer registration created ✓", t_collab_added: "Collaborator invited",
   t_collab_removed: "Collaborator removed", t_current_set: "Battle set in dispute ⚡",
+  // ---- location picker ----
+  org_ev_location: "Event location (anywhere in the world)",
+  org_pick_search: "Search any city, state or province…",
+  org_pick_searching: "Searching…",
+  org_pick_no_results: "No results. Try a more complete name.",
+  org_pick_error: "Search unavailable. Click the map to place the event.",
+  org_pick_selected: "Selected location",
+  org_pick_click_map: "Search a place or click the map to drop the pin",
+  org_pick_drag: "Drag the pin to fine-tune the exact spot",
+  org_pick_custom: "Custom point on the map",
+  org_pick_powered: "Global search via OpenStreetMap · Nominatim",
+  geo_city: "City", geo_state: "State", geo_province: "Province", geo_country: "Country",
 };
 
 const DICTS: Record<Lang, Dict> = { es, pt, fr, en };

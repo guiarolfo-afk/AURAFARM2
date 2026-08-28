@@ -156,3 +156,25 @@ input[type="range"] { accent-color: #ffd700; }
 .leaflet-popup-content { margin: 8px 12px; font-size: 12px; }
 .leaflet-control-attribution { background: rgba(6, 6, 14, 0.7) !important; color: #777 !important; font-size: 9px !important; }
 .leaflet-control-attribution a { color: #9b30ff !important; }
+
+/* ---------- aura map pin ---------- */
+.af-pin {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffd700;
+  border: 3px solid #171200;
+  box-shadow: 0 0 16px #ffd700, 0 2px 8px rgba(0, 0, 0, 0.65);
+  position: relative;
+}
+.af-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top: 8px solid #ffd700;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+

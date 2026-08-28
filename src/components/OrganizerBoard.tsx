@@ -4,9 +4,10 @@ import { motion } from "framer-motion";
 import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
-import { CITIES, COUNTRIES, countryById } from "../data";
+import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
 import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, Stars } from "./ui";
+import LocationPicker, { type PickedPlace } from "./LocationPicker";
 
 const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
 const BANNER_COMBOS: [string, string][] = [
@@ -45,7 +46,7 @@ export default function OrganizerBoard() {
   };
 
   /* ---------- create form ---------- */
-  const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", city: "cdmx", address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
+  const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
   const [formErr, setFormErr] = useState("");
   const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me"), [events]);
   const [manageId, setManageId] = useState<string | null>(null);
@@ -58,15 +59,15 @@ export default function OrganizerBoard() {
   const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
 
   const submitCreate = () => {
-    if (!form.name.trim() || !form.desc.trim() || !form.address.trim() || !form.date) {
+    if (!form.name.trim() || !form.desc.trim() || !form.address.trim() || !form.date || !form.loc) {
       setFormErr("⚠️ " + t("org_create_sub"));
       return;
     }
-    const city = CITIES.find((c) => c.id === form.city)!;
+    const loc = form.loc;
     const ev: EventItem = {
       id: "ev" + Date.now(), name: form.name.trim(),
       desc: { es: form.desc, pt: form.desc, fr: form.desc, en: form.desc },
-      country: city.country, city: city.id, lat: city.lat, lng: city.lng, address: form.address.trim(),
+      country: loc.countryCode || "world", city: loc.label, lat: loc.lat, lng: loc.lng, address: form.address.trim(),
       dateISO: form.date, time: form.time,
       organizer: organizer?.name ?? s.profile.name, organizerId: "me", organizerRating: 5,
       organizerRefs: organizer?.refs ? organizer.refs.split("·") : [t("c_free")],
@@ -76,7 +77,7 @@ export default function OrganizerBoard() {
       votes: {}, bracket: [], currentMatchId: null, chat: [], notes: form.notes,
     };
     s.createEvent(ev);
-    setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "" });
+    setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "", loc: null });
     setFormErr("");
   };
 
@@ -182,13 +183,10 @@ export default function OrganizerBoard() {
               <Field label={t("org_ev_date") + " *"}><input type="date" className={inputCls} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
               <Field label={t("org_ev_time")}><input type="time" className={inputCls} value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t("org_ev_city")}>
-                <select className={inputCls + " cursor-pointer"} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
-                  {CITIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.label}</option>)}
-                </select>
-              </Field>
-              <Field label={t("org_ev_address") + " *"}><input className={inputCls} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+            <Field label={t("org_ev_address") + " *"}><input className={inputCls} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{t("org_ev_location")} *</p>
+              <LocationPicker value={form.loc} onChange={(loc) => setForm({ ...form, loc })} lang={lang} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("org_ev_max_att")}><input type="number" min={1} className={inputCls} value={form.maxAtt} onChange={(e) => setForm({ ...form, maxAtt: +e.target.value })} /></Field>
