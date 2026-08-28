@@ -119,6 +119,8 @@ const es: Dict = {
   t_banner_del: "Banner eliminado", t_admin_ok: "Modo administrador activo", t_admin_bad: "Contraseña incorrecta",
   t_registered: "Registro de organizador creado ✓", t_collab_added: "Colaborador invitado",
   t_collab_removed: "Colaborador eliminado", t_current_set: "Batalla puesta en disputa ⚡",
+  ar_tournament: "Cuadro del torneo", ar_find_battle: "Buscar batalla…",
+  ar_go_current: "Ir a la batalla en disputa", ar_scheduled: "Programada", ar_completed: "Completada",
   // ---- location picker ----
   org_ev_location: "Ubicación del evento (cualquier lugar del mundo)",
   org_pick_search: "Busca cualquier ciudad, estado o provincia…",
@@ -241,6 +243,8 @@ const pt: Dict = {
   t_banner_del: "Banner excluído", t_admin_ok: "Modo administrador ativo", t_admin_bad: "Senha incorreta",
   t_registered: "Cadastro de organizador criado ✓", t_collab_added: "Colaborador convidado",
   t_collab_removed: "Colaborador removido", t_current_set: "Batalha colocada em disputa ⚡",
+  ar_tournament: "Chave do torneio", ar_find_battle: "Buscar batalha…",
+  ar_go_current: "Ir para a batalha em disputa", ar_scheduled: "Agendada", ar_completed: "Concluída",
   // ---- location picker ----
   org_ev_location: "Localização do evento (qualquer lugar do mundo)",
   org_pick_search: "Pesquise qualquer cidade, estado ou província…",
@@ -363,6 +367,8 @@ const fr: Dict = {
   t_banner_del: "Bannière supprimée", t_admin_ok: "Mode administrateur actif", t_admin_bad: "Mot de passe incorrect",
   t_registered: "Inscription organisateur créée ✓", t_collab_added: "Collaborateur invité",
   t_collab_removed: "Collaborateur retiré", t_current_set: "Combat mis en jeu ⚡",
+  ar_tournament: "Tableau du tournoi", ar_find_battle: "Chercher un combat…",
+  ar_go_current: "Aller au combat en cours", ar_scheduled: "Programmée", ar_completed: "Terminé",
   // ---- location picker ----
   org_ev_location: "Lieu de l'événement (n'importe où dans le monde)",
   org_pick_search: "Recherchez n'importe quelle ville, état ou province…",
@@ -485,6 +491,8 @@ const en: Dict = {
   t_banner_del: "Banner deleted", t_admin_ok: "Admin mode active", t_admin_bad: "Wrong password",
   t_registered: "Organizer registration created ✓", t_collab_added: "Collaborator invited",
   t_collab_removed: "Collaborator removed", t_current_set: "Battle set in dispute ⚡",
+  ar_tournament: "Tournament bracket", ar_find_battle: "Find a battle…",
+  ar_go_current: "Go to live battle", ar_scheduled: "Scheduled", ar_completed: "Completed",
   // ---- location picker ----
   org_ev_location: "Event location (anywhere in the world)",
   org_pick_search: "Search any city, state or province…",

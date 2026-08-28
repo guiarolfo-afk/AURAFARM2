@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap } from "lucide-react";
+import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown } from "lucide-react";
 import { useApp, userNameById, levelFromAura } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
-import { Avatar, AuraBar, AnimatedNumber, Chip, SectionHead, Stars, LiveBadge } from "./ui";
+import { Avatar, AuraBar, AnimatedNumber, SectionHead, Stars, LiveBadge } from "./ui";
 
 export default function ArenaBoard() {
   const t = useT();
@@ -14,6 +14,9 @@ export default function ArenaBoard() {
   const [tab, setTab] = useState<"chat" | "vote" | "rank">("vote");
   const [msg, setMsg] = useState("");
   const [sliders, setSliders] = useState<Record<string, number>>({});
+  const [evOpen, setEvOpen] = useState(false);
+  const [battleOpen, setBattleOpen] = useState(false);
+  const [pickedMatch, setPickedMatch] = useState<string | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,6 +26,11 @@ export default function ArenaBoard() {
   if (!ev) return null;
 
   const currentMatch = ev.bracket.find((m) => m.id === ev.currentMatchId) ?? null;
+  /* battle finder: the participant can open any battle from the bracket */
+  const viewMatch = ev.bracket.find((m) => m.id === pickedMatch) ?? currentMatch;
+  const R = Math.max(...ev.bracket.map((m) => m.round + 1), 0);
+  const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
+  const roundName = (r: number) => t(roundKeys.slice(4 - R)[r] ?? "org_final");
   const hueOf = (pid: string | null) => (pid && pid !== "me" ? users.find((u) => u.id === pid)?.hue ?? 46 : 46);
   const auraOf = (pid: string | null) => (pid === "me" ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
 
@@ -41,8 +49,8 @@ export default function ArenaBoard() {
     setMsg("");
   };
 
-  const matchVote = currentMatch ? battleVotes[ev.id]?.[currentMatch.id] : undefined;
-  const totalAB = currentMatch ? currentMatch.votesA + currentMatch.votesB : 0;
+  const matchVote = viewMatch ? battleVotes[ev.id]?.[viewMatch.id] : undefined;
+  const totalAB = viewMatch ? viewMatch.votesA + viewMatch.votesB : 0;
   const pct = (v: number) => (totalAB === 0 ? 50 : Math.round((v / totalAB) * 100));
 
   return (
@@ -50,13 +58,51 @@ export default function ArenaBoard() {
       {/* header + event picker */}
       <div>
         <SectionHead hue={0} icon={<Swords size={17} />} title={t("ar_title")} sub={t("ar_sub")} />
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {events.filter((e) => e.status !== "cancelled").map((e) => (
-            <Chip key={e.id} active={e.id === ev.id} onClick={() => s.enterArena(e.id)} hue={0}>
-              {e.status === "live" && <span className="inline-block w-1.5 h-1.5 rounded-full bg-ember mr-1.5 animate-pulse" />}
-              {e.name}
-            </Chip>
-          ))}
+        {/* event dropdown — easy to locate even with many events */}
+        <div className="relative w-fit max-w-full">
+          <button
+            onClick={() => setEvOpen((o) => !o)}
+            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/9 transition-colors cursor-pointer max-w-full"
+            aria-expanded={evOpen}
+          >
+            {ev.status === "live" && <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse shrink-0" />}
+            <span className="display text-[12.5px] font-bold truncate">{ev.name}</span>
+            <span className="text-[10px] font-extrabold text-white/35 shrink-0">{events.filter((e) => e.status !== "cancelled").length}</span>
+            <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${evOpen ? "rotate-180" : ""}`} />
+          </button>
+          {evOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setEvOpen(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.15 }}
+                className="absolute left-0 mt-2 w-[300px] max-w-[86vw] max-h-80 overflow-y-auto panel !rounded-xl p-1.5 z-40 shadow-2xl"
+              >
+                {events.filter((e) => e.status !== "cancelled").map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => { s.enterArena(e.id); setEvOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer ${e.id === ev.id ? "bg-ember/14 text-white" : "text-white/70 hover:bg-white/6"}`}
+                  >
+                    {e.status === "live" ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse shrink-0" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-azure/60 shrink-0" />
+                    )}
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[12.5px] font-bold truncate">{e.name}</span>
+                      <span className="block text-[10px] text-white/40">{countryById(e.country).flag} {e.attendees} 👥 · {Object.keys(e.votes).length > 0 ? `${e.participants.length} ⚔️` : `${e.participants.length} ${t("ev_participants").toLowerCase()}`}</span>
+                    </span>
+                    <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : "bg-azure/10 text-azure border border-azure/30"}`}>
+                      {e.status === "live" ? t("c_live") : t("c_upcoming")}
+                    </span>
+                    {e.id === ev.id && <span className="text-ember font-extrabold text-[12px] shrink-0">✓</span>}
+                  </button>
+                ))}
+              </motion.div>
+            </>
+          )}
         </div>
       </div>
 
@@ -131,25 +177,139 @@ export default function ArenaBoard() {
               </div>
             </div>
 
-            {currentMatch ? (
+            {/* ===== battle finder dropdown ===== */}
+            {ev.bracket.length > 0 && (
+              <div className="panel p-4">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <p className="text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-white/40 flex items-center gap-1.5 shrink-0">
+                    <Trophy size={12} className="text-gold" /> {t("ar_tournament")}
+                  </p>
+                  <div className="relative flex-1 min-w-[230px]">
+                    <button
+                      onClick={() => setBattleOpen((o) => !o)}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-white/10 bg-white/4 hover:bg-white/8 transition-colors cursor-pointer"
+                      aria-expanded={battleOpen}
+                    >
+                      <Swords size={14} className="text-gold shrink-0" />
+                      {viewMatch ? (
+                        <span className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase shrink-0">
+                            {roundName(viewMatch.round)}
+                          </span>
+                          <span className="display text-[12px] font-bold truncate">
+                            {userNameById(viewMatch.a)} <span className="text-white/35">vs</span> {userNameById(viewMatch.b)}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="display text-[12px] font-bold text-white/55">{t("ar_find_battle")}</span>
+                      )}
+                      <span className="ml-auto text-[9.5px] font-extrabold text-white/30 shrink-0">{ev.bracket.length}</span>
+                      <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${battleOpen ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {battleOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setBattleOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute left-0 right-0 mt-2 max-h-80 overflow-y-auto panel !rounded-xl p-1.5 pb-2 z-40 shadow-2xl"
+                        >
+                          {Array.from({ length: R }).map((_, r) => {
+                            const ms = ev.bracket.filter((m) => m.round === r);
+                            if (ms.length === 0) return null;
+                            return (
+                              <div key={r} className="px-1.5 pt-2">
+                                <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-white/30 px-1.5 mb-1">{roundName(r)}</p>
+                                {ms.map((m) => {
+                                  const st = m.winner ? "done" : m.id === ev.currentMatchId ? "live" : "sched";
+                                  const sel = viewMatch?.id === m.id;
+                                  const playable = !!m.a && !!m.b;
+                                  const voted = battleVotes[ev.id]?.[m.id];
+                                  return (
+                                    <button
+                                      key={m.id}
+                                      disabled={!playable}
+                                      onClick={() => { setPickedMatch(m.id); setBattleOpen(false); }}
+                                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${sel ? "bg-gold/12 border border-gold/30" : playable ? "hover:bg-white/6" : "opacity-40 cursor-default"}`}
+                                    >
+                                      <span className="shrink-0 w-4 grid place-items-center">
+                                        {st === "done" ? (
+                                          <Crown size={12} className="text-gold" />
+                                        ) : st === "live" ? (
+                                          <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" />
+                                        ) : (
+                                          <Swords size={11} className="text-white/25" />
+                                        )}
+                                      </span>
+                                      <span className="flex-1 min-w-0 text-[12px] font-semibold truncate">
+                                        {userNameById(m.a)} <span className="text-white/30 font-normal">vs</span> {userNameById(m.b)}
+                                      </span>
+                                      {voted && <span className="text-[10px] font-extrabold text-gold shrink-0">✓</span>}
+                                      <span className="text-[9px] text-white/35 shrink-0">
+                                        {st === "done" ? t("ar_completed") : st === "live" ? t("org_current") : m.votesA + m.votesB > 0 ? `${m.votesA + m.votesB} 🗳️` : t("ar_scheduled")}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      </>
+                    )}
+                  </div>
+                  {currentMatch && viewMatch?.id !== currentMatch.id && (
+                    <button
+                      onClick={() => setPickedMatch(null)}
+                      className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer shrink-0"
+                    >
+                      <Zap size={11} className="animate-pulse" /> {t("ar_go_current")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {viewMatch ? (
               <div className="panel p-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-ember flex items-center gap-1.5 mb-4">
-                  <Zap size={13} className="animate-pulse" /> {t("ar_current_battle")}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mb-4">
+                  <p className={`text-[11px] font-bold uppercase tracking-[0.15em] flex items-center gap-1.5 ${viewMatch.id === ev.currentMatchId ? "text-ember" : "text-white/45"}`}>
+                    {viewMatch.id === ev.currentMatchId ? <Zap size={13} className="animate-pulse" /> : <Swords size={13} />}
+                    {viewMatch.id === ev.currentMatchId
+                      ? t("ar_current_battle")
+                      : viewMatch.winner
+                        ? `${t("ar_completed")} · 🏆 ${userNameById(viewMatch.winner === "a" ? viewMatch.a : viewMatch.b)}`
+                        : t("ar_scheduled")}
+                  </p>
+                  <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase">
+                    {roundName(viewMatch.round)}
+                  </span>
+                  {viewMatch.winner && <span className="text-[10px] font-bold text-white/35 ml-auto">{t("ar_rule3")}</span>}
+                </div>
                 <div className="relative grid grid-cols-2 items-stretch gap-2 sm:gap-3">
                   <span className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-10 display text-sm sm:text-lg font-black px-2 py-1 rounded-lg bg-night border border-white/12 text-gold" style={{ textShadow: "0 0 14px #FFD700" }}>{t("c_vs")}</span>
                   {(["a", "b"] as const).map((side) => {
                     const isB = side === "b";
-                    const pid = side === "a" ? currentMatch.a : currentMatch.b;
-                    const v = side === "a" ? currentMatch.votesA : currentMatch.votesB;
+                    const pid = side === "a" ? viewMatch.a : viewMatch.b;
+                    const v = side === "a" ? viewMatch.votesA : viewMatch.votesB;
                     const mine = matchVote === side;
+                    const isWinner = viewMatch.winner === side;
+                    const closed = !!viewMatch.winner;
                     const col = isB ? ev.banner[1] : ev.banner[0];
                     const card = (
                       <button
                         key={side}
-                        onClick={() => pid && s.voteBattle(ev.id, currentMatch.id, side)}
-                        className={`w-full p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer active:scale-95 text-left ${mine ? "border-gold/70 bg-gold/10" : "border-white/10 bg-white/4 hover:bg-white/8"}`}
+                        disabled={closed}
+                        onClick={() => pid && s.voteBattle(ev.id, viewMatch.id, side)}
+                        className={`w-full p-3 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
                       >
+                        {isWinner && (
+                          <p className="display text-[9px] font-extrabold tracking-widest text-mint mb-1.5 flex items-center gap-1">
+                            <Crown size={10} /> {t("ar_completed").toUpperCase()}
+                          </p>
+                        )}
                         <div className={`flex items-center gap-2.5 ${isB ? "flex-row-reverse" : ""}`}>
                           <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={44} />
                           <div className={`min-w-0 ${isB ? "text-right" : ""}`}>
@@ -171,7 +331,7 @@ export default function ArenaBoard() {
                 {matchVote && (
                   <div className="flex items-center justify-between mt-4 text-[11.5px] text-white/50">
                     <span>{t("ar_rule2")}</span>
-                    <button onClick={() => s.voidMyBattleVote(ev.id, currentMatch.id)} className="font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                    <button onClick={() => s.voidMyBattleVote(ev.id, viewMatch.id)} className="font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
                   </div>
                 )}
               </div>
