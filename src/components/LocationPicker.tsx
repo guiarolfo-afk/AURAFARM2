@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import type { LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { addDarkTiles } from "./mapTiles";
 import { Search, MapPin, Loader2, Crosshair, Globe2 } from "lucide-react";
 import { useT } from "../i18n";
 import type { Lang } from "../i18n";
@@ -83,10 +84,7 @@ export default function LocationPicker({ value, onChange, lang }: { value: Picke
     if (!boxRef.current || mapRef.current) return;
     const map = L.map(boxRef.current, { zoomControl: false, attributionControl: true, scrollWheelZoom: false }).setView([22, 0], 2);
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    addDarkTiles(map);
     map.on("click", (e: LeafletMouseEvent) => {
       placeMarker(e.latlng.lat, e.latlng.lng);
       commitPoint(e.latlng.lat, e.latlng.lng);

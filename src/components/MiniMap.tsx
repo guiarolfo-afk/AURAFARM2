@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { addDarkTiles } from "./mapTiles";
 
 export default function MiniMap({ lat, lng, label, height = 220 }: { lat: number; lng: number; label: string; height?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -10,10 +11,7 @@ export default function MiniMap({ lat, lng, label, height = 220 }: { lat: number
     if (!ref.current || mapRef.current) return;
     const map = L.map(ref.current, { zoomControl: false, attributionControl: true, scrollWheelZoom: false }).setView([lat, lng], 13);
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-      maxZoom: 19,
-    }).addTo(map);
+    addDarkTiles(map);
     L.circleMarker([lat, lng], { radius: 12, color: "#FFD700", weight: 2, fillColor: "#9B30FF", fillOpacity: 0.55 })
       .addTo(map)
       .bindPopup(`<b style="color:#FFD700">${label}</b>`);
