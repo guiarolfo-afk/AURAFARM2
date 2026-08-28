@@ -10,7 +10,12 @@ import MiniMap from "./MiniMap";
 
 export default function EventsBoard({ initialCountry }: { initialCountry: string }) {
   const t = useT();
-  const { events, users, lang, profile, myAttendance, enterArena, confirmAttendance, setTab } = useApp();
+  /* narrow subscriptions: realtime ticks (users/farmProg/feed) must not re-render this board */
+  const events = useApp((s) => s.events);
+  const lang = useApp((s) => s.lang);
+  const profile = useApp((s) => s.profile);
+  const myAttendance = useApp((s) => s.myAttendance);
+  const { enterArena, confirmAttendance, setTab } = useApp.getState();
   const [status, setStatus] = useState<"all" | "live" | "upcoming">("all");
   const [country, setCountry] = useState(initialCountry);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -215,8 +220,8 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                     <div className="flex flex-wrap gap-1.5">
                       {detail.participants.map((p, i) => (
                         <span key={i} className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full bg-white/5 border border-white/10">
-                          <Avatar name={userNameById(users, p)} hue={(i * 67) % 360} size={18} />
-                          {userNameById(users, p)}
+                          <Avatar name={userNameById(p)} hue={(i * 67) % 360} size={18} />
+                          {userNameById(p)}
                         </span>
                       ))}
                       {full && detail.waitlist.length > 0 && <span className="text-[11px] px-2 py-1 rounded-full bg-ember/10 border border-ember/30 text-ember">⏳ {detail.waitlist.length} {t("ev_waitlist").toLowerCase()}</span>}

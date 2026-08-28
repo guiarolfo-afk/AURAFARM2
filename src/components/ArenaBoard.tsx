@@ -30,7 +30,7 @@ export default function ArenaBoard() {
     .map((pid) => {
       const votes = ev.votes[pid] ?? 0;
       const aura = auraOf(pid);
-      return { pid, name: userNameById(users, pid), hue: hueOf(pid), aura, votes, total: Math.round(aura / 120) + votes * 5 };
+      return { pid, name: userNameById(pid), hue: hueOf(pid), aura, votes, total: Math.round(aura / 120) + votes * 5 };
     })
     .sort((a, b) => b.total - a.total);
   const maxTotal = Math.max(...ranking.map((r) => r.total), 1);
@@ -151,9 +151,9 @@ export default function ArenaBoard() {
                         className={`w-full p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer active:scale-95 text-left ${mine ? "border-gold/70 bg-gold/10" : "border-white/10 bg-white/4 hover:bg-white/8"}`}
                       >
                         <div className={`flex items-center gap-2.5 ${isB ? "flex-row-reverse" : ""}`}>
-                          <Avatar name={userNameById(users, pid)} hue={hueOf(pid)} size={44} />
+                          <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={44} />
                           <div className={`min-w-0 ${isB ? "text-right" : ""}`}>
-                            <p className="text-[12.5px] sm:text-[13px] font-extrabold leading-tight truncate">{userNameById(users, pid)}</p>
+                            <p className="text-[12.5px] sm:text-[13px] font-extrabold leading-tight truncate">{userNameById(pid)}</p>
                             <p className="display text-[10.5px] sm:text-[11px] font-bold mt-0.5" style={{ color: mine ? "#FFD700" : "rgba(255,255,255,.45)" }}>
                               {mine ? `✓ ${t("ar_voted")}` : `${v} ${t("ar_battle_votes")}`}
                             </p>
@@ -185,10 +185,10 @@ export default function ArenaBoard() {
                     const val = sliders[pid] ?? 7;
                     return (
                       <div key={pid} className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/7">
-                        <Avatar name={userNameById(users, pid)} hue={hueOf(pid)} size={36} />
+                        <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={36} />
                         <div className="flex-1 min-w-[140px]">
-                          <p className="text-[12.5px] font-bold">{userNameById(users, pid)}</p>
-                          <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(users, pid)}</p>
+                          <p className="text-[12.5px] font-bold">{userNameById(pid)}</p>
+                          <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
                         </div>
                         {my ? (
                           <div className="flex items-center gap-2.5">

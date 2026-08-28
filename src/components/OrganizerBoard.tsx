@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus } from "lucide-react";
 import { useApp, userNameById } from "../store";
@@ -15,8 +16,19 @@ const BANNER_COMBOS: [string, string][] = [
 
 export default function OrganizerBoard() {
   const t = useT();
-  const s = useApp();
-  const { orgUnlocked, organizer, events, users, lang } = s;
+  /* narrow subscriptions: realtime ticks must not re-render this board.
+     `s` merges stable actions (getState) with the reactive data slice. */
+  const data = useApp(
+    useShallow((st) => ({
+      orgUnlocked: st.orgUnlocked,
+      organizer: st.organizer,
+      events: st.events,
+      lang: st.lang,
+      profile: st.profile,
+    }))
+  );
+  const s = { ...useApp.getState(), ...data };
+  const { orgUnlocked, organizer, events, lang } = s;
 
   /* ---------- access gate ---------- */
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -292,7 +304,7 @@ export default function OrganizerBoard() {
                                       const won = m.winner === side;
                                       return (
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
-                                          <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(users, pid)}</span>
+                                          <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
                                           <span className="display text-[10px] font-bold text-white/40">{v}</span>
                                           {isCurrent && !m.winner && pid && (
                                             <button onClick={() => s.pickWinner(managed.id, m.id, side)} aria-label={t("org_pick_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer">✓</button>
@@ -330,7 +342,7 @@ export default function OrganizerBoard() {
                             return (
                               <div key={pid} className="flex items-center gap-2">
                                 <span className="display text-[10px] w-4 text-white/30">{i + 1}</span>
-                                <span className="text-[11.5px] font-semibold w-28 truncate">{userNameById(users, pid)}</span>
+                                <span className="text-[11.5px] font-semibold w-28 truncate">{userNameById(pid)}</span>
                                 <div className="flex-1 h-1.5 rounded-full bg-white/6 overflow-hidden">
                                   <div className="h-full rounded-full bg-azure transition-all duration-700" style={{ width: `${(v / max) * 100}%` }} />
                                 </div>

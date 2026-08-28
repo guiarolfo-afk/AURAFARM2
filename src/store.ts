@@ -453,8 +453,8 @@ export const useApp = create<AppState>()(
   )
 );
 
-export const userNameById = (users: FarmUser[], id: string | null): string => {
+export const userNameById = (id: string | null): string => {
   if (!id) return "TBD";
   if (id === "me") return "⭐ " + useApp.getState().profile.name;
-  return users.find((u) => u.id === id)?.name ?? "TBD";
+  return useApp.getState().users.find((u) => u.id === id)?.name ?? "TBD";
 };

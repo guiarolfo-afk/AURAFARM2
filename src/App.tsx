@@ -23,7 +23,15 @@ const PARTICLES = [
 
 export default function App() {
   const t = useT();
-  const { tab, setTab, lang, setLang, streak, profile, premium, banners, tick, activeEventId, enterArena } = useApp();
+  /* narrow subscriptions: the shell must NOT re-render on realtime ticks */
+  const tab = useApp((s) => s.tab);
+  const lang = useApp((s) => s.lang);
+  const streak = useApp((s) => s.streak);
+  const profile = useApp((s) => s.profile);
+  const premium = useApp((s) => s.premium);
+  const banners = useApp((s) => s.banners);
+  const activeEventId = useApp((s) => s.activeEventId);
+  const { setTab, setLang, enterArena } = useApp.getState();
   const [langOpen, setLangOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState("all");
 
