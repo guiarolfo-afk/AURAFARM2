@@ -53,12 +53,13 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
     setConfirmId(null);
   };
 
-  const EventCard = ({ e, i }: { e: EventItem; i: number }) => {
+  const eventCard = (e: EventItem, i: number) => {
     const c = countryById(e.country);
     const spots = e.maxParticipants - e.participants.length;
     const full = spots <= 0;
     return (
       <motion.article
+        key={e.id}
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-30px" }}
@@ -155,7 +156,7 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((e, i) => <EventCard key={e.id} e={e} i={i} />)}
+          {filtered.map((e, i) => eventCard(e, i))}
         </div>
       )}
 
