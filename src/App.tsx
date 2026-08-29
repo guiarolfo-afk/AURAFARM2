@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Radio, MapPin, ShieldCheck, Swords, Trophy, Settings, Flame, ChevronDown, Megaphone, Crown } from "lucide-react";
 import { useApp } from "./store";
@@ -6,12 +6,12 @@ import type { Tab } from "./store";
 import { LANGS } from "./i18n";
 import { useT } from "./i18n";
 import { Avatar, Toasts } from "./components/ui";
-import LiveBoard from "./components/LiveBoard";
-import EventsBoard from "./components/EventsBoard";
-import OrganizerBoard from "./components/OrganizerBoard";
-import ArenaBoard from "./components/ArenaBoard";
-import RankingsBoard from "./components/RankingsBoard";
-import SettingsBoard from "./components/SettingsBoard";
+const LiveBoard = lazy(() => import("./components/LiveBoard"));
+const EventsBoard = lazy(() => import("./components/EventsBoard"));
+const OrganizerBoard = lazy(() => import("./components/OrganizerBoard"));
+const ArenaBoard = lazy(() => import("./components/ArenaBoard"));
+const RankingsBoard = lazy(() => import("./components/RankingsBoard"));
+const SettingsBoard = lazy(() => import("./components/SettingsBoard"));
 
 const PARTICLES = [
   { s: 130, c: "#9B30FF", x: "6%", y: "18%", d: "0s" },
@@ -154,12 +154,14 @@ export default function App() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.28, ease: "easeOut" }}
           >
-            {tab === "live" && <LiveBoard onBrowseCountry={browseCountry} />}
-            {tab === "events" && <EventsBoard key={countryFilter} initialCountry={countryFilter} />}
-            {tab === "org" && <OrganizerBoard />}
-            {tab === "arena" && <ArenaBoard key={activeEventId} />}
-            {tab === "rank" && <RankingsBoard />}
-            {tab === "set" && <SettingsBoard />}
+            <Suspense fallback={<div className="text-white/40 text-sm py-10 text-center">Cargando…</div>}>
+              {tab === "live" && <LiveBoard onBrowseCountry={browseCountry} />}
+              {tab === "events" && <EventsBoard key={countryFilter} initialCountry={countryFilter} />}
+              {tab === "org" && <OrganizerBoard />}
+              {tab === "arena" && <ArenaBoard key={activeEventId} />}
+              {tab === "rank" && <RankingsBoard />}
+              {tab === "set" && <SettingsBoard />}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
