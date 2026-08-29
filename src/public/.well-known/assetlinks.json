@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.guiarolfo_afk.twa",
+        "sha256_cert_fingerprints": ["E5:60:7E:4C:E4:49:9C:A7:0C:FD:BE:6D:16:03:7C:31:93:D0:76:71:D4:91:84:EE:8A:C9:1D:4D:04:14:CF:B2"]
+      }
+    }]
