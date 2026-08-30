@@ -71,7 +71,7 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
         transition={{ delay: (i % 6) * 0.06, duration: 0.5 }}
         className="panel panel-hover overflow-hidden flex flex-col group"
       >
-        <div className="h-24 relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${e.banner[0]}33, ${e.banner[1]}40), radial-gradient(18rem 9rem at 85% 0%, ${e.banner[0]}55, transparent)` }}>
+        <div className="h-28 relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${e.banner[0]}44, ${e.banner[1]}55), radial-gradient(18rem 9rem at 85% 0%, ${e.banner[0]}77, transparent)` }}>
           <div className="absolute -bottom-8 -left-4 w-28 h-28 rounded-full opacity-30 blur-2xl" style={{ background: e.banner[0] }} />
           <div className="absolute top-3 left-3">
             {e.status === "live" ? <LiveBadge label={t("c_live")} /> : (
@@ -81,7 +81,8 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
             )}
           </div>
           <span className="absolute right-3 top-3 text-[11px] font-bold px-2 py-0.5 rounded-full bg-black/35 backdrop-blur">{c.flag} {c.name[lang]}</span>
-          <h3 className="absolute bottom-2.5 left-3.5 right-3 display text-[15px] font-extrabold leading-tight drop-shadow">{e.name}</h3>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#05050de6] via-[#05050d40] to-transparent pointer-events-none" />
+          <h3 className="absolute bottom-3 left-4 right-3.5 display text-[18px] sm:text-[20px] font-extrabold leading-tight drop-shadow-lg">{e.name}</h3>
         </div>
         <div className="p-4 flex flex-col flex-1">
           <p className="text-[11.5px] text-white/50 flex items-center gap-1.5"><MapPin size={11} /> {e.city !== "" ? e.address.split(",").slice(0, 2).join(",") : e.address}</p>

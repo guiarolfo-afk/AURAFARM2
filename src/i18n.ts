@@ -12,7 +12,7 @@ export const LANGS: { code: Lang; label: string; flag: string }[] = [
 type Dict = Record<string, string>;
 
 const es: Dict = {
-  tagline: "Granja aura. Gana gloria.",
+  tagline: "Farmea aura. Gana gloria.",
   nav_live: "En Vivo", nav_events: "Eventos", nav_org: "Organizar", nav_arena: "Arena", nav_rank: "Ranking", nav_set: "Ajustes",
   c_aura: "aura", c_pts: "pts", c_close: "Cerrar", c_cancel: "Cancelar", c_save: "Guardar", c_back: "Volver",
   c_search: "Buscar…", c_live: "EN VIVO", c_upcoming: "Próximo", c_finished: "Finalizado", c_all: "Todos",
@@ -119,6 +119,12 @@ const es: Dict = {
   t_banner_del: "Banner eliminado", t_admin_ok: "Modo administrador activo", t_admin_bad: "Contraseña incorrecta",
   t_registered: "Registro de organizador creado ✓", t_collab_added: "Colaborador invitado",
   t_collab_removed: "Colaborador eliminado", t_current_set: "Batalla puesta en disputa ⚡",
+  org_groups_title: "Fase de Grupos", org_groups_sub: "Batallas de 3+ contrincantes antes del cuadro eliminatorio",
+  org_gen_groups: "Generar grupos", org_group: "Grupo", org_close_group: "Cerrar grupo",
+  org_promote_bracket: "Clasificados → Cuadro", org_group_closed_toast: "Grupo cerrado: el más votado clasifica 👑",
+  org_promote_toast: "Clasificados enviados al cuadro eliminatorio ⚔️",
+  ar_group_phase: "Fase de grupos", ar_group_advances: "El más votado de cada grupo clasifica al cuadro eliminatorio",
+  ar_group_winner: "Clasificado",
   ar_tournament: "Cuadro del torneo", ar_find_battle: "Buscar batalla…",
   ar_go_current: "Ir a la batalla en disputa", ar_scheduled: "Programada", ar_completed: "Completada",
   // ---- location picker ----
@@ -136,7 +142,7 @@ const es: Dict = {
 };
 
 const pt: Dict = {
-  tagline: "Farme aura. Ganhe glória.",
+  tagline: "Farma aura. Ganhe glória.",
   nav_live: "Ao Vivo", nav_events: "Eventos", nav_org: "Organizar", nav_arena: "Arena", nav_rank: "Ranking", nav_set: "Ajustes",
   c_aura: "aura", c_pts: "pts", c_close: "Fechar", c_cancel: "Cancelar", c_save: "Salvar", c_back: "Voltar",
   c_search: "Buscar…", c_live: "AO VIVO", c_upcoming: "Próximo", c_finished: "Encerrado", c_all: "Todos",
@@ -243,6 +249,12 @@ const pt: Dict = {
   t_banner_del: "Banner excluído", t_admin_ok: "Modo administrador ativo", t_admin_bad: "Senha incorreta",
   t_registered: "Cadastro de organizador criado ✓", t_collab_added: "Colaborador convidado",
   t_collab_removed: "Colaborador removido", t_current_set: "Batalha colocada em disputa ⚡",
+  org_groups_title: "Fase de Grupos", org_groups_sub: "Batalhas com 3+ competidores antes da chave eliminatória",
+  org_gen_groups: "Gerar grupos", org_group: "Grupo", org_close_group: "Encerrar grupo",
+  org_promote_bracket: "Classificados → Chave", org_group_closed_toast: "Grupo encerrado: o mais votado avança 👑",
+  org_promote_toast: "Classificados enviados à chave eliminatória ⚔️",
+  ar_group_phase: "Fase de grupos", ar_group_advances: "O mais votado de cada grupo avança para a chave eliminatória",
+  ar_group_winner: "Classificado",
   ar_tournament: "Chave do torneio", ar_find_battle: "Buscar batalha…",
   ar_go_current: "Ir para a batalha em disputa", ar_scheduled: "Agendada", ar_completed: "Concluída",
   // ---- location picker ----
@@ -367,6 +379,12 @@ const fr: Dict = {
   t_banner_del: "Bannière supprimée", t_admin_ok: "Mode administrateur actif", t_admin_bad: "Mot de passe incorrect",
   t_registered: "Inscription organisateur créée ✓", t_collab_added: "Collaborateur invité",
   t_collab_removed: "Collaborateur retiré", t_current_set: "Combat mis en jeu ⚡",
+  org_groups_title: "Phase de groupes", org_groups_sub: "Combats à 3+ compétiteurs avant le tableau éliminatoire",
+  org_gen_groups: "Générer les groupes", org_group: "Groupe", org_close_group: "Clore le groupe",
+  org_promote_bracket: "Qualifiés → Tableau", org_group_closed_toast: "Groupe clos : le plus voté se qualifie 👑",
+  org_promote_toast: "Qualifiés envoyés au tableau éliminatoire ⚔️",
+  ar_group_phase: "Phase de groupes", ar_group_advances: "Le plus voté de chaque groupe se qualifie pour le tableau",
+  ar_group_winner: "Qualifié",
   ar_tournament: "Tableau du tournoi", ar_find_battle: "Chercher un combat…",
   ar_go_current: "Aller au combat en cours", ar_scheduled: "Programmée", ar_completed: "Terminé",
   // ---- location picker ----
@@ -384,7 +402,7 @@ const fr: Dict = {
 };
 
 const en: Dict = {
-  tagline: "Farm aura. Earn glory.",
+  tagline: "Farm aura. Earn the glory.",
   nav_live: "Live", nav_events: "Events", nav_org: "Organize", nav_arena: "Arena", nav_rank: "Ranking", nav_set: "Settings",
   c_aura: "aura", c_pts: "pts", c_close: "Close", c_cancel: "Cancel", c_save: "Save", c_back: "Back",
   c_search: "Search…", c_live: "LIVE", c_upcoming: "Upcoming", c_finished: "Finished", c_all: "All",
@@ -491,6 +509,12 @@ const en: Dict = {
   t_banner_del: "Banner deleted", t_admin_ok: "Admin mode active", t_admin_bad: "Wrong password",
   t_registered: "Organizer registration created ✓", t_collab_added: "Collaborator invited",
   t_collab_removed: "Collaborator removed", t_current_set: "Battle set in dispute ⚡",
+  org_groups_title: "Group Stage", org_groups_sub: "Battles with 3+ fighters before the elimination bracket",
+  org_gen_groups: "Generate groups", org_group: "Group", org_close_group: "Close group",
+  org_promote_bracket: "Qualifiers → Bracket", org_group_closed_toast: "Group closed: top voted advances 👑",
+  org_promote_toast: "Qualifiers sent to the elimination bracket ⚔️",
+  ar_group_phase: "Group stage", ar_group_advances: "The top voted of each group advances to the elimination bracket",
+  ar_group_winner: "Qualified",
   ar_tournament: "Tournament bracket", ar_find_battle: "Find a battle…",
   ar_go_current: "Go to live battle", ar_scheduled: "Scheduled", ar_completed: "Completed",
   // ---- location picker ----
