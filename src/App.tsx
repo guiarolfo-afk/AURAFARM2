@@ -40,6 +40,10 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    useApp.getState().loadEventsFromSupabase();
+  }, []);
+
   const tabs: { id: Tab; icon: typeof Radio; hue: number; label: string }[] = [
     { id: "live", icon: Radio, hue: 152, label: t("nav_live") },
     { id: "events", icon: MapPin, hue: 200, label: t("nav_events") },

@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { Lang } from "./i18n";
 import { translate } from "./i18n";
 import { USERS, EVENTS, CHALLENGES, BOT_REPLIES, CHAT_NAMES, countryById } from "./data";
+import { supabase } from "./supabaseClient";
 import type { FarmUser, EventItem, Challenge, BracketMatch, ChatMsg, BattleGroup } from "./data";
 
 export type Tab = "live" | "events" | "org" | "arena" | "rank" | "set";
@@ -96,6 +97,7 @@ interface AppState {
   voteGroup: (eventId: string, groupId: string, pid: string) => void;
   undoGroupVote: (eventId: string, groupId: string) => void;
   voidGroupVotes: (eventId: string, groupId: string) => void;
+  loadEventsFromSupabase: () => Promise<void>;
   registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
@@ -541,6 +543,30 @@ export const useApp = create<AppState>()(
       activatePremium: () => {
         set({ premium: true });
         get().toast(translate(get().lang, "t_premium"), "gold");
+      },
+
+      loadEventsFromSupabase: async () => {
+        const { data, error } = await supabase.from("events").select("*");
+        if (error) {
+          console.error("Error cargando eventos de Supabase:", error.message);
+          return;
+        }
+        const mapped: EventItem[] = (data ?? []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          desc: { es: row.description ?? "", pt: row.description ?? "", fr: row.description ?? "", en: row.description ?? "" },
+          country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
+          dateISO: row.date_iso, time: row.event_time ?? "",
+          organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
+          collaborators: [],
+          maxParticipants: row.max_participants ?? 32, participants: [], attendees: 0, waitlist: [],
+          status: row.status,
+          features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
+          votes: {}, bracket: [], currentMatchId: null,
+          groups: [],
+          chat: [], notes: row.notes ?? "",
+        }));
+        set({ events: mapped });
       },
 
       adminLogin: async (pass) => {
