@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Lang } from "./i18n";
 import { translate } from "./i18n";
-import { USERS, EVENTS, CHALLENGES, BOT_REPLIES, CHAT_NAMES, countryById, makeTestUser } from "./data";
+import { USERS, EVENTS, CHALLENGES, BOT_REPLIES, CHAT_NAMES, countryById } from "./data";
 import type { FarmUser, EventItem, Challenge, BracketMatch, ChatMsg, BattleGroup } from "./data";
 
 export type Tab = "live" | "events" | "org" | "arena" | "rank" | "set";
@@ -90,7 +90,6 @@ interface AppState {
   setCurrentMatch: (eventId: string, matchId: string) => void;
   startBattle: (eventId: string, matchId: string) => void;
   finishBattle: (eventId: string, matchId: string) => void;
-  loadTestParticipants: (eventId: string, count: number) => void;
   pickWinner: (eventId: string, matchId: string, side: "a" | "b") => void;
   voidMatchVotes: (eventId: string, matchId: string) => void; voidEventVotes: (eventId: string) => void;
   voidMyBattleVote: (eventId: string, matchId: string) => void;
@@ -230,6 +229,9 @@ export const useApp = create<AppState>()(
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
         if (!ev) return;
+        /* votes only allowed while the battle is live (started, no winner) */
+        const m0 = ev.bracket.find((x) => x.id === matchId);
+        if (!m0 || !m0.startedAt || m0.winner) return;
         const prev = s.battleVotes[eventId]?.[matchId];
         if (prev === side) return;
         const bracket = ev.bracket.map((m) => {
@@ -548,28 +550,6 @@ export const useApp = create<AppState>()(
         }));
         get().pickWinner(eventId, matchId, side);
         get().toast(translate(get().lang, "org_battle_ended"), "gold");
-      },
-
-      /* Load N test sign-ups into an event (for tournament simulations) */
-      loadTestParticipants: (eventId, count) => {
-        const s = get();
-        const ev = s.events.find((e) => e.id === eventId);
-        if (!ev) return;
-        const countries = ["mx", "br", "ar", "co", "es", "us", "fr", "de", "jp", "kr"];
-        const start = s.users.length;
-        /* All sign-ups join as PARTICIPANTS (fighters). We expand the event's
-           capacity so nobody is rejected into the audience. */
-        const fresh = Array.from({ length: count }, (_, i) => makeTestUser(start + i, countries));
-        const newIds = fresh.map((u) => u.id);
-        set({
-          users: [...s.users, ...fresh],
-          events: s.events.map((e) =>
-            e.id === eventId
-              ? { ...e, participants: [...e.participants, ...newIds], maxParticipants: Math.max(e.maxParticipants, e.participants.length + newIds.length) }
-              : e
-          ),
-        });
-        get().toast(translate(get().lang, "org_test_loaded"), "gold");
       },
 
       pickWinner: (eventId, matchId, side) => {

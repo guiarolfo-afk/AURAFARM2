@@ -300,7 +300,6 @@ export default function OrganizerBoard() {
                       </span>
                       <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
                       <div className="flex-1" />
-                      <button onClick={() => s.loadTestParticipants(managed.id, 50)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-azure/35 text-azure bg-azure/8 hover:bg-azure/16 transition-colors cursor-pointer flex items-center gap-1"><Users size={12} /> {t("org_load_test")}</button>
                       {managed.status !== "cancelled" && (
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>

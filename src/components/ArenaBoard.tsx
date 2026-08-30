@@ -400,13 +400,14 @@ export default function ArenaBoard() {
                     const mine = matchVote === side;
                     const isWinner = viewMatch.winner === side;
                     const closed = !!viewMatch.winner;
+                    const notStarted = !viewMatch.startedAt && !closed;
                     const col = isB ? ev.banner[1] : ev.banner[0];
                     const card = (
                       <button
                         key={side}
-                        disabled={closed}
+                        disabled={closed || notStarted}
                         onClick={() => pid && s.voteBattle(ev.id, viewMatch.id, side)}
-                        className={`w-full p-2.5 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
+                        className={`w-full p-2.5 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : notStarted ? "border-white/8 bg-white/3 opacity-55" : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
                       >
                         {isWinner && (
                           <p className="display text-[9px] font-extrabold tracking-widest text-mint mb-1.5 flex items-center gap-1">
@@ -431,6 +432,12 @@ export default function ArenaBoard() {
                     return card;
                   })}
                 </div>
+                {!viewMatch.startedAt && !viewMatch.winner && (
+                  <p className="mt-3 text-[11px] font-semibold text-white/40 flex items-center gap-1.5">
+                    <span className="relative w-1.5 h-1.5 rounded-full bg-azure live-ping text-azure" />
+                    {t("ar_waiting_start")}
+                  </p>
+                )}
                 {matchVote && (
                   <div className="flex items-center justify-between mt-4 text-[11.5px] text-white/50">
                     <span>{t("ar_rule2")}</span>
