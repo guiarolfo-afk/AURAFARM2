@@ -36,12 +36,13 @@ export default function ArenaBoard() {
 
   /* live countdown for the battle in dispute (1s tick while it runs) */
   const liveBattle = ev.bracket.find((m) => m.startedAt && !m.winner) ?? null;
+  const liveGroup = ev.groups.find((g) => g.startedAt && !g.winner) ?? null;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    if (!liveBattle) return;
+    if (!liveBattle && !liveGroup) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [!!liveBattle]);
+  }, [!!liveBattle, !!liveGroup]);
   const battleRemaining = liveBattle && liveBattle.startedAt ? Math.max(0, liveBattle.duration * 60_000 - (now - liveBattle.startedAt)) : null;
   const fmtClock = (ms: number) => {
     const sec = Math.ceil(ms / 1000);
@@ -210,7 +211,7 @@ export default function ArenaBoard() {
                     return (
                       <div key={g.id} className={`rounded-xl border p-3 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/25 bg-mint/4" : "border-white/9 bg-white/3"}`}>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="display text-[11px] font-extrabold text-white/85">{t("org_group")} {g.name}</span>
+                          <span className="display text-[11px] font-extrabold text-white/85">{g.name}</span>
                           {g.status === "live" ? (
                             <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-wider text-ember bg-ember/15 border border-ember/40 px-1.5 py-0.5 rounded-full">
                               <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" /> {t("org_current").toUpperCase()}
@@ -220,6 +221,14 @@ export default function ArenaBoard() {
                           ) : (
                             <span className="text-[9px] font-extrabold tracking-wider text-white/40 bg-white/6 border border-white/12 px-1.5 py-0.5 rounded-full">{t("ar_scheduled").toUpperCase()}</span>
                           )}
+                          {g.status === "live" && g.startedAt && (() => {
+                            const rem = Math.max(0, g.duration * 60000 - (now - g.startedAt));
+                            return (
+                              <span className={`display text-[10px] font-extrabold flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${rem <= 0 ? "text-ember border-ember/40 bg-ember/10 animate-pulse" : "text-gold border-gold/40 bg-gold/8"}`}>
+                                <Timer size={10} /> {rem <= 0 ? t("org_time_up") : fmtClock(rem)}
+                              </span>
+                            );
+                          })()}
                           <span className="ml-auto display text-[10px] font-bold text-white/35">{Object.values(g.votes).reduce((a, b) => a + b, 0)} 🗳️</span>
                         </div>
                         <div className="space-y-1">

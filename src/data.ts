@@ -105,6 +105,7 @@ export interface BattleGroup {
   votes: Record<string, number>;
   status: "open" | "live" | "closed";
   winner: string | null;
+  duration: number; startedAt: number | null; endedAt: number | null;
 }
 
 export interface EventItem {
@@ -153,8 +154,8 @@ export const EVENTS: EventItem[] = [
     ],
     currentMatchId: "e1m5",
     groups: [
-      { id: "e1g1", name: "A", fighters: ["u7", "u16", "u14", "u10"], votes: { u7: 41, u16: 18, u14: 15, u10: 9 }, status: "closed", winner: "u7" },
-      { id: "e1g2", name: "B", fighters: ["u8", "u5", "u12", "u11"], votes: { u8: 33, u5: 27, u12: 21, u11: 12 }, status: "live", winner: null },
+      { id: "e1g1", name: "Duelo 1", fighters: ["u7", "u16", "u14", "u10"], votes: { u7: 41, u16: 18, u14: 15, u10: 9 }, status: "closed", winner: "u7", duration: 10, startedAt: null, endedAt: null },
+      { id: "e1g2", name: "Duelo 2", fighters: ["u8", "u5", "u12", "u11"], votes: { u8: 33, u5: 27, u12: 21, u11: 12 }, status: "live", winner: null, duration: 10, startedAt: Date.now() - 3 * 60000, endedAt: null },
     ],
     chat: [
       { id: 1, user: "Valentina Cruz", hue: 46, text: "¡Bienvenidos al Duelo de Auras! 🔥 Semifinales en 10 minutos", ts: Date.now() - 420000 },

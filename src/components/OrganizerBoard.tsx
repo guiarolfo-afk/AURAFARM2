@@ -57,13 +57,21 @@ export default function OrganizerBoard() {
   const [manageId, setManageId] = useState<string | null>(null);
   const managed = events.find((e) => e.id === manageId) ?? myEvents[0] ?? null;
 
+  /* ---------- manual duel creator ---------- */
+  const [duelOpen, setDuelOpen] = useState(false);
+  const [duelPicks, setDuelPicks] = useState<string[]>([]);
+  const [duelSearch, setDuelSearch] = useState("");
+  const [duelDur, setDuelDur] = useState(10);
+
   const [collab, setCollab] = useState({ name: "", perm: "vote" as "vote" | "edit" | "full" });
   const [cancelAsk, setCancelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
 
   /* live countdown clock (hook must sit before the gate's early return).
      Only ticks while at least one battle of the managed event is running. */
-  const hasRunning = !!managed?.bracket.some((m) => m.startedAt && !m.winner);
+  const hasRunning =
+    !!managed?.bracket.some((m) => m.startedAt && !m.winner) ||
+    !!managed?.groups.some((g) => g.startedAt && !g.winner);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!hasRunning) return;
@@ -301,71 +309,136 @@ export default function OrganizerBoard() {
                       )}
                     </div>
 
-                    {/* group phase (3+ fighters per battle, before the bracket) */}
+                    {/* ============ DUELOS / GRUPOS: manual matchups before the bracket ============ */}
                     <div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
-                          <Users size={12} className="text-mint" /> {t("org_groups_title")}
-                          <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_groups_sub")}</span>
-                        </p>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
-                            {t("org_gen_groups")}
-                          </button>
-                          {managed.groups.some((g) => g.status === "closed" && g.winner) && (
-                            <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
-                              {t("org_promote_bracket")}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {managed.groups.length === 0 ? (
-                        <p className="text-[11.5px] text-white/35">— {t("org_gen_groups")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
-                      ) : (
-                        <div className="grid sm:grid-cols-2 gap-2.5">
-                          {managed.groups.map((g) => {
-                            const total = Object.values(g.votes).reduce((a, b) => a + b, 0) || 1;
-                            const sorted = [...g.fighters].sort((x, y) => (g.votes[y] ?? 0) - (g.votes[x] ?? 0));
-                            return (
-                              <div key={g.id} className={`rounded-xl border p-2.5 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/30 bg-mint/5" : "border-white/9 bg-white/3"}`}>
-                                <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
-                                  <span className="display text-[10.5px] font-extrabold text-white/80">{t("org_group")} {g.name}</span>
-                                  <span className={`text-[8.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full ${g.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : g.status === "closed" ? "bg-mint/12 text-mint border border-mint/35" : "bg-white/6 text-white/40 border border-white/12"}`}>
-                                    {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
+                      {(() => {
+                        const closedWinners = managed.groups.filter((g) => g.status === "closed" && g.winner).length;
+                        const roster = managed.participants
+                          .map((pid, idx) => ({ pid, name: userNameById(pid), hue: (idx * 47) % 360 }))
+                          .filter((r) => r.name.toLowerCase().includes(duelSearch.toLowerCase()));
+                        const createDuel = () => {
+                          if (duelPicks.length < 2) return;
+                          s.createCustomGroup(managed.id, duelPicks, duelDur);
+                          setDuelPicks([]); setDuelSearch(""); setDuelOpen(false);
+                        };
+                        return (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+                                <Users size={12} className="text-mint" /> {t("org_groups_title")}
+                                <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_create_duel_sub")}</span>
+                              </p>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button onClick={() => { setDuelOpen(!duelOpen); setDuelPicks([]); setDuelSearch(""); }} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer flex items-center gap-1">
+                                  <Plus size={11} /> {t("org_create_duel")}
+                                </button>
+                                {closedWinners > 0 && (
+                                  <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
+                                    {closedWinners}/16 {t("org_of_octavos")} · {t("org_build_octavos")}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* duel creator */}
+                            {duelOpen && (
+                              <div className="rounded-xl border border-mint/30 bg-mint/4 p-3.5 mb-3">
+                                <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                                  <input value={duelSearch} onChange={(e) => setDuelSearch(e.target.value)} placeholder={t("org_roster_search")} className="flex-1 min-w-[140px] px-3 py-1.5 rounded-lg bg-white/6 border border-white/10 text-[12px] outline-none focus:border-mint/50" />
+                                  <span className="text-[10.5px] font-bold text-mint">{duelPicks.length} {t("org_selected")}</span>
+                                  <span className="text-[10px] text-white/40 flex items-center gap-1"><Timer size={11} />
+                                    <input type="number" min={1} max={60} value={duelDur} onChange={(e) => setDuelDur(+e.target.value)} className="w-12 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10.5px] outline-none" /> {t("c_min")}
                                   </span>
-                                  <div className="flex-1" />
-                                  {g.status === "open" && (
-                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
-                                  )}
-                                  {g.status === "live" && (
-                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 transition-colors cursor-pointer">{t("org_close_group")}</button>
-                                  )}
-                                  {total > 1 && g.status !== "closed" && (
-                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
-                                  )}
                                 </div>
-                                <div className="space-y-1">
-                                  {sorted.map((pid) => {
-                                    const v = g.votes[pid] ?? 0;
-                                    const won = g.winner === pid;
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                                  {roster.map((r) => {
+                                    const on = duelPicks.includes(r.pid);
                                     return (
-                                      <div key={pid} className="flex items-center gap-1.5">
-                                        <span className={`flex-1 text-[10.5px] font-semibold truncate ${won ? "text-mint" : "text-white/75"}`}>
-                                          {won && <Crown size={9} className="inline mr-1 text-gold" />}{userNameById(pid)}
-                                        </span>
-                                        <div className="w-16 h-1.5 rounded-full bg-white/7 overflow-hidden">
-                                          <div className="h-full rounded-full bg-mint transition-all duration-700" style={{ width: `${(v / total) * 100}%` }} />
-                                        </div>
-                                        <span className="display text-[9.5px] font-bold text-white/40 w-6 text-right">{v}</span>
-                                      </div>
+                                      <button key={r.pid} onClick={() => setDuelPicks(on ? duelPicks.filter((x) => x !== r.pid) : [...duelPicks, r.pid])}
+                                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer ${on ? "border-mint/50 bg-mint/10" : "border-white/8 bg-white/3 hover:bg-white/6"}`}>
+                                        <Avatar name={r.name} hue={r.hue} size={20} />
+                                        <span className={`flex-1 text-[10.5px] font-semibold truncate ${on ? "text-mint" : "text-white/70"}`}>{r.name}</span>
+                                        {on && <span className="text-mint text-[11px] font-extrabold">✓</span>}
+                                      </button>
                                     );
                                   })}
                                 </div>
+                                <div className="flex gap-2 mt-3">
+                                  <button onClick={createDuel} disabled={duelPicks.length < 2}
+                                    className={`flex-1 py-2 rounded-lg display text-[11px] font-bold transition-all ${duelPicks.length < 2 ? "bg-white/6 text-white/30 cursor-not-allowed" : "bg-mint text-[#03150c] hover:brightness-110 active:scale-[0.98] cursor-pointer"}`}>
+                                    {duelPicks.length < 2 ? t("org_pick_fighters") : `${t("org_create_duel")} · ${duelPicks.length === 2 ? t("org_pair") : t("org_duel")} (${duelPicks.length})`}
+                                  </button>
+                                  <button onClick={() => setDuelOpen(false)} className="px-3 py-2 rounded-lg border border-white/12 text-[11px] font-bold text-white/55 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
+                                </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            )}
+
+                            {/* duel list */}
+                            {managed.groups.length === 0 ? (
+                              <p className="text-[11.5px] text-white/35">— {t("org_create_duel")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
+                            ) : (
+                              <div className="grid sm:grid-cols-2 gap-2.5">
+                                {managed.groups.map((g) => {
+                                  const total = Object.values(g.votes).reduce((a, b) => a + b, 0) || 1;
+                                  const sorted = [...g.fighters].sort((x, y) => (g.votes[y] ?? 0) - (g.votes[x] ?? 0));
+                                  const remaining = g.startedAt && !g.winner ? Math.max(0, g.duration * 60000 - (now - g.startedAt)) : null;
+                                  return (
+                                    <div key={g.id} className={`rounded-xl border p-2.5 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/30 bg-mint/5" : "border-white/9 bg-white/3"}`}>
+                                      <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
+                                        <span className="display text-[10.5px] font-extrabold text-white/80">{g.name}</span>
+                                        <span className={`text-[8.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full ${g.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : g.status === "closed" ? "bg-mint/12 text-mint border border-mint/35" : "bg-white/6 text-white/40 border border-white/12"}`}>
+                                          {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
+                                        </span>
+                                        {remaining !== null && (
+                                          <span className={`display text-[10px] font-extrabold flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${remaining <= 0 ? "text-ember border-ember/40 bg-ember/10 animate-pulse" : "text-gold border-gold/40 bg-gold/8"}`}>
+                                            <Timer size={10} /> {remaining <= 0 ? t("org_time_up") : fmtClock(remaining)}
+                                          </span>
+                                        )}
+                                        <div className="flex-1" />
+                                        {g.status === "open" && (
+                                          <>
+                                            <span className="text-[9px] text-white/40 flex items-center gap-1"><Timer size={9} />
+                                              <input type="number" min={1} max={60} value={g.duration} onChange={(e) => s.setGroupDuration(managed.id, g.id, +e.target.value)} className="w-10 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[9px] outline-none" />{t("c_min")}
+                                            </span>
+                                            <button onClick={() => s.startGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gold/15 text-gold border border-gold/40 hover:bg-gold/25 transition-colors cursor-pointer flex items-center gap-0.5"><Play size={8} /> {t("org_start_battle")}</button>
+                                            <button onClick={() => s.removeGroup(managed.id, g.id)} aria-label={t("org_remove_duel")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer"><Trash2 size={9} /></button>
+                                          </>
+                                        )}
+                                        {g.status === "live" && (
+                                          <button onClick={() => s.finishGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/15 text-ember border border-ember/40 hover:bg-ember/25 transition-colors cursor-pointer flex items-center gap-0.5"><Square size={8} /> {t("org_end_battle")}</button>
+                                        )}
+                                        {total > 1 && g.status !== "closed" && (
+                                          <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                        )}
+                                      </div>
+                                      <div className="space-y-1">
+                                        {sorted.map((pid) => {
+                                          const v = g.votes[pid] ?? 0;
+                                          const won = g.winner === pid;
+                                          return (
+                                            <div key={pid} className="flex items-center gap-1.5">
+                                              <span className={`flex-1 min-w-0 text-[10.5px] font-semibold truncate ${won ? "text-mint" : "text-white/75"}`}>
+                                                {won && <Crown size={9} className="inline mr-1 text-gold" />}{userNameById(pid)}
+                                              </span>
+                                              <div className="w-14 h-1.5 rounded-full bg-white/7 overflow-hidden shrink-0">
+                                                <div className="h-full rounded-full bg-mint transition-all duration-700" style={{ width: `${(v / total) * 100}%` }} />
+                                              </div>
+                                              <span className="display text-[9.5px] font-bold text-white/40 w-6 text-right shrink-0">{v}</span>
+                                              {g.status === "live" && (
+                                                <button onClick={() => s.pickGroupWinner(managed.id, g.id, pid)} aria-label={t("org_duel_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer shrink-0">✓</button>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* bracket */}

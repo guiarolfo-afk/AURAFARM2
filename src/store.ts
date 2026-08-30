@@ -99,6 +99,13 @@ interface AppState {
   voteGroup: (eventId: string, groupId: string, pid: string) => void;
   undoGroupVote: (eventId: string, groupId: string) => void;
   voidGroupVotes: (eventId: string, groupId: string) => void;
+  /* Manual duels: organizer picks pairs/groups, each with programmable timer + start/end */
+  createCustomGroup: (eventId: string, fighters: string[], duration: number) => void;
+  startGroup: (eventId: string, groupId: string) => void;
+  finishGroup: (eventId: string, groupId: string) => void;
+  pickGroupWinner: (eventId: string, groupId: string, pid: string) => void;
+  removeGroup: (eventId: string, groupId: string) => void;
+  setGroupDuration: (eventId: string, groupId: string, duration: number) => void;
   registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
@@ -336,8 +343,9 @@ export const useApp = create<AppState>()(
         const perGroup = pids.length <= 8 ? (pids.length <= 4 ? pids.length : 4) : pids.length <= 16 ? 5 : 6;
         const k = Math.max(2, Math.ceil(pids.length / perGroup));
         const groups: BattleGroup[] = Array.from({ length: k }, (_, g) => ({
-          id: `${eventId}g${g + 1}`, name: String.fromCharCode(65 + g),
+          id: `${eventId}g${g + 1}`, name: `${translate(s.lang, "org_duel")} ${g + 1}`,
           fighters: [], votes: {}, status: "open" as const, winner: null,
+          duration: 10, startedAt: null, endedAt: null,
         }));
         pids.forEach((p, i) => groups[i % k].fighters.push(p));
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups } : e)) });
@@ -369,11 +377,76 @@ export const useApp = create<AppState>()(
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
         if (!ev) return;
-        const winners = ev.groups.filter((g) => g.status === "closed" && g.winner).map((g) => g.winner as string);
+        /* winners of closed duels fill the Round of 16 (octavos); capped at 16 */
+        const winners = ev.groups.filter((g) => g.status === "closed" && g.winner).map((g) => g.winner as string).slice(0, 16);
         if (winners.length < 2) return;
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket: makeBracket(eventId, winners) } : e)) });
         s.toast(translate(s.lang, "org_promote_toast"), "gold");
       },
+
+      /* ---------- Manual duels: organizer picks pairs/groups + programmable timer ---------- */
+      createCustomGroup: (eventId, fighters, duration) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev || fighters.length < 2) return;
+        const n = ev.groups.length + 1;
+        const label = fighters.length === 2 ? translate(s.lang, "org_pair") : translate(s.lang, "org_duel");
+        const g: BattleGroup = {
+          id: `${eventId}g${Date.now()}`, name: `${label} ${n}`, fighters: [...fighters],
+          votes: {}, status: "open", winner: null, duration: Math.max(1, duration), startedAt: null, endedAt: null,
+        };
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: [...e.groups, g] } : e)) });
+        s.toast(translate(s.lang, "org_duel_created"), "gold");
+      },
+
+      startGroup: (eventId, groupId) => {
+        set((s) => ({
+          events: s.events.map((e) =>
+            e.id === eventId
+              ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "live" as const, startedAt: Date.now(), endedAt: null } : g)) }
+              : e
+          ),
+        }));
+        get().toast(translate(get().lang, "org_battle_started"), "gold");
+      },
+
+      finishGroup: (eventId, groupId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const g = ev?.groups.find((x) => x.id === groupId);
+        if (!ev || !g || g.winner) return;
+        const ranked = Object.entries(g.votes).sort((a, b) => b[1] - a[1]);
+        const winner = ranked.length ? ranked[0][0] : g.fighters[Math.floor(Math.random() * g.fighters.length)];
+        get().pickGroupWinner(eventId, groupId, winner);
+        get().toast(translate(s.lang, "org_battle_ended"), "gold");
+      },
+
+      pickGroupWinner: (eventId, groupId, pid) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const g = ev?.groups.find((x) => x.id === groupId);
+        if (!ev || !g) return;
+        const wu = s.users.find((u) => u.id === pid);
+        const feed = wu ? [feedItem("win", wu.name, countryById(wu.country).flag, undefined, ev.name), ...s.feed].slice(0, 9) : s.feed;
+        set({
+          events: get().events.map((e) =>
+            e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, status: "closed" as const, winner: pid, endedAt: Date.now() } : x)) } : e
+          ),
+          feed,
+        });
+      },
+
+      removeGroup: (eventId, groupId) => {
+        set((s) => ({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.filter((g) => g.id !== groupId) } : e)) }));
+        get().toast(translate(get().lang, "t_collab_removed"), "warn");
+      },
+
+      setGroupDuration: (eventId, groupId, duration) =>
+        set((s) => ({
+          events: s.events.map((e) =>
+            e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, duration: Math.max(1, duration) } : g)) } : e
+          ),
+        })),
 
       voteGroup: (eventId, groupId, pid) => {
         const s = get();
