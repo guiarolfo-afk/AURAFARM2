@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown } from "lucide-react";
+import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users } from "lucide-react";
 import { useApp, userNameById, levelFromAura } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -111,7 +111,7 @@ export default function ArenaBoard() {
         <div className="relative flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[180px]">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="display text-[15px] font-extrabold">{ev.name}</h3>
+              <h3 className="display text-[18px] sm:text-[20px] font-extrabold leading-tight">{ev.name}</h3>
               {ev.status === "live" && <LiveBadge label={t("c_live")} />}
             </div>
             <p className="text-[11.5px] text-white/45 mt-0.5">{countryById(ev.country).flag} {ev.address.split(",")[0]} · {ev.attendees} {t("ev_attendees").toLowerCase()}</p>
@@ -176,6 +176,79 @@ export default function ArenaBoard() {
                 <p><b className="text-white/80">3.</b> {t("ar_rule3")}</p>
               </div>
             </div>
+
+            {/* ===== group phase (multi-fighter battles before the bracket) ===== */}
+            {ev.groups.length > 0 && (
+              <div className="panel p-4 sm:p-5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Users size={15} className="text-mint" />
+                  <h3 className="display text-[13.5px] font-extrabold">{t("ar_group_phase")}</h3>
+                  <span className="text-[10px] font-bold text-white/35">{ev.groups.filter((g) => g.status === "closed").length}/{ev.groups.length}</span>
+                  <p className="w-full text-[11px] text-white/45">{t("ar_group_advances")}</p>
+                </div>
+                <div className="grid md:grid-cols-2 gap-3 mt-3">
+                  {ev.groups.map((g) => {
+                    const total = Object.values(g.votes).reduce((a, b) => a + b, 0) || 1;
+                    const sorted = [...g.fighters].sort((x, y) => (g.votes[y] ?? 0) - (g.votes[x] ?? 0));
+                    const myPick = battleVotes[ev.id]?.["g_" + g.id];
+                    return (
+                      <div key={g.id} className={`rounded-xl border p-3 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/25 bg-mint/4" : "border-white/9 bg-white/3"}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="display text-[11px] font-extrabold text-white/85">{t("org_group")} {g.name}</span>
+                          {g.status === "live" ? (
+                            <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-wider text-ember bg-ember/15 border border-ember/40 px-1.5 py-0.5 rounded-full">
+                              <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" /> {t("org_current").toUpperCase()}
+                            </span>
+                          ) : g.status === "closed" ? (
+                            <span className="text-[9px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1.5 py-0.5 rounded-full">{t("ar_completed").toUpperCase()}</span>
+                          ) : (
+                            <span className="text-[9px] font-extrabold tracking-wider text-white/40 bg-white/6 border border-white/12 px-1.5 py-0.5 rounded-full">{t("ar_scheduled").toUpperCase()}</span>
+                          )}
+                          <span className="ml-auto display text-[10px] font-bold text-white/35">{Object.values(g.votes).reduce((a, b) => a + b, 0)} 🗳️</span>
+                        </div>
+                        <div className="space-y-1">
+                          {sorted.map((pid) => {
+                            const v = g.votes[pid] ?? 0;
+                            const pctV = Math.round((v / total) * 100);
+                            const mine = myPick === pid;
+                            const won = g.winner === pid;
+                            const row = (
+                              <>
+                                <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={26} />
+                                <span className={`flex-1 min-w-0 text-left text-[11.5px] font-bold truncate ${won ? "text-mint" : ""}`}>
+                                  {won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}
+                                  {won && <span className="ml-1.5 text-[8.5px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1 py-px rounded-full align-middle">{t("ar_group_winner").toUpperCase()}</span>}
+                                </span>
+                                <div className="w-16 sm:w-20 h-1.5 rounded-full bg-white/8 overflow-hidden shrink-0">
+                                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pctV}%`, background: mine || won ? "#FFD700" : ev.banner[0], boxShadow: mine || won ? "0 0 8px #FFD70066" : undefined }} />
+                                </div>
+                                <span className={`display text-[10.5px] font-extrabold w-9 text-right shrink-0 ${mine || won ? "text-gold" : "text-white/45"}`}>{pctV}%</span>
+                              </>
+                            );
+                            return g.status === "live" ? (
+                              <button
+                                key={pid}
+                                onClick={() => s.voteGroup(ev.id, g.id, pid)}
+                                className={`w-full flex items-center gap-2 p-1.5 rounded-lg border transition-all cursor-pointer active:scale-[0.98] ${mine ? "bg-gold/12 border-gold/40" : "border-transparent hover:bg-white/5"}`}
+                              >
+                                {row}
+                              </button>
+                            ) : (
+                              <div key={pid} className={`w-full flex items-center gap-2 p-1.5 rounded-lg ${g.status === "open" ? "opacity-55" : ""}`}>{row}</div>
+                            );
+                          })}
+                        </div>
+                        {g.status === "live" && myPick && (
+                          <button onClick={() => s.undoGroupVote(ev.id, g.id)} className="mt-2 text-[10px] font-bold text-ember hover:underline cursor-pointer">
+                            ✕ {t("ar_undo_vote")}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ===== battle finder dropdown ===== */}
             {ev.bracket.length > 0 && (

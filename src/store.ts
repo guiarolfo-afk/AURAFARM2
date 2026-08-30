@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import type { Lang } from "./i18n";
 import { translate } from "./i18n";
 import { USERS, EVENTS, CHALLENGES, BOT_REPLIES, CHAT_NAMES, countryById } from "./data";
-import type { FarmUser, EventItem, Challenge, BracketMatch, ChatMsg } from "./data";
+import type { FarmUser, EventItem, Challenge, BracketMatch, ChatMsg, BattleGroup } from "./data";
 
 export type Tab = "live" | "events" | "org" | "arena" | "rank" | "set";
 
@@ -30,13 +30,39 @@ let chatSeq = 1000;
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+/* Build a seeded elimination bracket from any list of competitor ids */
+const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[] => {
+  const parts: (string | null)[] = [...source];
+  let size = 4;
+  while (size < parts.length) size *= 2;
+  while (parts.length < size) parts.push(null);
+  for (let i = parts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [parts[i], parts[j]] = [parts[j], parts[i]];
+  }
+  const rounds = Math.log2(size);
+  const bracket: BracketMatch[] = [];
+  let idx = 0;
+  for (let r = 0; r < rounds; r++) {
+    const count = size / Math.pow(2, r + 1);
+    for (let i = 0; i < count; i++) {
+      bracket.push({
+        id: `${eventId}m${++idx}`, round: r,
+        a: r === 0 ? parts[i * 2] : null, b: r === 0 ? parts[i * 2 + 1] : null,
+        winner: null, votesA: 0, votesB: 0, duration: 10,
+      });
+    }
+  }
+  return bracket;
+};
+
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
   myVotes: Record<string, Record<string, number>>;
-  battleVotes: Record<string, Record<string, "a" | "b">>;
+  battleVotes: Record<string, Record<string, string>>;
   myRatings: Record<string, number>;
   myAttendance: Record<string, "participant" | "spectator">;
   events: EventItem[];
@@ -65,6 +91,11 @@ interface AppState {
   pickWinner: (eventId: string, matchId: string, side: "a" | "b") => void;
   voidMatchVotes: (eventId: string, matchId: string) => void; voidEventVotes: (eventId: string) => void;
   voidMyBattleVote: (eventId: string, matchId: string) => void;
+  createGroups: (eventId: string) => void; setGroupLive: (eventId: string, groupId: string) => void;
+  closeGroup: (eventId: string, groupId: string) => void; promoteGroups: (eventId: string) => void;
+  voteGroup: (eventId: string, groupId: string, pid: string) => void;
+  undoGroupVote: (eventId: string, groupId: string) => void;
+  voidGroupVotes: (eventId: string, groupId: string) => void;
   registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
@@ -284,29 +315,123 @@ export const useApp = create<AppState>()(
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
         if (!ev) return;
-        const parts = [...ev.participants];
-        let size = 4;
-        while (size < parts.length) size *= 2;
-        while (parts.length < size) parts.push(null as unknown as string);
-        for (let i = parts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [parts[i], parts[j]] = [parts[j], parts[i]];
-        }
-        const rounds = Math.log2(size);
-        const bracket: BracketMatch[] = [];
-        let idx = 0;
-        for (let r = 0; r < rounds; r++) {
-          const count = size / Math.pow(2, r + 1);
-          for (let i = 0; i < count; i++) {
-            bracket.push({
-              id: `${eventId}m${++idx}`, round: r,
-              a: r === 0 ? parts[i * 2] : null, b: r === 0 ? parts[i * 2 + 1] : null,
-              winner: null, votesA: 0, votesB: 0, duration: 10,
-            });
-          }
-        }
+        const bracket = makeBracket(eventId, ev.participants);
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket } : e)) });
         s.toast(translate(s.lang, "t_bracket_gen"), "gold");
+      },
+
+      /* ================= GROUP PHASE (3+ fighters per battle, before the bracket) ================= */
+      createGroups: (eventId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev || ev.participants.length < 3) return;
+        const pids = [...ev.participants];
+        for (let i = pids.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pids[i], pids[j]] = [pids[j], pids[i]];
+        }
+        const k = Math.max(2, Math.ceil(pids.length / 4));
+        const groups: BattleGroup[] = Array.from({ length: k }, (_, g) => ({
+          id: `${eventId}g${g + 1}`, name: String.fromCharCode(65 + g),
+          fighters: [], votes: {}, status: "open" as const, winner: null,
+        }));
+        pids.forEach((p, i) => groups[i % k].fighters.push(p));
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups } : e)) });
+        s.toast(translate(s.lang, "t_bracket_gen"), "gold");
+      },
+
+      setGroupLive: (eventId, groupId) => {
+        const s = get();
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "live" as const } : g)) } : e)) });
+        s.toast(translate(s.lang, "t_current_set"), "gold");
+      },
+
+      closeGroup: (eventId, groupId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const g = ev?.groups.find((x) => x.id === groupId);
+        if (!ev || !g) return;
+        const winner = Object.entries(g.votes).sort((a, b) => b[1] - a[1])[0]?.[0] ?? g.fighters[0] ?? null;
+        const wu = s.users.find((u) => u.id === winner);
+        const feed = wu ? [feedItem("win", wu.name, countryById(wu.country).flag, undefined, ev.name), ...s.feed].slice(0, 9) : s.feed;
+        set({
+          events: get().events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, status: "closed" as const, winner } : x)) } : e)),
+          feed,
+        });
+        get().toast(translate(get().lang, "org_group_closed_toast"), "gold");
+      },
+
+      promoteGroups: (eventId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev) return;
+        const winners = ev.groups.filter((g) => g.status === "closed" && g.winner).map((g) => g.winner as string);
+        if (winners.length < 2) return;
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket: makeBracket(eventId, winners) } : e)) });
+        s.toast(translate(s.lang, "org_promote_toast"), "gold");
+      },
+
+      voteGroup: (eventId, groupId, pid) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const g = ev?.groups.find((x) => x.id === groupId);
+        if (!ev || !g || g.status !== "live") return;
+        const gKey = "g_" + groupId;
+        const prev = s.battleVotes[eventId]?.[gKey];
+        if (prev === pid) return;
+        const battleVotes = { ...s.battleVotes, [eventId]: { ...(s.battleVotes[eventId] ?? {}), [gKey]: pid } };
+        set({
+          battleVotes, votesCast: s.votesCast + (prev ? 0 : 1),
+          events: s.events.map((e) =>
+            e.id === eventId
+              ? {
+                  ...e,
+                  groups: e.groups.map((x) =>
+                    x.id === groupId
+                      ? { ...x, votes: { ...(prev ? { ...x.votes, [prev]: Math.max(0, (x.votes[prev] ?? 0) - 1) } : x.votes), [pid]: (x.votes[pid] ?? 0) + 1 } }
+                      : x
+                  ),
+                  votes: { ...e.votes, [pid]: (e.votes[pid] ?? 0) + 1 },
+                }
+              : e
+          ),
+        });
+        if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
+        s.toast(translate(s.lang, "t_battle_voted"), "gold");
+      },
+
+      undoGroupVote: (eventId, groupId) => {
+        const s = get();
+        const gKey = "g_" + groupId;
+        const prev = s.battleVotes[eventId]?.[gKey];
+        if (!prev) return;
+        const rest = { ...(s.battleVotes[eventId] ?? {}) };
+        delete rest[gKey];
+        set({
+          battleVotes: { ...s.battleVotes, [eventId]: rest },
+          events: s.events.map((e) =>
+            e.id === eventId
+              ? {
+                  ...e,
+                  groups: e.groups.map((x) => (x.id === groupId ? { ...x, votes: { ...x.votes, [prev]: Math.max(0, (x.votes[prev] ?? 0) - 1) } } : x)),
+                  votes: { ...e.votes, [prev]: Math.max(0, (e.votes[prev] ?? 0) - 1) },
+                }
+              : e
+          ),
+        });
+        s.toast(translate(s.lang, "t_vote_removed"), "warn");
+      },
+
+      voidGroupVotes: (eventId, groupId) => {
+        const s = get();
+        const gKey = "g_" + groupId;
+        const battleVotes = { ...s.battleVotes };
+        if (battleVotes[eventId]) delete battleVotes[eventId][gKey];
+        set({
+          battleVotes,
+          events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, votes: {} } : x)) } : e)),
+        });
+        s.toast(translate(s.lang, "t_votes_void"), "warn");
       },
 
       setMatchDuration: (eventId, matchId, duration) =>

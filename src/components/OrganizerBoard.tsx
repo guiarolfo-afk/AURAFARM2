@@ -74,7 +74,7 @@ export default function OrganizerBoard() {
       collaborators: organizer?.collaborators.map((c) => ({ name: c.name, perm: c.perm })) ?? [],
       maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
       status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
-      votes: {}, bracket: [], currentMatchId: null, chat: [], notes: form.notes,
+      votes: {}, bracket: [], currentMatchId: null, groups: [], chat: [], notes: form.notes,
     };
     s.createEvent(ev);
     setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "", loc: null });
@@ -275,6 +275,73 @@ export default function OrganizerBoard() {
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
                         </>
+                      )}
+                    </div>
+
+                    {/* group phase (3+ fighters per battle, before the bracket) */}
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+                          <Users size={12} className="text-mint" /> {t("org_groups_title")}
+                          <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_groups_sub")}</span>
+                        </p>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
+                            {t("org_gen_groups")}
+                          </button>
+                          {managed.groups.some((g) => g.status === "closed" && g.winner) && (
+                            <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
+                              {t("org_promote_bracket")}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {managed.groups.length === 0 ? (
+                        <p className="text-[11.5px] text-white/35">— {t("org_gen_groups")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
+                      ) : (
+                        <div className="grid sm:grid-cols-2 gap-2.5">
+                          {managed.groups.map((g) => {
+                            const total = Object.values(g.votes).reduce((a, b) => a + b, 0) || 1;
+                            const sorted = [...g.fighters].sort((x, y) => (g.votes[y] ?? 0) - (g.votes[x] ?? 0));
+                            return (
+                              <div key={g.id} className={`rounded-xl border p-2.5 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/30 bg-mint/5" : "border-white/9 bg-white/3"}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="display text-[10.5px] font-extrabold text-white/80">{t("org_group")} {g.name}</span>
+                                  <span className={`text-[8.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full ${g.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : g.status === "closed" ? "bg-mint/12 text-mint border border-mint/35" : "bg-white/6 text-white/40 border border-white/12"}`}>
+                                    {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
+                                  </span>
+                                  <div className="flex-1" />
+                                  {g.status === "open" && (
+                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                  )}
+                                  {g.status === "live" && (
+                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 transition-colors cursor-pointer">{t("org_close_group")}</button>
+                                  )}
+                                  {total > 1 && g.status !== "closed" && (
+                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  {sorted.map((pid) => {
+                                    const v = g.votes[pid] ?? 0;
+                                    const won = g.winner === pid;
+                                    return (
+                                      <div key={pid} className="flex items-center gap-1.5">
+                                        <span className={`flex-1 text-[10.5px] font-semibold truncate ${won ? "text-mint" : "text-white/75"}`}>
+                                          {won && <Crown size={9} className="inline mr-1 text-gold" />}{userNameById(pid)}
+                                        </span>
+                                        <div className="w-16 h-1.5 rounded-full bg-white/7 overflow-hidden">
+                                          <div className="h-full rounded-full bg-mint transition-all duration-700" style={{ width: `${(v / total) * 100}%` }} />
+                                        </div>
+                                        <span className="display text-[9.5px] font-bold text-white/40 w-6 text-right">{v}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
 
