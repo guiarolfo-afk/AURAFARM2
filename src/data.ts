@@ -76,6 +76,14 @@ export interface BracketMatch { id: string; round: number; a: string | null; b: 
 
 export interface ChatMsg { id: number; user: string; hue: number; text: string; mine?: boolean; ts: number }
 
+/* Group phase: multi-fighter battles (3+) before the elimination bracket */
+export interface BattleGroup {
+  id: string; name: string; fighters: string[];
+  votes: Record<string, number>;
+  status: "open" | "live" | "closed";
+  winner: string | null;
+}
+
 export interface EventItem {
   id: string; name: string; desc: Record<Lang, string>; country: string; city: string;
   lat: number; lng: number; address: string; dateISO: string; time: string;
@@ -85,6 +93,7 @@ export interface EventItem {
   status: "live" | "upcoming" | "cancelled";
   features: string[]; banner: [string, string];
   votes: Record<string, number>; bracket: BracketMatch[]; currentMatchId: string | null;
+  groups: BattleGroup[];
   chat: ChatMsg[]; notes: string;
 }
 
@@ -120,6 +129,10 @@ export const EVENTS: EventItem[] = [
       M("e1m7", 2, null, null),
     ],
     currentMatchId: "e1m5",
+    groups: [
+      { id: "e1g1", name: "A", fighters: ["u7", "u16", "u14", "u10"], votes: { u7: 41, u16: 18, u14: 15, u10: 9 }, status: "closed", winner: "u7" },
+      { id: "e1g2", name: "B", fighters: ["u8", "u5", "u12", "u11"], votes: { u8: 33, u5: 27, u12: 21, u11: 12 }, status: "live", winner: null },
+    ],
     chat: [
       { id: 1, user: "Valentina Cruz", hue: 46, text: "¡Bienvenidos al Duelo de Auras! 🔥 Semifinales en 10 minutos", ts: Date.now() - 420000 },
       { id: 2, user: "Luna Reyes", hue: 46, text: "El público está encendido, vamos con todo ⚡", ts: Date.now() - 360000 },
@@ -146,6 +159,7 @@ export const EVENTS: EventItem[] = [
     votes: { u15: 204, u13: 187, u9: 173, u6: 165, u4: 122, u18: 98 },
     bracket: [M("e2m1", 0, "u15", "u18", 22, 11, "a"), M("e2m2", 0, "u13", "u4", 19, 17), M("e2m3", 0, "u9", "u6", 14, 16)],
     currentMatchId: "e2m2",
+    groups: [],
     chat: [
       { id: 1, user: "Rafael Monteiro", hue: 152, text: "Bora! Primeira rodada valendo 💚", ts: Date.now() - 300000 },
       { id: 2, user: "Bianca Rossi", hue: 268, text: "A arena está linda hoje ✨", ts: Date.now() - 180000 },
@@ -167,7 +181,7 @@ export const EVENTS: EventItem[] = [
     maxParticipants: 8, participants: ["u4", "u18", "u10", "u9"],
     attendees: 87, waitlist: [], status: "upcoming",
     features: ["t_prize", "t_music", "t_food", "t_free_entry"], banner: ["#9B30FF", "#FF69B4"],
-    votes: {}, bracket: [], currentMatchId: null,
+    votes: {}, bracket: [], currentMatchId: null, groups: [],
     chat: [{ id: 1, user: "Zoe Laurent", hue: 316, text: "Les inscriptions sont ouvertes 🇫🇷✨", ts: Date.now() - 500000 }],
     notes: "",
   },
@@ -186,7 +200,7 @@ export const EVENTS: EventItem[] = [
     maxParticipants: 16, participants: ["u13", "u9"],
     attendees: 46, waitlist: [], status: "upcoming",
     features: ["t_prize", "t_stream", "t_photo"], banner: ["#FF4444", "#FFD700"],
-    votes: {}, bracket: [], currentMatchId: null,
+    votes: {}, bracket: [], currentMatchId: null, groups: [],
     chat: [{ id: 1, user: "Andrés Vega", hue: 152, text: "Cupos de participante abriendo pronto ⚔️", ts: Date.now() - 600000 }],
     notes: "",
   },
@@ -205,7 +219,7 @@ export const EVENTS: EventItem[] = [
     maxParticipants: 4, participants: ["u8", "u12", "u16", "u7"],
     attendees: 132, waitlist: ["Tomás R."], status: "upcoming",
     features: ["t_food", "t_music", "t_free_entry", "t_photo"], banner: ["#00BFFF", "#00FF7F"],
-    votes: {}, bracket: [], currentMatchId: null,
+    votes: {}, bracket: [], currentMatchId: null, groups: [],
     chat: [{ id: 1, user: "Diego Fuentes", hue: 152, text: "El muro de auras ya está casi listo 🧱✨", ts: Date.now() - 700000 }],
     notes: "",
   },
@@ -224,7 +238,7 @@ export const EVENTS: EventItem[] = [
     maxParticipants: 12, participants: ["u2", "u6", "u14", "u17"],
     attendees: 240, waitlist: [], status: "upcoming",
     features: ["t_stream", "t_prize", "t_photo"], banner: ["#FF69B4", "#9B30FF"],
-    votes: {}, bracket: [], currentMatchId: null,
+    votes: {}, bracket: [], currentMatchId: null, groups: [],
     chat: [{ id: 1, user: "Kai Nakamura", hue: 268, text: "招待状を送りました — see you in Tokyo 🌸", ts: Date.now() - 800000 }],
     notes: "",
   },

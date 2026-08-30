@@ -69,7 +69,7 @@ export default function App() {
 
       {/* ================= HEADER ================= */}
       <header className="sticky top-0 z-50 border-b border-line bg-night/78 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center gap-2.5 sm:gap-3">
           <button onClick={() => setTab("live")} className="flex items-center gap-2.5 cursor-pointer group" aria-label="AuraFARM">
             <span className="relative w-8 h-8 rounded-full conic-ring grid place-items-center group-hover:scale-105 transition-transform">
               <span className="w-6 h-6 rounded-full bg-night grid place-items-center">
@@ -145,7 +145,7 @@ export default function App() {
       </header>
 
       {/* ================= MAIN ================= */}
-      <main className={`max-w-7xl mx-auto px-4 pt-6 ${adBanner ? "pb-40" : "pb-28"}`}>
+      <main className={`max-w-7xl mx-auto px-3 sm:px-4 pt-5 sm:pt-6 overflow-x-hidden ${adBanner ? "pb-40" : "pb-28"}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
@@ -204,7 +204,7 @@ export default function App() {
                   <motion.span layoutId="navglow" className="absolute top-0 w-8 h-[3px] rounded-full" style={{ background: `hsl(${x.hue} 90% 60%)`, boxShadow: `0 0 12px hsl(${x.hue} 90% 60%)` }} />
                 )}
                 <x.icon size={18} style={{ color: active ? `hsl(${x.hue} 90% 62%)` : "rgba(255,255,255,.35)", transition: "color .2s" }} />
-                <span className="text-[8.5px] font-bold leading-none" style={{ color: active ? `hsl(${x.hue} 90% 68%)` : "rgba(255,255,255,.35)" }}>{x.label}</span>
+                <span className="w-full px-0.5 text-center text-[8px] sm:text-[8.5px] font-bold leading-none truncate" style={{ color: active ? `hsl(${x.hue} 90% 68%)` : "rgba(255,255,255,.35)" }}>{x.label}</span>
               </button>
             );
           })}

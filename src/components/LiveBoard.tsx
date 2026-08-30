@@ -91,18 +91,17 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
       {/* ===== Users farming right now ===== */}
       <motion.section {...reveal}>
         <SectionHead hue={152} icon={<Zap size={17} />} title={t("live_farming_now")} sub={t("live_farming_sub")} />
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+        <div className="hscroll flex gap-3 pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
           {online.slice(0, 12).map((u, i) => {
             const c = countryById(u.country);
             const delta = Math.floor((farmProg[u.id] ?? 0) / 8) + 4;
             return (
               <motion.div
                 key={u.id}
-                initial={{ opacity: 0, x: 24 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.05, duration: 0.4 }}
-                className="panel panel-hover shrink-0 w-[168px] p-4 relative overflow-hidden"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i, 6) * 0.05, duration: 0.4 }}
+                className="panel panel-hover shrink-0 grow-0 basis-[150px] sm:basis-[168px] p-3.5 sm:p-4 relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, hsl(${u.hue} 95% 60%), transparent)` }} />
                 <div className="flex items-center gap-2.5">
@@ -179,8 +178,8 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 >
                   {ch.done && <Check size={12} strokeWidth={3.5} />}
                 </span>
-                <span className={`flex-1 text-[12.5px] ${ch.done ? "text-white/35 line-through" : "text-white/85"}`}>{t(ch.id)}</span>
-                <span className="display text-[11px] font-bold text-gold">+{ch.points}</span>
+                <span className={`flex-1 min-w-0 text-[12.5px] leading-snug ${ch.done ? "text-white/35 line-through" : "text-white/85"}`}>{t(ch.id)}</span>
+                <span className="display text-[11px] font-bold text-gold shrink-0">+{ch.points}</span>
               </button>
             ))}
           </div>
@@ -231,28 +230,32 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
       {/* ===== Active competitions by country ===== */}
       <motion.section {...reveal}>
         <SectionHead hue={316} icon={<MapPin size={16} />} title={t("live_by_country")} sub={t("live_by_country_sub")} />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {byCountry.map((cid) => {
-            const c = countryById(cid);
-            const evs = events.filter((e) => e.country === cid && e.status !== "cancelled");
-            const live = evs.filter((e) => e.status === "live").length;
-            return (
-              <button
-                key={cid}
-                onClick={() => onBrowseCountry(cid)}
-                className="panel panel-hover p-4 flex items-center gap-3 text-left cursor-pointer group"
-              >
-                <span className="text-2xl">{c.flag}</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] font-bold truncate">{c.name[lang]}</span>
-                  <span className="block text-[10.5px] text-white/45">
-                    {evs.length} {t("nav_events").toLowerCase()} · {live > 0 ? <span className="text-ember font-bold">{live} {t("c_live").toLowerCase()}</span> : `${t("c_upcoming").toLowerCase()}`}
-                  </span>
-                </span>
-                <ChevronRight size={16} className="text-white/25 group-hover:text-gold group-hover:translate-x-1 transition-all" />
-              </button>
-            );
-          })}
+        <div className="panel p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Globe2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose pointer-events-none" />
+            <select
+              value=""
+              onChange={(e) => e.target.value && onBrowseCountry(e.target.value)}
+              className="w-full appearance-none pl-10 pr-9 py-3 rounded-xl bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-rose/50 transition-colors cursor-pointer"
+              aria-label={t("live_by_country")}
+            >
+              <option value="" disabled className="bg-[#0d0d1c]">
+                {t("live_by_country")} — {byCountry.length} {t("live_countries").toLowerCase()}
+              </option>
+              {byCountry.map((cid) => {
+                const c = countryById(cid);
+                const evs = events.filter((e) => e.country === cid && e.status !== "cancelled");
+                const live = evs.filter((e) => e.status === "live").length;
+                return (
+                  <option key={cid} value={cid} className="bg-[#0d0d1c]">
+                    {c.flag} {c.name[lang]} — {evs.length} {t("nav_events").toLowerCase()}{live > 0 ? ` · ${live} 🔴` : ""}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronRight size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
+          </div>
+          <p className="text-[10.5px] text-white/40 sm:max-w-[220px] leading-snug shrink-0">{t("live_by_country_sub")}</p>
         </div>
       </motion.section>
     </div>
