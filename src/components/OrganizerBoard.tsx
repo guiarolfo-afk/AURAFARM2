@@ -1,13 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
-import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus } from "lucide-react";
+import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Play, Square, Timer } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
-import { COUNTRIES, countryById } from "../data";
+import { COUNTRIES, countryById, roundMeta } from "../data";
 import type { EventItem } from "../data";
 import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, Stars } from "./ui";
 import LocationPicker, { type PickedPlace } from "./LocationPicker";
+
+const fmtClock = (ms: number) => {
+  const s = Math.ceil(ms / 1000);
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+};
 
 const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
 const BANNER_COMBOS: [string, string][] = [
@@ -56,7 +61,15 @@ export default function OrganizerBoard() {
   const [cancelAsk, setCancelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
 
-  const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
+  /* live countdown clock (hook must sit before the gate's early return).
+     Only ticks while at least one battle of the managed event is running. */
+  const hasRunning = !!managed?.bracket.some((m) => m.startedAt && !m.winner);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!hasRunning) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasRunning]);
 
   const submitCreate = () => {
     if (!form.name.trim() || !form.desc.trim() || !form.address.trim() || !form.date || !form.loc) {
@@ -144,7 +157,16 @@ export default function OrganizerBoard() {
   const totalAssist = myEvents.reduce((a, e) => a + e.attendees, 0);
   const totalPart = myEvents.reduce((a, e) => a + e.participants.length, 0);
   const R = managed ? Math.max(...managed.bracket.map((m) => m.round + 1), 0) : 0;
-  const roundName = (r: number) => t(roundKeys.slice(4 - R)[r] ?? "org_final");
+  const roundName = (r: number) => {
+    const m = roundMeta(r, R);
+    return m.n ? t(m.key, { n: m.n }) : t(m.key);
+  };
+
+  const remaining = (m: { startedAt?: number | null; duration: number }) => {
+    if (!m.startedAt) return null;
+    const total = m.duration * 60_000;
+    return Math.max(0, total - (now - m.startedAt));
+  };
 
   return (
     <div className="space-y-6">
@@ -190,7 +212,7 @@ export default function OrganizerBoard() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("org_ev_max_att")}><input type="number" min={1} className={inputCls} value={form.maxAtt} onChange={(e) => setForm({ ...form, maxAtt: +e.target.value })} /></Field>
-              <Field label={t("org_ev_max_part")}><input type="number" min={2} max={16} className={inputCls} value={form.maxPart} onChange={(e) => setForm({ ...form, maxPart: +e.target.value })} /></Field>
+              <Field label={t("org_ev_max_part")}><input type="number" min={2} max={64} className={inputCls} value={form.maxPart} onChange={(e) => setForm({ ...form, maxPart: +e.target.value })} /></Field>
             </div>
             <Field label={t("org_ev_notes")}><input className={inputCls} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
             <div>
@@ -270,6 +292,7 @@ export default function OrganizerBoard() {
                       </span>
                       <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
                       <div className="flex-1" />
+                      <button onClick={() => s.loadTestParticipants(managed.id, 50)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-azure/35 text-azure bg-azure/8 hover:bg-azure/16 transition-colors cursor-pointer flex items-center gap-1"><Users size={12} /> {t("org_load_test")}</button>
                       {managed.status !== "cancelled" && (
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
@@ -360,10 +383,29 @@ export default function OrganizerBoard() {
                             <div key={r} className="space-y-2 min-w-[150px]">
                               <p className="display text-[10px] font-extrabold tracking-wider text-white/45 uppercase text-center">{roundName(r)}</p>
                               {managed.bracket.filter((m) => m.round === r).map((m) => {
-                                const isCurrent = managed.currentMatchId === m.id;
+                                const isLive = !!m.startedAt && !m.winner;
+                                const rem = remaining(m);
+                                const timeUp = isLive && rem !== null && rem <= 0;
+                                const ready = !m.winner && !isLive && !!m.a && !!m.b;
                                 return (
-                                  <div key={m.id} className={`rounded-xl border p-2 transition-all ${isCurrent ? "border-gold/60 bg-gold/8" : "border-white/9 bg-white/3"}`}>
-                                    {isCurrent && <p className="text-[8.5px] font-extrabold tracking-widest text-gold mb-1 flex items-center gap-1"><Radio size={8} className="animate-pulse" /> {t("org_current").toUpperCase()}</p>}
+                                  <div key={m.id} className={`rounded-xl border p-2 transition-all ${isLive ? "border-gold/60 bg-gold/8" : m.winner ? "border-mint/25 bg-mint/4" : "border-white/9 bg-white/3"}`}>
+                                    {/* status strip */}
+                                    <div className="flex items-center gap-1 mb-1 min-h-[14px]">
+                                      {m.winner ? (
+                                        <span className="text-[8.5px] font-extrabold tracking-widest text-mint flex items-center gap-1"><Crown size={8} /> {t("ar_completed").toUpperCase()}</span>
+                                      ) : isLive ? (
+                                        <span className={`text-[8.5px] font-extrabold tracking-widest flex items-center gap-1 ${timeUp ? "text-ember" : "text-gold"}`}>
+                                          <Radio size={8} className="animate-pulse" /> {timeUp ? t("org_time_up").toUpperCase() : t("org_current").toUpperCase()}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[8.5px] font-extrabold tracking-widest text-white/25">{t("ar_scheduled").toUpperCase()}</span>
+                                      )}
+                                      {isLive && rem !== null && (
+                                        <span className={`ml-auto display text-[9.5px] font-extrabold flex items-center gap-0.5 ${timeUp ? "text-ember animate-pulse" : "text-gold"}`}>
+                                          <Timer size={9} /> {fmtClock(rem)}
+                                        </span>
+                                      )}
+                                    </div>
                                     {(["a", "b"] as const).map((side) => {
                                       const pid = side === "a" ? m.a : m.b;
                                       const v = side === "a" ? m.votesA : m.votesB;
@@ -372,20 +414,23 @@ export default function OrganizerBoard() {
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
                                           <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
                                           <span className="display text-[10px] font-bold text-white/40">{v}</span>
-                                          {isCurrent && !m.winner && pid && (
+                                          {isLive && pid && (
                                             <button onClick={() => s.pickWinner(managed.id, m.id, side)} aria-label={t("org_pick_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer">✓</button>
                                           )}
                                         </div>
                                       );
                                     })}
                                     <div className="flex items-center flex-wrap gap-1 mt-1">
-                                      <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
+                                      <input type="number" min={1} max={60} value={m.duration} disabled={isLive} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none disabled:opacity-40" aria-label={t("org_duration")} />
                                       <span className="text-[9px] text-white/35">{t("c_min")}</span>
                                       <div className="flex-1" />
-                                      {!isCurrent && !m.winner && m.a && m.b && (
-                                        <button onClick={() => s.setCurrentMatch(managed.id, m.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                      {ready && (
+                                        <button onClick={() => s.startBattle(managed.id, m.id)} className="text-[9px] font-extrabold px-2 py-1 rounded bg-gold text-[#171200] display hover:brightness-110 transition-all cursor-pointer flex items-center gap-1"><Play size={9} /> {t("org_start_battle")}</button>
                                       )}
-                                      {m.votesA + m.votesB > 0 && (
+                                      {isLive && (
+                                        <button onClick={() => s.finishBattle(managed.id, m.id)} className={`text-[9px] font-extrabold px-2 py-1 rounded display transition-all cursor-pointer flex items-center gap-1 ${timeUp ? "bg-ember text-white" : "bg-ember/15 text-ember border border-ember/40 hover:bg-ember/30"}`}><Square size={8} /> {t("org_end_battle")}</button>
+                                      )}
+                                      {!isLive && m.votesA + m.votesB > 0 && (
                                         <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                       )}
                                     </div>

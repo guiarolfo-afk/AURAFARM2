@@ -125,6 +125,10 @@ const es: Dict = {
   org_promote_toast: "Clasificados enviados al cuadro eliminatorio ⚔️",
   ar_group_phase: "Fase de grupos", ar_group_advances: "El más votado de cada grupo clasifica al cuadro eliminatorio",
   ar_group_winner: "Clasificado",
+  org_round_of: "Ronda de {n}", org_start_battle: "Iniciar", org_end_battle: "Finalizar",
+  org_time_up: "¡Tiempo!", org_time_left: "restante", org_load_test: "Cargar 50 inscritos (prueba)",
+  org_test_loaded: "50 inscritos de prueba añadidos al evento ⚔️", org_battle_started: "Batalla iniciada, corre el cronómetro ⏱️",
+  org_battle_ended: "Batalla finalizada, ganador declarado 🏆",
   ar_tournament: "Cuadro del torneo", ar_find_battle: "Buscar batalla…",
   ar_go_current: "Ir a la batalla en disputa", ar_scheduled: "Programada", ar_completed: "Completada",
   // ---- location picker ----
@@ -255,6 +259,10 @@ const pt: Dict = {
   org_promote_toast: "Classificados enviados à chave eliminatória ⚔️",
   ar_group_phase: "Fase de grupos", ar_group_advances: "O mais votado de cada grupo avança para a chave eliminatória",
   ar_group_winner: "Classificado",
+  org_round_of: "Rodada de {n}", org_start_battle: "Iniciar", org_end_battle: "Encerrar",
+  org_time_up: "Tempo!", org_time_left: "restante", org_load_test: "Carregar 50 inscritos (teste)",
+  org_test_loaded: "50 inscritos de teste adicionados ao evento ⚔️", org_battle_started: "Batalha iniciada, cronômetro rodando ⏱️",
+  org_battle_ended: "Batalha encerrada, vencedor declarado 🏆",
   ar_tournament: "Chave do torneio", ar_find_battle: "Buscar batalha…",
   ar_go_current: "Ir para a batalha em disputa", ar_scheduled: "Agendada", ar_completed: "Concluída",
   // ---- location picker ----
@@ -385,6 +393,10 @@ const fr: Dict = {
   org_promote_toast: "Qualifiés envoyés au tableau éliminatoire ⚔️",
   ar_group_phase: "Phase de groupes", ar_group_advances: "Le plus voté de chaque groupe se qualifie pour le tableau",
   ar_group_winner: "Qualifié",
+  org_round_of: "Tour de {n}", org_start_battle: "Lancer", org_end_battle: "Terminer",
+  org_time_up: "Temps écoulé !", org_time_left: "restant", org_load_test: "Charger 50 inscrits (test)",
+  org_test_loaded: "50 inscrits de test ajoutés à l'événement ⚔️", org_battle_started: "Combat lancé, chrono en marche ⏱️",
+  org_battle_ended: "Combat terminé, vainqueur déclaré 🏆",
   ar_tournament: "Tableau du tournoi", ar_find_battle: "Chercher un combat…",
   ar_go_current: "Aller au combat en cours", ar_scheduled: "Programmée", ar_completed: "Terminé",
   // ---- location picker ----

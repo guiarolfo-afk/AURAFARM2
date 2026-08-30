@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users } from "lucide-react";
+import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users, Timer } from "lucide-react";
 import { useApp, userNameById, levelFromAura } from "../store";
 import { useT } from "../i18n";
-import { countryById } from "../data";
+import { countryById, roundMeta } from "../data";
 import { Avatar, AuraBar, AnimatedNumber, SectionHead, Stars, LiveBadge } from "./ui";
 
 export default function ArenaBoard() {
@@ -29,8 +29,24 @@ export default function ArenaBoard() {
   /* battle finder: the participant can open any battle from the bracket */
   const viewMatch = ev.bracket.find((m) => m.id === pickedMatch) ?? currentMatch;
   const R = Math.max(...ev.bracket.map((m) => m.round + 1), 0);
-  const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
-  const roundName = (r: number) => t(roundKeys.slice(4 - R)[r] ?? "org_final");
+  const roundName = (r: number) => {
+    const m = roundMeta(r, R);
+    return m.n ? t(m.key, { n: m.n }) : t(m.key);
+  };
+
+  /* live countdown for the battle in dispute (1s tick while it runs) */
+  const liveBattle = ev.bracket.find((m) => m.startedAt && !m.winner) ?? null;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!liveBattle) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [!!liveBattle]);
+  const battleRemaining = liveBattle && liveBattle.startedAt ? Math.max(0, liveBattle.duration * 60_000 - (now - liveBattle.startedAt)) : null;
+  const fmtClock = (ms: number) => {
+    const sec = Math.ceil(ms / 1000);
+    return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+  };
   const hueOf = (pid: string | null) => (pid && pid !== "me" ? users.find((u) => u.id === pid)?.hue ?? 46 : 46);
   const auraOf = (pid: string | null) => (pid === "me" ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
 
@@ -359,6 +375,11 @@ export default function ArenaBoard() {
                   <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase">
                     {roundName(viewMatch.round)}
                   </span>
+                  {viewMatch.startedAt && !viewMatch.winner && battleRemaining !== null && viewMatch.id === liveBattle?.id && (
+                    <span className={`display text-[11px] font-extrabold flex items-center gap-1 ml-auto px-2 py-0.5 rounded-lg border ${battleRemaining <= 0 ? "text-ember border-ember/40 bg-ember/10 animate-pulse" : "text-gold border-gold/40 bg-gold/8"}`}>
+                      <Timer size={11} /> {battleRemaining <= 0 ? t("org_time_up") : fmtClock(battleRemaining)}
+                    </span>
+                  )}
                   {viewMatch.winner && <span className="text-[10px] font-bold text-white/35 ml-auto">{t("ar_rule3")}</span>}
                 </div>
                 <div className="relative grid grid-cols-2 items-stretch gap-2 sm:gap-3">

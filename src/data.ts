@@ -72,7 +72,30 @@ export const USERS: FarmUser[] = [
 
 export const AURA_COLORS = ["#FFD700", "#9B30FF", "#00BFFF", "#00FF7F", "#FF4444", "#FF69B4"];
 
-export interface BracketMatch { id: string; round: number; a: string | null; b: string | null; winner: "a" | "b" | null; votesA: number; votesB: number; duration: number }
+export interface BracketMatch { id: string; round: number; a: string | null; b: string | null; winner: "a" | "b" | null; votesA: number; votesB: number; duration: number; startedAt?: number | null; endedAt?: number | null }
+
+/* Generic round label for any bracket size (Round of 64/32, Octavos, Cuartos, Semi, Final) */
+export const roundMeta = (round: number, totalRounds: number): { key: string; n?: number } => {
+  const fighters = Math.pow(2, totalRounds - round);
+  if (fighters <= 2) return { key: "org_final" };
+  if (fighters === 4) return { key: "org_sf" };
+  if (fighters === 8) return { key: "org_qf" };
+  if (fighters === 16) return { key: "org_r16" };
+  return { key: "org_round_of", n: fighters };
+};
+
+/* Test-user factory for tournament simulations (e.g. 50 sign-ups) */
+const FIRST = ["Aria", "Neo", "Luz", "Kira", "Rex", "Nova", "Teo", "Ivy", "Axel", "Mia", "Zen", "Lia", "Rio", "Sky", "Leo", "Ana", "Max", "Eva", "Ian", "Uma", "Aldo", "Bela", "Ciro", "Dara", "Elio"];
+const LAST = ["Storm", "Vega", "Neón", "Frost", "Blaze", "Moon", "Volt", "Ríos", "Nova", "Pyre", "Sol", "Kira", "Lux", "Zero", "Aura", "Drift", "Flux", "Onyx", "Halo", "Rift", "Volt", "Ember", "Ghost", "Pulse", "Shard"];
+export const makeTestUser = (i: number, countries: string[]): FarmUser => {
+  const aura = 4000 + Math.floor(Math.random() * 60000);
+  return {
+    id: `t${i}`, name: `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / FIRST.length) % LAST.length]} ${String(i + 1).padStart(2, "0")}`,
+    country: countries[i % countries.length], hue: (i * 47) % 360, online: true,
+    aura, auraByVotes: Math.round(aura * 0.3), trophies: Math.floor(Math.random() * 4),
+    level: 4 + Math.floor(Math.random() * 12), role: "participant",
+  };
+};
 
 export interface ChatMsg { id: number; user: string; hue: number; text: string; mine?: boolean; ts: number }
 
@@ -125,7 +148,7 @@ export const EVENTS: EventItem[] = [
     bracket: [
       M("e1m1", 0, "u7", "u10", 34, 19, "a"), M("e1m2", 0, "u8", "u14", 28, 24, "a"),
       M("e1m3", 0, "u5", "u11", 31, 15, "a"), M("e1m4", 0, "u12", "u16", 27, 22, "a"),
-      M("e1m5", 1, "u7", "u8", 41, 33), M("e1m6", 1, "u5", "u12", 36, 29),
+      { ...M("e1m5", 1, "u7", "u8", 41, 33), startedAt: Date.now() - 4 * 60_000 }, M("e1m6", 1, "u5", "u12", 36, 29),
       M("e1m7", 2, null, null),
     ],
     currentMatchId: "e1m5",
