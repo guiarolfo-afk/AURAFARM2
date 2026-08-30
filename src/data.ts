@@ -76,6 +76,13 @@ export interface BracketMatch { id: string; round: number; a: string | null; b: 
 
 export interface ChatMsg { id: number; user: string; hue: number; text: string; mine?: boolean; ts: number }
 
+/* ---------- preliminary group battles (3+ competitors per battle) ---------- */
+export interface BattleGroup {
+  id: string; name: string; members: string[];
+  votes: Record<string, number>;
+  advancing: number; winners: string[]; closed: boolean;
+}
+
 export interface EventItem {
   id: string; name: string; desc: Record<Lang, string>; country: string; city: string;
   lat: number; lng: number; address: string; dateISO: string; time: string;
@@ -85,6 +92,7 @@ export interface EventItem {
   status: "live" | "upcoming" | "cancelled";
   features: string[]; banner: [string, string];
   votes: Record<string, number>; bracket: BracketMatch[]; currentMatchId: string | null;
+  groups: BattleGroup[];
   chat: ChatMsg[]; notes: string;
 }
 
