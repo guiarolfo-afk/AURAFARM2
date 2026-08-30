@@ -17,6 +17,7 @@
 
 html {
   background: #06060e;
+  overflow-x: clip;
 }
 
 body {
@@ -24,7 +25,14 @@ body {
   color: #e8e6f5;
   background: #06060e;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
+#root {
+  overflow-x: clip;
+  min-height: 100dvh;
+  max-width: 100vw;
 }
 
 /* ---------- ambient background layers ---------- */

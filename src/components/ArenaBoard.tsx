@@ -257,7 +257,7 @@ export default function ArenaBoard() {
                   <p className="text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-white/40 flex items-center gap-1.5 shrink-0">
                     <Trophy size={12} className="text-gold" /> {t("ar_tournament")}
                   </p>
-                  <div className="relative flex-1 min-w-[230px]">
+                  <div className="relative flex-1 min-w-[178px]">
                     <button
                       onClick={() => setBattleOpen((o) => !o)}
                       className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-white/10 bg-white/4 hover:bg-white/8 transition-colors cursor-pointer"

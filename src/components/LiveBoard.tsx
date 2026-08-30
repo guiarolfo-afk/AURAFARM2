@@ -102,7 +102,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05, duration: 0.4 }}
-                className="panel panel-hover shrink-0 w-[168px] p-4 relative overflow-hidden"
+                className="panel panel-hover shrink-0 w-[148px] sm:w-[168px] p-3.5 sm:p-4 relative overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, hsl(${u.hue} 95% 60%), transparent)` }} />
                 <div className="flex items-center gap-2.5">

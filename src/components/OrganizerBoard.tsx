@@ -354,7 +354,8 @@ export default function OrganizerBoard() {
                       {managed.bracket.length === 0 ? (
                         <p className="text-[11.5px] text-white/35">— {t("org_gen_bracket")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
                       ) : (
-                        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${R}, minmax(150px, 1fr))`, overflowX: "auto" }}>
+                        <div className="overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                        <div className="grid gap-3 w-max min-w-full" style={{ gridTemplateColumns: `repeat(${R}, minmax(168px, 1fr))` }}>
                           {Array.from({ length: R }).map((_, r) => (
                             <div key={r} className="space-y-2 min-w-[150px]">
                               <p className="display text-[10px] font-extrabold tracking-wider text-white/45 uppercase text-center">{roundName(r)}</p>
@@ -393,6 +394,7 @@ export default function OrganizerBoard() {
                               })}
                             </div>
                           ))}
+                        </div>
                         </div>
                       )}
                     </div>
