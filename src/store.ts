@@ -557,14 +557,16 @@ export const useApp = create<AppState>()(
         if (!ev) return;
         const countries = ["mx", "br", "ar", "co", "es", "us", "fr", "de", "jp", "kr"];
         const start = s.users.length;
+        /* All sign-ups join as PARTICIPANTS (fighters). We expand the event's
+           capacity so nobody is rejected into the audience. */
         const fresh = Array.from({ length: count }, (_, i) => makeTestUser(start + i, countries));
-        const room = Math.max(0, ev.maxParticipants - ev.participants.length);
-        const toAdd = Math.min(room, count);
-        const newIds = fresh.slice(0, toAdd).map((u) => u.id);
+        const newIds = fresh.map((u) => u.id);
         set({
           users: [...s.users, ...fresh],
           events: s.events.map((e) =>
-            e.id === eventId ? { ...e, participants: [...e.participants, ...newIds], maxParticipants: Math.max(e.maxParticipants, ev.participants.length + toAdd) } : e
+            e.id === eventId
+              ? { ...e, participants: [...e.participants, ...newIds], maxParticipants: Math.max(e.maxParticipants, e.participants.length + newIds.length) }
+              : e
           ),
         });
         get().toast(translate(get().lang, "org_test_loaded"), "gold");
