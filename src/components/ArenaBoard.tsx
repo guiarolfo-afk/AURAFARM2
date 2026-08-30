@@ -346,7 +346,7 @@ export default function ArenaBoard() {
             )}
 
             {viewMatch ? (
-              <div className="panel p-5">
+              <div className="panel p-4 sm:p-5">
                 <div className="flex items-center gap-2 flex-wrap mb-4">
                   <p className={`text-[11px] font-bold uppercase tracking-[0.15em] flex items-center gap-1.5 ${viewMatch.id === ev.currentMatchId ? "text-ember" : "text-white/45"}`}>
                     {viewMatch.id === ev.currentMatchId ? <Zap size={13} className="animate-pulse" /> : <Swords size={13} />}
@@ -376,7 +376,7 @@ export default function ArenaBoard() {
                         key={side}
                         disabled={closed}
                         onClick={() => pid && s.voteBattle(ev.id, viewMatch.id, side)}
-                        className={`w-full p-3 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
+                        className={`w-full p-2.5 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
                       >
                         {isWinner && (
                           <p className="display text-[9px] font-extrabold tracking-widest text-mint mb-1.5 flex items-center gap-1">
@@ -430,8 +430,8 @@ export default function ArenaBoard() {
                             <button onClick={() => s.removeVote(ev.id, pid)} className="text-[10.5px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2.5 flex-1 sm:flex-none">
-                            <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-28" aria-label={t("ar_score_for")} />
+                          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
+                            <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-20 sm:w-28 shrink min-w-0" aria-label={t("ar_score_for")} />
                             <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
                             <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-1.5 rounded-lg display text-[10.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
                               {t("ar_cast_vote")}

@@ -47,15 +47,15 @@ export default function RankingsBoard() {
       <div className="grid lg:grid-cols-[1.2fr_1fr] gap-4 items-start">
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="panel p-5 sm:p-6 relative overflow-hidden">
           <div className="absolute -top-12 -left-12 w-44 h-44 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
-          <div className="relative flex items-center gap-4">
-            <Avatar name={profile.name} hue={46} size={64} src={profile.photo} premium={premium} />
+          <div className="relative flex items-center gap-3 sm:gap-4">
+            <Avatar name={profile.name} hue={46} size={52} src={profile.photo} premium={premium} />
             <div className="flex-1 min-w-0">
-              <h3 className="display text-lg font-extrabold truncate">{profile.name}</h3>
-              <p className="text-[11.5px] text-white/50">{countryById(profile.country).flag} {countryById(profile.country).name[lang]} · {t("c_level")} {level}</p>
+              <h3 className="display text-base sm:text-lg font-extrabold truncate">{profile.name}</h3>
+              <p className="text-[10.5px] sm:text-[11.5px] text-white/50 truncate">{countryById(profile.country).flag} {countryById(profile.country).name[lang]} · {t("c_level")} {level}</p>
               <AuraBar value={(profile.aura % 10000) / 100} color="#FFD700" className="mt-2" />
             </div>
             <div className="text-right shrink-0">
-              <AnimatedNumber value={profile.aura} className="display text-xl sm:text-2xl font-extrabold text-gold" />
+              <AnimatedNumber value={profile.aura} className="display text-base sm:text-2xl font-extrabold text-gold" />
               <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">{t("rk_total")}</p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function RankingsBoard() {
         </div>
 
         <div className="panel overflow-hidden">
-          <div className="grid grid-cols-[36px_1fr_72px_56px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-2 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-white/30 border-b border-white/8">
+          <div className="grid grid-cols-[24px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 px-2.5 sm:px-4 py-2.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-white/30 border-b border-white/8">
             <span>#</span><span>{t("st_name")}</span><span className="text-right">{t("rk_sort_total")}</span><span className="text-right hidden sm:block">{t("rk_sort_votes")}</span><span className="text-right">🏆</span>
           </div>
           <div className="max-h-[420px] overflow-y-auto">
@@ -159,21 +159,21 @@ export default function RankingsBoard() {
                   key={u.id}
                   layout
                   transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                  className={`grid grid-cols-[36px_1fr_72px_56px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-2 items-center px-4 py-2.5 border-b border-white/5 last:border-0 transition-colors ${me ? "bg-gold/8" : "hover:bg-white/3"}`}
+                  className={`grid grid-cols-[24px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 items-center px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-white/5 last:border-0 transition-colors ${me ? "bg-gold/8" : "hover:bg-white/3"}`}
                 >
                   <span className="display text-[12px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>
                     {i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}
                   </span>
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={u.name} hue={u.hue} size={32} src={me ? profile.photo : null} premium={me && premium} />
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                    <Avatar name={u.name} hue={u.hue} size={28} src={me ? profile.photo : null} premium={me && premium} />
                     <div className="min-w-0">
-                      <p className="text-[12.5px] font-bold truncate">{u.name} {me && <span className="text-[9.5px] text-gold font-extrabold">· {t("c_you")}</span>}</p>
-                      <p className="text-[10px] text-white/40">{c.flag} {c.name[lang]} · {t("c_level")} {levelFromAura(u.aura)}</p>
+                      <p className="text-[11.5px] sm:text-[12.5px] font-bold truncate">{u.name} {me && <span className="text-[9.5px] text-gold font-extrabold">· {t("c_you")}</span>}</p>
+                      <p className="text-[9px] sm:text-[10px] text-white/40 truncate">{c.flag} {c.name[lang]} · {t("c_level")} {levelFromAura(u.aura)}</p>
                     </div>
                   </div>
-                  <AnimatedNumber value={u.aura} className="display text-[11.5px] font-bold text-right text-gold" />
+                  <AnimatedNumber value={u.aura} className="display text-[10px] sm:text-[11.5px] font-bold text-right text-gold" />
                   <AnimatedNumber value={u.auraByVotes} className="display text-[11px] font-bold text-right text-azure hidden sm:block" />
-                  <span className="display text-[11.5px] font-bold text-right text-white/80">{u.trophies}</span>
+                  <span className="display text-[10px] sm:text-[11.5px] font-bold text-right text-white/80">{u.trophies}</span>
                 </motion.div>
               );
             })}

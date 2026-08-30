@@ -227,7 +227,7 @@ export default function OrganizerBoard() {
               {organizer?.collaborators.map((c, i) => (
                 <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/3 border border-white/7">
                   <Avatar name={c.name} hue={(i * 90 + 200) % 360} size={30} />
-                  <span className="flex-1 text-[12.5px] font-semibold truncate">{c.name}</span>
+                  <span className="flex-1 min-w-0 text-[12.5px] font-semibold truncate">{c.name}</span>
                   <select value={c.perm} onChange={(e) => s.setCollabPerm(i, e.target.value as typeof c.perm)} className="text-[10.5px] font-bold px-2 py-1 rounded-lg bg-violet/10 border border-violet/30 text-white/75 outline-none cursor-pointer" aria-label={t("org_perm")}>
                     <option value="vote" className="bg-[#0d0d1c]">🗳️ vote</option>
                     <option value="edit" className="bg-[#0d0d1c]">✏️ edit</option>
@@ -305,7 +305,7 @@ export default function OrganizerBoard() {
                             const sorted = [...g.fighters].sort((x, y) => (g.votes[y] ?? 0) - (g.votes[x] ?? 0));
                             return (
                               <div key={g.id} className={`rounded-xl border p-2.5 transition-colors ${g.status === "live" ? "border-ember/45 bg-ember/6" : g.status === "closed" ? "border-mint/30 bg-mint/5" : "border-white/9 bg-white/3"}`}>
-                                <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
                                   <span className="display text-[10.5px] font-extrabold text-white/80">{t("org_group")} {g.name}</span>
                                   <span className={`text-[8.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full ${g.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : g.status === "closed" ? "bg-mint/12 text-mint border border-mint/35" : "bg-white/6 text-white/40 border border-white/12"}`}>
                                     {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
@@ -378,7 +378,7 @@ export default function OrganizerBoard() {
                                         </div>
                                       );
                                     })}
-                                    <div className="flex items-center gap-1 mt-1">
+                                    <div className="flex items-center flex-wrap gap-1 mt-1">
                                       <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
                                       <span className="text-[9px] text-white/35">{t("c_min")}</span>
                                       <div className="flex-1" />
@@ -407,13 +407,13 @@ export default function OrganizerBoard() {
                           {Object.entries(managed.votes).sort((a, b) => b[1] - a[1]).map(([pid, v], i) => {
                             const max = Math.max(...Object.values(managed.votes), 1);
                             return (
-                              <div key={pid} className="flex items-center gap-2">
-                                <span className="display text-[10px] w-4 text-white/30">{i + 1}</span>
-                                <span className="text-[11.5px] font-semibold w-28 truncate">{userNameById(pid)}</span>
-                                <div className="flex-1 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                              <div key={pid} className="flex items-center gap-1.5 sm:gap-2">
+                                <span className="display text-[10px] w-4 shrink-0 text-white/30">{i + 1}</span>
+                                <span className="text-[11.5px] font-semibold w-20 sm:w-28 shrink-0 truncate">{userNameById(pid)}</span>
+                                <div className="flex-1 min-w-0 h-1.5 rounded-full bg-white/6 overflow-hidden">
                                   <div className="h-full rounded-full bg-azure transition-all duration-700" style={{ width: `${(v / max) * 100}%` }} />
                                 </div>
-                                <span className="display text-[10.5px] font-bold text-azure w-10 text-right">{v}</span>
+                                <span className="display text-[10.5px] font-bold text-azure w-9 sm:w-10 shrink-0 text-right">{v}</span>
                               </div>
                             );
                           })}

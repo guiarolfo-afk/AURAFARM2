@@ -145,7 +145,7 @@ export default function App() {
       </header>
 
       {/* ================= MAIN ================= */}
-      <main className={`max-w-7xl mx-auto px-3 sm:px-4 pt-5 sm:pt-6 overflow-x-clip ${adBanner ? "pb-40" : "pb-28"}`}>
+      <main className={`max-w-7xl mx-auto px-3 sm:px-4 pt-5 sm:pt-6 overflow-x-hidden ${adBanner ? "pb-40" : "pb-28"}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
