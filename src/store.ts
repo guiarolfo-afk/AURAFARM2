@@ -69,7 +69,7 @@ interface AppState {
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
-  adminLogin: (pass: string) => boolean; adminExit: () => void;
+  adminLogin: (pass: string) => Promise<boolean>; adminExit: () => void;
   saveBanner: (b: Banner) => void; deleteBanner: (id: string) => void;
 }
 
@@ -418,8 +418,12 @@ export const useApp = create<AppState>()(
         get().toast(translate(get().lang, "t_premium"), "gold");
       },
 
-      adminLogin: (pass) => {
-        if (pass.trim().toLowerCase() === "aura") {
+      adminLogin: async (pass) => {
+        const ADMIN_HASH = "8890449cb8b0bfc34284d3a9bb169327dbca24fa47df764f43a82cace05cf0ea";
+        const enc = new TextEncoder().encode(pass.trim());
+        const digest = await crypto.subtle.digest("SHA-256", enc);
+        const hashHex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+        if (hashHex === ADMIN_HASH) {
           set({ adminUnlocked: true });
           get().toast(translate(get().lang, "t_admin_ok"), "gold");
           return true;

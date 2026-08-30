@@ -258,10 +258,10 @@ export default function SettingsBoard() {
         <div className="space-y-3">
           <h3 className="display text-base font-extrabold flex items-center gap-2"><ShieldCheck size={17} className="text-ember" /> {t("st_admin")}</h3>
           <Field label={t("ad_pass")}>
-            <input type="password" className={inputCls + " tracking-widest text-center display"} value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && s.adminLogin(pass)) setAdminAsk(false); }} placeholder="••••••" autoFocus />
+            <input type="password" className={inputCls + " tracking-widest text-center display"} value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={async (e) => { if (e.key === "Enter" && (await s.adminLogin(pass))) setAdminAsk(false); }} placeholder="••••••" autoFocus />
           </Field>
           <p className="text-[10.5px] text-white/35 flex items-center gap-1"><KeyRound size={11} /> {t("ad_hint")}</p>
-          <button onClick={() => { if (s.adminLogin(pass)) setAdminAsk(false); }} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-ember text-white hover:brightness-110 transition-all cursor-pointer">{t("ad_enter")}</button>
+          <button onClick={async () => { if (await s.adminLogin(pass)) setAdminAsk(false); }} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-ember text-white hover:brightness-110 transition-all cursor-pointer">{t("ad_enter")}</button>
         </div>
       </Modal>
     </div>
