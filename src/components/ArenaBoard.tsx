@@ -179,7 +179,7 @@ export default function ArenaBoard() {
 
             {/* ===== battle finder dropdown ===== */}
             {ev.bracket.length > 0 && (
-              <div className="panel p-4">
+              <div className="panel p-4 relative z-30">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <p className="text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-white/40 flex items-center gap-1.5 shrink-0">
                     <Trophy size={12} className="text-gold" /> {t("ar_tournament")}
