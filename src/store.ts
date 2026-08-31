@@ -293,7 +293,7 @@ export const useApp = create<AppState>()(
           if (supabaseProfileId) {
             supabase
               .from("event_participants")
-              .insert({ event_id: eventId, user_id: supabaseProfileId })
+              .insert({ event_id: eventId, user_id: supabaseProfileId, role: "participant" })
               .then(({ error }) => {
                 if (error) console.error("Error guardando inscripción en Supabase:", error.message);
               });
@@ -306,6 +306,16 @@ export const useApp = create<AppState>()(
           profile: { ...s.profile, attended: s.profile.attended + 1 },
         });
         s.toast(translate(s.lang, "t_conf_spec"));
+
+        const { supabaseProfileId: specProfileId } = get();
+        if (specProfileId) {
+          supabase
+            .from("event_participants")
+            .insert({ event_id: eventId, user_id: specProfileId, role: "spectator" })
+            .then(({ error }) => {
+              if (error) console.error("Error guardando asistencia en Supabase:", error.message);
+            });
+        }
         return true;
       },
 
@@ -609,12 +619,17 @@ export const useApp = create<AppState>()(
 
         const { data: participantRows, error: partError } = await supabase
           .from("event_participants")
-          .select("event_id, user_id");
+          .select("event_id, user_id, role");
         if (partError) console.error("Error cargando participantes:", partError.message);
 
         const participantsByEvent: Record<string, string[]> = {};
+        const attendeesByEvent: Record<string, number> = {};
         (participantRows ?? []).forEach((row: any) => {
-          (participantsByEvent[row.event_id] ??= []).push(row.user_id);
+          if (row.role === "spectator") {
+            attendeesByEvent[row.event_id] = (attendeesByEvent[row.event_id] ?? 0) + 1;
+          } else {
+            (participantsByEvent[row.event_id] ??= []).push(row.user_id);
+          }
         });
 
         const mapped: EventItem[] = (data ?? []).map((row: any) => ({
@@ -625,7 +640,7 @@ export const useApp = create<AppState>()(
           dateISO: row.date_iso, time: row.event_time ?? "",
           organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
           collaborators: [],
-          maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: 0, waitlist: [],
+          maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
           status: row.status,
           features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
           votes: {}, bracket: [], currentMatchId: null,
