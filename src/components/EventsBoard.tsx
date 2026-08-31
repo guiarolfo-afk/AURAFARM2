@@ -108,13 +108,14 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
             <button onClick={() => setDetailId(e.id)} className="flex-1 py-2.5 rounded-xl text-[12px] font-bold border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center gap-1.5">
               <Eye size={13} /> {t("ev_info")}
             </button>
-            {e.status === "live" ? (
-              <button onClick={() => enterArena(e.id)} className="flex-1 py-2.5 rounded-xl text-[12px] font-bold display bg-gold text-[#171200] hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-1.5">
-                {t("live_enter")} <ArrowRight size={13} strokeWidth={3} />
-              </button>
-            ) : (
+            {!myAttendance[e.id] && (
               <button onClick={() => openConfirm(e.id)} className="flex-1 py-2.5 rounded-xl text-[12px] font-bold border border-mint/40 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer flex items-center justify-center gap-1.5">
                 <UserCheck size={13} /> {t("ev_confirm")}
+              </button>
+            )}
+            {e.status === "live" && (
+              <button onClick={() => enterArena(e.id)} className="flex-1 py-2.5 rounded-xl text-[12px] font-bold display bg-gold text-[#171200] hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                {t("live_enter")} <ArrowRight size={13} strokeWidth={3} />
               </button>
             )}
           </div>
