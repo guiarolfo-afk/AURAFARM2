@@ -287,6 +287,16 @@ export const useApp = create<AppState>()(
           });
           get().toggleChallenge("ch3");
           s.toast(translate(s.lang, "t_conf_part"), "gold");
+
+          const { supabaseProfileId } = get();
+          if (supabaseProfileId) {
+            supabase
+              .from("event_participants")
+              .insert({ event_id: eventId, user_id: supabaseProfileId })
+              .then(({ error }) => {
+                if (error) console.error("Error guardando inscripción en Supabase:", error.message);
+              });
+          }
           return true;
         }
         set({
@@ -595,6 +605,17 @@ export const useApp = create<AppState>()(
           console.error("Error cargando eventos de Supabase:", error.message);
           return;
         }
+
+        const { data: participantRows, error: partError } = await supabase
+          .from("event_participants")
+          .select("event_id, user_id");
+        if (partError) console.error("Error cargando participantes:", partError.message);
+
+        const participantsByEvent: Record<string, string[]> = {};
+        (participantRows ?? []).forEach((row: any) => {
+          (participantsByEvent[row.event_id] ??= []).push(row.user_id);
+        });
+
         const mapped: EventItem[] = (data ?? []).map((row: any) => ({
           id: row.id,
           name: row.name,
@@ -603,7 +624,7 @@ export const useApp = create<AppState>()(
           dateISO: row.date_iso, time: row.event_time ?? "",
           organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
           collaborators: [],
-          maxParticipants: row.max_participants ?? 32, participants: [], attendees: 0, waitlist: [],
+          maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: 0, waitlist: [],
           status: row.status,
           features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
           votes: {}, bracket: [], currentMatchId: null,
