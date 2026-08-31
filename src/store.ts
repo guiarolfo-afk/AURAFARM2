@@ -167,9 +167,10 @@ export const useApp = create<AppState>()(
           let feed = s.feed;
           const roll = Math.random();
           const ru = users[Math.floor(Math.random() * users.length)];
+          const randomEvent = () => (s.events.length > 0 ? s.events[Math.floor(Math.random() * s.events.length)] : undefined);
           if (roll < 0.45) feed = [feedItem("farm", ru.name, countryById(ru.country).flag, 20 + Math.floor(Math.random() * 220)), ...feed];
-          else if (roll < 0.62) feed = [feedItem("vote", ru.name, countryById(ru.country).flag, undefined, s.events[Math.floor(Math.random() * 2)].name), ...feed];
-          else if (roll < 0.72) feed = [feedItem("join", ru.name, countryById(ru.country).flag, undefined, s.events[2 + Math.floor(Math.random() * 4)]?.name), ...feed];
+          else if (roll < 0.62) feed = [feedItem("vote", ru.name, countryById(ru.country).flag, undefined, randomEvent()?.name), ...feed];
+          else if (roll < 0.72) feed = [feedItem("join", ru.name, countryById(ru.country).flag, undefined, randomEvent()?.name), ...feed];
           return { users, farmProg, feed: feed.slice(0, 9), totalAura: s.totalAura + 400 + Math.floor(Math.random() * 2400) };
         }),
 
