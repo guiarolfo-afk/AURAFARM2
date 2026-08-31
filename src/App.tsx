@@ -41,7 +41,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    useApp.getState().loadEventsFromSupabase();
+    (async () => {
+      await useApp.getState().initSupabaseAuth();
+      await useApp.getState().loadEventsFromSupabase();
+    })();
   }, []);
 
   const tabs: { id: Tab; icon: typeof Radio; hue: number; label: string }[] = [

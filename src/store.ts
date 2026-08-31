@@ -59,6 +59,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
+  supabaseUserId: string | null; supabaseProfileId: string | null;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
@@ -98,6 +99,7 @@ interface AppState {
   undoGroupVote: (eventId: string, groupId: string) => void;
   voidGroupVotes: (eventId: string, groupId: string) => void;
   loadEventsFromSupabase: () => Promise<void>;
+  initSupabaseAuth: () => Promise<void>;
   registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
@@ -132,6 +134,7 @@ export const useApp = create<AppState>()(
         attended: 3, participated: 1, organized: 0,
         history: [6200, 7800, 9100, 10400, 12100, 13900, 15200, 17800, 19600, 21400, 23100, 24680],
       },
+      supabaseUserId: null, supabaseProfileId: null,
       votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: EVENTS,
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
@@ -543,6 +546,47 @@ export const useApp = create<AppState>()(
       activatePremium: () => {
         set({ premium: true });
         get().toast(translate(get().lang, "t_premium"), "gold");
+      },
+
+      initSupabaseAuth: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        let userId = session?.user?.id ?? null;
+
+        if (!userId) {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) {
+            console.error("Error creando sesión anónima:", error.message);
+            return;
+          }
+          userId = data.user?.id ?? null;
+        }
+        if (!userId) return;
+
+        set({ supabaseUserId: userId });
+
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("id, name, country, aura, trophies")
+          .eq("auth_id", userId)
+          .maybeSingle();
+
+        if (existing) {
+          set({ supabaseProfileId: existing.id });
+          return;
+        }
+
+        const localProfile = get().profile;
+        const { data: created, error: insertError } = await supabase
+          .from("profiles")
+          .insert({ auth_id: userId, name: localProfile.name, country: localProfile.country })
+          .select("id")
+          .single();
+
+        if (insertError) {
+          console.error("Error creando perfil en Supabase:", insertError.message);
+          return;
+        }
+        set({ supabaseProfileId: created.id });
       },
 
       loadEventsFromSupabase: async () => {
