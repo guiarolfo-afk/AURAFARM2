@@ -451,7 +451,7 @@ export const useApp = create<AppState>()(
                       ? { ...x, votes: { ...(prev ? { ...x.votes, [prev]: Math.max(0, (x.votes[prev] ?? 0) - 1) } : x.votes), [pid]: (x.votes[pid] ?? 0) + 1 } }
                       : x
                   ),
-                  votes: { ...e.votes, [pid]: (e.votes[pid] ?? 0) + 1 },
+                  votes: { ...e.votes, ...(prev ? { [prev]: Math.max(0, (e.votes[prev] ?? 0) - 1) } : {}), [pid]: (e.votes[pid] ?? 0) + 1 },
                 }
               : e
           ),
