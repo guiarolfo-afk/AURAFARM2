@@ -100,6 +100,7 @@ interface AppState {
   voidGroupVotes: (eventId: string, groupId: string) => void;
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
+  addGuestParticipant: (eventId: string, name: string) => Promise<void>;
   registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
@@ -621,6 +622,32 @@ export const useApp = create<AppState>()(
           return;
         }
         set({ supabaseProfileId: created.id });
+      },
+
+      addGuestParticipant: async (eventId, name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const s = get();
+        const { data: profile, error: profError } = await supabase
+          .from("profiles")
+          .insert({ name: trimmed, country: "mx" })
+          .select("id")
+          .single();
+        if (profError || !profile) {
+          console.error("Error creando perfil de invitado:", profError?.message);
+          s.toast(translate(s.lang, "t_admin_bad"), "warn");
+          return;
+        }
+        const { error: partError } = await supabase
+          .from("event_participants")
+          .insert({ event_id: eventId, user_id: profile.id, role: "participant" });
+        if (partError) {
+          console.error("Error anotando invitado:", partError.message);
+          s.toast(translate(s.lang, "t_admin_bad"), "warn");
+          return;
+        }
+        await get().loadEventsFromSupabase();
+        s.toast(translate(s.lang, "t_conf_part"), "gold");
       },
 
       loadEventsFromSupabase: async () => {

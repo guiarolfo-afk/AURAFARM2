@@ -48,11 +48,13 @@ export default function OrganizerBoard() {
   /* ---------- create form ---------- */
   const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
   const [formErr, setFormErr] = useState("");
-  const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me"), [events]);
+  const supabaseProfileId = useApp((st) => st.supabaseProfileId);
+  const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId)), [events, supabaseProfileId]);
   const [manageId, setManageId] = useState<string | null>(null);
   const managed = events.find((e) => e.id === manageId) ?? myEvents[0] ?? null;
 
   const [collab, setCollab] = useState({ name: "", perm: "vote" as "vote" | "edit" | "full" });
+  const [guestName, setGuestName] = useState("");
   const [cancelAsk, setCancelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
 
@@ -270,6 +272,20 @@ export default function OrganizerBoard() {
                       </span>
                       <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
                       <div className="flex-1" />
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto order-last sm:order-none">
+                        <input
+                          type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
+                          placeholder="Nombre del participante"
+                          className="flex-1 sm:w-40 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/12 text-[11.5px] outline-none focus:border-mint/40"
+                        />
+                        <button
+                          onClick={() => { s.addGuestParticipant(managed.id, guestName); setGuestName(""); }}
+                          disabled={!guestName.trim()}
+                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          + Agregar
+                        </button>
+                      </div>
                       {managed.status !== "cancelled" && (
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
