@@ -94,6 +94,7 @@ interface AppState {
   voidMatchVotes: (eventId: string, matchId: string) => void; voidEventVotes: (eventId: string) => void;
   voidMyBattleVote: (eventId: string, matchId: string) => void;
   createGroups: (eventId: string) => void; setGroupLive: (eventId: string, groupId: string) => void;
+  addManualGroup: (eventId: string, participantIds: string[]) => void; removeGroup: (eventId: string, groupId: string) => void;
   closeGroup: (eventId: string, groupId: string) => void; promoteGroups: (eventId: string) => void;
   voteGroup: (eventId: string, groupId: string, pid: string) => void;
   undoGroupVote: (eventId: string, groupId: string) => void;
@@ -361,6 +362,25 @@ export const useApp = create<AppState>()(
       },
 
       /* ================= GROUP PHASE (3+ fighters per battle, before the bracket) ================= */
+      addManualGroup: (eventId, participantIds) => {
+        if (participantIds.length < 2) return;
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev) return;
+        const nextLetter = String.fromCharCode(65 + ev.groups.length);
+        const newGroup: BattleGroup = {
+          id: `${eventId}g${Date.now()}`, name: nextLetter,
+          fighters: participantIds, votes: {}, status: "open", winner: null,
+        };
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: [...e.groups, newGroup] } : e)) });
+        s.toast(translate(s.lang, "t_bracket_gen"), "gold");
+      },
+
+      removeGroup: (eventId, groupId) => {
+        const s = get();
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.filter((g) => g.id !== groupId) } : e)) });
+      },
+
       createGroups: (eventId) => {
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
@@ -370,7 +390,7 @@ export const useApp = create<AppState>()(
           const j = Math.floor(Math.random() * (i + 1));
           [pids[i], pids[j]] = [pids[j], pids[i]];
         }
-        const k = Math.max(2, Math.ceil(pids.length / 4));
+        const k = Math.max(1, Math.ceil(pids.length / 4));
         const groups: BattleGroup[] = Array.from({ length: k }, (_, g) => ({
           id: `${eventId}g${g + 1}`, name: String.fromCharCode(65 + g),
           fighters: [], votes: {}, status: "open" as const, winner: null,

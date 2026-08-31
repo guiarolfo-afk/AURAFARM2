@@ -55,6 +55,7 @@ export default function OrganizerBoard() {
 
   const [collab, setCollab] = useState({ name: "", perm: "vote" as "vote" | "edit" | "full" });
   const [guestName, setGuestName] = useState("");
+  const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
 
@@ -303,7 +304,7 @@ export default function OrganizerBoard() {
                         </p>
                         <div className="flex gap-1.5">
                           <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
-                            {t("org_gen_groups")}
+                            {t("org_gen_groups")} · Auto
                           </button>
                           {managed.groups.some((g) => g.status === "closed" && g.winner) && (
                             <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
@@ -312,6 +313,31 @@ export default function OrganizerBoard() {
                           )}
                         </div>
                       </div>
+                      <div className="mb-3 p-2.5 rounded-lg bg-white/4 border border-white/8">
+                        <p className="text-[10.5px] font-bold text-white/40 uppercase tracking-wider mb-1.5">Armar grupo manual</p>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {managed.participants.map((pid) => {
+                            const picked = manualPicks.includes(pid);
+                            return (
+                              <button
+                                key={pid}
+                                onClick={() => setManualPicks((prev) => (picked ? prev.filter((x) => x !== pid) : [...prev, pid]))}
+                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${picked ? "bg-mint/20 border-mint/50 text-mint" : "bg-white/5 border-white/12 text-white/60 hover:bg-white/10"}`}
+                              >
+                                {userNameById(pid)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => { s.addManualGroup(managed.id, manualPicks); setManualPicks([]); }}
+                          disabled={manualPicks.length < 2}
+                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                        >
+                          Crear grupo con {manualPicks.length} seleccionados
+                        </button>
+                      </div>
+
                       {managed.groups.length === 0 ? (
                         <p className="text-[11.5px] text-white/35">— {t("org_gen_groups")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
                       ) : (
@@ -335,6 +361,9 @@ export default function OrganizerBoard() {
                                   )}
                                   {total > 1 && g.status !== "closed" && (
                                     <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                  )}
+                                  {g.status === "open" && (
+                                    <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">✕</button>
                                   )}
                                 </div>
                                 <div className="space-y-1">
