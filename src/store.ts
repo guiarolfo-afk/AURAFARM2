@@ -205,6 +205,19 @@ export const useApp = create<AppState>()(
         });
         if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
         s.toast(translate(s.lang, "t_voted"));
+
+        const { supabaseProfileId } = get();
+        if (supabaseProfileId) {
+          supabase
+            .from("votes")
+            .upsert(
+              { event_id: eventId, voter_id: supabaseProfileId, target_user_id: userId, context: "general", score },
+              { onConflict: "event_id,voter_id,target_user_id,context" }
+            )
+            .then(({ error }) => {
+              if (error) console.error("Error guardando voto en Supabase:", error.message);
+            });
+        }
       },
 
       removeVote: (eventId, userId) => {
@@ -631,6 +644,27 @@ export const useApp = create<AppState>()(
             (participantsByEvent[row.event_id] ??= []).push(row.user_id);
           }
         });
+
+        const allParticipantIds = Array.from(new Set(Object.values(participantsByEvent).flat()));
+        if (allParticipantIds.length > 0) {
+          const { data: realProfiles, error: profError } = await supabase
+            .from("profiles")
+            .select("id, name, country, hue, aura, trophies")
+            .in("id", allParticipantIds);
+          if (profError) {
+            console.error("Error cargando perfiles de participantes:", profError.message);
+          } else if (realProfiles) {
+            const existingIds = new Set(get().users.map((u) => u.id));
+            const newUsers: FarmUser[] = realProfiles
+              .filter((p: any) => !existingIds.has(p.id))
+              .map((p: any) => ({
+                id: p.id, name: p.name, country: p.country, hue: p.hue ?? 200, online: true,
+                aura: p.aura ?? 0, auraByVotes: 0, trophies: p.trophies ?? 0,
+                level: levelFromAura(p.aura ?? 0), role: "participant" as const,
+              }));
+            if (newUsers.length > 0) set((s) => ({ users: [...s.users, ...newUsers] }));
+          }
+        }
 
         const mapped: EventItem[] = (data ?? []).map((row: any) => ({
           id: row.id,
