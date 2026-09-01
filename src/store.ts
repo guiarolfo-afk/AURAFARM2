@@ -102,6 +102,7 @@ interface AppState {
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
+  logoutOrganizer: () => void;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
@@ -561,6 +562,8 @@ export const useApp = create<AppState>()(
         set({ myVotes, events: s.events.map((e) => (e.id === eventId ? { ...e, votes: {} } : e)) });
         s.toast(translate(s.lang, "t_votes_void"), "warn");
       },
+
+      logoutOrganizer: () => set({ organizer: null, orgUnlocked: false }),
 
       registerOrganizerReal: async (email, password, name, contact, country, refs) => {
         const s = get();

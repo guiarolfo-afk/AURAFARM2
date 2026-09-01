@@ -159,6 +159,7 @@ export default function OrganizerBoard() {
           <h2 className="display text-base font-extrabold leading-tight">{t("org_title")}</h2>
           <p className="text-[11.5px] text-white/45">{organizer?.name} · {countryById(organizer?.country ?? "mx").flag} <Stars value={4.8} size={10} /></p>
         </div>
+        <button onClick={() => s.logoutOrganizer()} className="text-[11.5px] font-bold text-ember/70 hover:text-ember border border-ember/25 px-3 py-1.5 rounded-full transition-colors cursor-pointer mr-2">Cerrar sesión</button>
         <button onClick={() => s.setTab("events")} className="text-[11.5px] font-bold text-white/50 hover:text-white border border-white/12 px-3 py-1.5 rounded-full transition-colors cursor-pointer">{t("c_back")}</button>
       </div>
 
