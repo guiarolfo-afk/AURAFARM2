@@ -103,6 +103,7 @@ interface AppState {
   initSupabaseAuth: () => Promise<void>;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
   logoutOrganizer: () => void;
+  logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
@@ -565,13 +566,20 @@ export const useApp = create<AppState>()(
 
       logoutOrganizer: () => set({ organizer: null, orgUnlocked: false }),
 
+      logoutAppUser: async () => {
+        await supabase.auth.signOut();
+        set({ supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false });
+        await get().initSupabaseAuth();
+        await get().loadEventsFromSupabase();
+      },
+
       registerOrganizerReal: async (email, password, name, contact, country, refs) => {
         const s = get();
         const { error } = await supabase.auth.updateUser({ email, password });
         if (error) { console.error(error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { supabaseProfileId } = get();
         if (supabaseProfileId) await supabase.from("profiles").update({ name, role: "organizer" }).eq("id", supabaseProfileId);
-        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true });
+        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name } });
         s.toast(translate(s.lang, "t_registered"), "gold");
         return true;
       },
@@ -581,7 +589,7 @@ export const useApp = create<AppState>()(
         if (error || !data.user) { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { data: profile } = await supabase.from("profiles").select("id, name, role").eq("auth_id", data.user.id).maybeSingle();
         if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
-        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true });
+        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name: profile.name } });
         await get().loadEventsFromSupabase();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;

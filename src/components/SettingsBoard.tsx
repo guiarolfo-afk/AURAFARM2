@@ -154,6 +154,7 @@ export default function SettingsBoard() {
                 <p className="text-[10.5px] text-white/45">{t("c_level")} {levelFromAura(profile.aura)} · {profile.aura.toLocaleString()} {t("c_aura")}</p>
                 <p className="text-[10px] text-violet font-bold mt-1 cursor-pointer hover:underline" onClick={() => fileRef.current?.click()}>{t("st_photo")} ↑</p>
               </div>
+              <button onClick={() => s.logoutAppUser()} className="ml-auto self-start text-[10.5px] font-bold text-white/40 hover:text-ember border border-white/10 hover:border-ember/30 px-2.5 py-1 rounded-full transition-colors cursor-pointer">Cerrar sesión</button>
             </div>
             <div className="space-y-3">
               <Field label={t("st_name")}><input className={inputCls} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field>
