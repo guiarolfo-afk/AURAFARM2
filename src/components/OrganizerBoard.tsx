@@ -33,16 +33,16 @@ export default function OrganizerBoard() {
 
   /* ---------- access gate ---------- */
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [pin, setPin] = useState("");
-  const [reg, setReg] = useState({ name: "", contact: "", country: "mx", refs: "", pin: "" });
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [reg, setReg] = useState({ name: "", contact: "", country: "mx", refs: "", email: "", password: "" });
+  const [authErr, setAuthErr] = useState("");
 
-  const doUnlock = () => {
-    if (s.unlockOrganizer(pin)) {
-      if (!useApp.getState().organizer) {
-        s.registerOrganizer({ name: "Valentina Cruz", contact: "@valen.aura", country: "mx", refs: "Aura League MX 2024 ★ 4.9 · Copa Neón CDMX ★ 4.7", pin: "1234", collaborators: [{ name: "Marco Díaz", perm: "full" }, { name: "Ana López", perm: "vote" }] });
-      }
-      setPin("");
-    }
+  const doUnlock = async () => {
+    setAuthErr("");
+    const ok = await s.loginOrganizerReal(loginEmail.trim(), loginPassword);
+    if (ok) { setLoginEmail(""); setLoginPassword(""); }
+    else setAuthErr("⚠️");
   };
 
   /* ---------- create form ---------- */
@@ -107,10 +107,9 @@ export default function OrganizerBoard() {
 
             {mode === "login" ? (
               <div className="mt-5 space-y-3">
-                <Field label={t("org_pin")}>
-                  <input type="password" inputMode="numeric" maxLength={4} className={inputCls + " tracking-[0.5em] text-center display"} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} placeholder="••••" onKeyDown={(e) => e.key === "Enter" && doUnlock()} />
-                </Field>
-                <p className="text-[10.5px] text-white/35 flex items-center gap-1"><KeyRound size={11} /> {t("c_demo_hint")}</p>
+                <Field label="Email"><input type="email" className={inputCls} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="tu@email.com" /></Field>
+                <Field label="Contraseña"><input type="password" className={inputCls} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && doUnlock()} /></Field>
+                {authErr && <p className="text-[10.5px] text-ember">{authErr} Email o contraseña incorrectos</p>}
                 <button onClick={doUnlock} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">{t("org_unlock")}</button>
               </div>
             ) : (
@@ -123,11 +122,14 @@ export default function OrganizerBoard() {
                   </select>
                 </Field>
                 <Field label={t("org_reg_refs")}><textarea className={inputCls + " resize-none"} rows={2} value={reg.refs} onChange={(e) => setReg({ ...reg, refs: e.target.value })} placeholder="…" /></Field>
-                <Field label={t("org_reg_pin")}><input type="password" maxLength={4} className={inputCls + " tracking-[0.5em] text-center display"} value={reg.pin} onChange={(e) => setReg({ ...reg, pin: e.target.value.replace(/\D/g, "") })} placeholder="••••" /></Field>
+                <Field label="Email"><input type="email" className={inputCls} value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="tu@email.com" /></Field>
+                <Field label="Contraseña"><input type="password" className={inputCls} value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Mínimo 6 caracteres" /></Field>
+                {formErr && <p className="text-[10.5px] text-ember">{formErr} Revisa los datos ingresados</p>}
                 <button
-                  onClick={() => {
-                    if (!reg.name.trim() || reg.pin.length < 4) { setFormErr("⚠️"); return; }
-                    s.registerOrganizer({ name: reg.name.trim(), contact: reg.contact, country: reg.country, refs: reg.refs, pin: reg.pin, collaborators: [] });
+                  onClick={async () => {
+                    if (!reg.name.trim() || !reg.email.trim() || reg.password.length < 6) { setFormErr("⚠️"); return; }
+                    setFormErr("");
+                    await s.registerOrganizerReal(reg.email.trim(), reg.password, reg.name.trim(), reg.contact, reg.country, reg.refs);
                   }}
                   className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
                 >

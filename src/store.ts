@@ -21,7 +21,7 @@ export interface Profile {
   history: number[];
 }
 
-export interface OrganizerAccount { name: string; contact: string; country: string; refs: string; pin: string; collaborators: Collaborator[] }
+export interface OrganizerAccount { name: string; contact: string; country: string; refs: string; email: string; collaborators: Collaborator[] }
 
 export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(aura / 90)));
 
@@ -102,7 +102,8 @@ interface AppState {
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
-  registerOrganizer: (o: OrganizerAccount) => void; unlockOrganizer: (pin: string) => boolean;
+  registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
+  loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
   inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
@@ -561,19 +562,26 @@ export const useApp = create<AppState>()(
         s.toast(translate(s.lang, "t_votes_void"), "warn");
       },
 
-      registerOrganizer: (o) => {
-        set({ organizer: o, orgUnlocked: true });
-        get().toast(translate(get().lang, "t_registered"), "gold");
-      },
-      unlockOrganizer: (pin) => {
+      registerOrganizerReal: async (email, password, name, contact, country, refs) => {
         const s = get();
-        if (pin === "1234" || (s.organizer && s.organizer.pin === pin)) {
-          set({ orgUnlocked: true });
-          s.toast(translate(s.lang, "t_unlocked"), "gold");
-          return true;
-        }
-        s.toast(translate(s.lang, "t_wrong_pin"), "warn");
-        return false;
+        const { error } = await supabase.auth.updateUser({ email, password });
+        if (error) { console.error(error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
+        const { supabaseProfileId } = get();
+        if (supabaseProfileId) await supabase.from("profiles").update({ name, role: "organizer" }).eq("id", supabaseProfileId);
+        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true });
+        s.toast(translate(s.lang, "t_registered"), "gold");
+        return true;
+      },
+      loginOrganizerReal: async (email, password) => {
+        const s = get();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error || !data.user) { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
+        const { data: profile } = await supabase.from("profiles").select("id, name, role").eq("auth_id", data.user.id).maybeSingle();
+        if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
+        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true });
+        await get().loadEventsFromSupabase();
+        s.toast(translate(s.lang, "t_unlocked"), "gold");
+        return true;
       },
       inviteCollab: (c) => {
         const s = get();
