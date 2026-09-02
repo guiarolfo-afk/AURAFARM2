@@ -36,6 +36,17 @@ let toastSeq = 1;
 let feedSeq = 100;
 let chatSeq = 1000;
 
+const VOTES_PER_DAY = 5;
+const VOTES_TO_CLOSE_BATTLE = 5;
+export const VOTE_REWARD = 10;
+export const VOTES_PER_DAY_LABEL = VOTES_PER_DAY;
+
+const syncDailyVotes = (st: { dailyVotes: number; dailyVotesDate: string }) => {
+  const today = new Date().toDateString();
+  if (st.dailyVotesDate !== today) return { dailyVotes: 0, dailyVotesDate: today };
+  return { dailyVotes: st.dailyVotes, dailyVotesDate: st.dailyVotesDate };
+};
+
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 /* Build a seeded elimination bracket from any list of competitor ids */
@@ -70,6 +81,7 @@ interface AppState {
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
+  dailyVotes: number; dailyVotesDate: string;
   myVotes: Record<string, Record<string, number>>;
   battleVotes: Record<string, Record<string, string>>;
   myRatings: Record<string, number>;
@@ -148,7 +160,7 @@ export const useApp = create<AppState>()(
         history: [],
       },
       supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null,
-      votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
+      votesCast: 0, dailyVotes: 0, dailyVotesDate: new Date().toDateString(), myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: [],
 
 
@@ -202,14 +214,23 @@ export const useApp = create<AppState>()(
         const ev = s.events.find((e) => e.id === eventId);
         if (!ev) return;
         const prev = s.myVotes[eventId]?.[userId];
+        const sync = syncDailyVotes(s);
+        const isNewVote = !prev;
+        if (isNewVote && sync.dailyVotes >= VOTES_PER_DAY) {
+          s.toast(translate(s.lang, "ar_vote_limit"), "warn");
+          return;
+        }
         const myVotes = { ...s.myVotes, [eventId]: { ...(s.myVotes[eventId] ?? {}), [userId]: score } };
         const votes = { ...ev.votes, [userId]: (ev.votes[userId] ?? 0) + score - (prev ?? 0) };
         set({
-          myVotes, votesCast: s.votesCast + (prev ? 0 : 1),
+          myVotes,
+          dailyVotes: sync.dailyVotes + (isNewVote ? 1 : 0), dailyVotesDate: sync.dailyVotesDate,
+          votesCast: s.votesCast + (prev ? 0 : 1),
+          profile: { ...s.profile, aura: s.profile.aura + (isNewVote ? VOTE_REWARD : 0) },
           events: s.events.map((e) => (e.id === eventId ? { ...e, votes } : e)),
         });
         if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
-        s.toast(translate(s.lang, "t_voted"));
+        s.toast(prev ? translate(s.lang, "t_vote_updated") : translate(s.lang, "t_voted"));
 
         const { supabaseProfileId } = get();
         if (supabaseProfileId) {
@@ -246,6 +267,12 @@ export const useApp = create<AppState>()(
         if (!ev) return;
         const prev = s.battleVotes[eventId]?.[matchId];
         if (prev === side) return;
+        const sync = syncDailyVotes(s);
+        const isNewVote = !prev;
+        if (isNewVote && sync.dailyVotes >= VOTES_PER_DAY) {
+          s.toast(translate(s.lang, "ar_vote_limit"), "warn");
+          return;
+        }
         const bracket = ev.bracket.map((m) => {
           if (m.id !== matchId) return m;
           let { votesA, votesB } = m;
@@ -258,11 +285,32 @@ export const useApp = create<AppState>()(
         const pid = side === "a" ? m.a : m.b;
         const votes = pid ? { ...ev.votes, [pid]: (ev.votes[pid] ?? 0) + 1 } : ev.votes;
         set({
-          battleVotes, votesCast: s.votesCast + (prev ? 0 : 1),
+          battleVotes,
+          dailyVotes: sync.dailyVotes + (isNewVote ? 1 : 0), dailyVotesDate: sync.dailyVotesDate,
+          votesCast: s.votesCast + (prev ? 0 : 1),
+          profile: { ...s.profile, aura: s.profile.aura + (isNewVote ? VOTE_REWARD : 0) },
           events: s.events.map((e) => (e.id === eventId ? { ...e, bracket, votes } : e)),
         });
         if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
-        s.toast(translate(s.lang, "t_battle_voted"), "gold");
+        s.toast(prev ? translate(s.lang, "t_battle_vote_updated") : translate(s.lang, "t_battle_voted"), "gold");
+
+        const updatedBracket = get().events.find((x) => x.id === eventId)?.bracket.find((x) => x.id === matchId);
+        if (updatedBracket && !updatedBracket.winner && updatedBracket.votesA + updatedBracket.votesB >= VOTES_TO_CLOSE_BATTLE) {
+          get().pickWinner(eventId, matchId, updatedBracket.votesA >= updatedBracket.votesB ? "a" : "b");
+        }
+
+        const { supabaseProfileId } = get();
+        if (supabaseProfileId) {
+          supabase
+            .from("votes")
+            .upsert(
+              { event_id: eventId, voter_id: supabaseProfileId, target_user_id: pid, context: "battle_" + matchId, score: side === "a" ? 1 : 2 },
+              { onConflict: "event_id,voter_id,target_user_id,context" }
+            )
+            .then(({ error }) => {
+              if (error) console.error("Error guardando voto de batalla:", error.message);
+            });
+        }
       },
 
       rateEvent: (eventId, stars) => {
@@ -456,9 +504,18 @@ export const useApp = create<AppState>()(
         const gKey = "g_" + groupId;
         const prev = s.battleVotes[eventId]?.[gKey];
         if (prev === pid) return;
+        const sync = syncDailyVotes(s);
+        const isNewVote = !prev;
+        if (isNewVote && sync.dailyVotes >= VOTES_PER_DAY) {
+          s.toast(translate(s.lang, "ar_vote_limit"), "warn");
+          return;
+        }
         const battleVotes = { ...s.battleVotes, [eventId]: { ...(s.battleVotes[eventId] ?? {}), [gKey]: pid } };
         set({
-          battleVotes, votesCast: s.votesCast + (prev ? 0 : 1),
+          battleVotes,
+          dailyVotes: sync.dailyVotes + (isNewVote ? 1 : 0), dailyVotesDate: sync.dailyVotesDate,
+          votesCast: s.votesCast + (prev ? 0 : 1),
+          profile: { ...s.profile, aura: s.profile.aura + (isNewVote ? VOTE_REWARD : 0) },
           events: s.events.map((e) =>
             e.id === eventId
               ? {
@@ -1011,7 +1068,8 @@ export const useApp = create<AppState>()(
         lang: s.lang, profile: s.profile, premium: s.premium, banners: s.banners,
         challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate,
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
-        votesCast: s.votesCast, myVotes: s.myVotes, battleVotes: s.battleVotes,
+        votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,
+        myVotes: s.myVotes, battleVotes: s.battleVotes,
         myRatings: s.myRatings, myAttendance: s.myAttendance,
         users: s.users, events: s.events, feed: s.feed, totalAura: s.totalAura, farmProg: s.farmProg,
       }),

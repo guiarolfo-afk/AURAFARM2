@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users } from "lucide-react";
-import { useApp, userNameById, levelFromAura, titleFromLevel } from "../store";
+import { useApp, userNameById, levelFromAura, titleFromLevel, VOTES_PER_DAY_LABEL, VOTE_REWARD } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { Avatar, AuraBar, AnimatedNumber, SectionHead, Stars, LiveBadge } from "./ui";
@@ -9,7 +9,7 @@ import { Avatar, AuraBar, AnimatedNumber, SectionHead, Stars, LiveBadge } from "
 export default function ArenaBoard() {
   const t = useT();
   const s = useApp();
-  const { events, users, lang, activeEventId, myVotes, battleVotes, myRatings, profile } = s;
+  const { events, users, lang, activeEventId, myVotes, battleVotes, myRatings, profile, dailyVotes } = s;
   const ev = events.find((e) => e.id === activeEventId) ?? events[0];
   const [tab, setTab] = useState<"chat" | "vote" | "rank">("vote");
   const [msg, setMsg] = useState("");
@@ -411,7 +411,8 @@ export default function ArenaBoard() {
             ) : (
               <div className="panel p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
-                <p className="text-[12px] text-white/50 mb-4">{t("ar_open_vote")} · {t("ar_open_sub")}</p>
+                <p className="text-[12px] text-white/50 mb-1">{t("ar_open_vote")} · {t("ar_open_sub")}</p>
+                <p className="text-[11px] text-white/45 mb-4"><span className="text-gold font-bold">⚡ {VOTES_PER_DAY_LABEL - dailyVotes}/{VOTES_PER_DAY_LABEL}</span> votos hoy · +{VOTE_REWARD} aura por voto</p>
                 <div className="space-y-3">
                   {ev.participants.map((pid) => {
                     const my = myVotes[ev.id]?.[pid];
