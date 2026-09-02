@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Lock, User as UserIcon, Mail, LogIn, UserPlus, Flame } from "lucide-react";
+import { Lock, Mail, LogIn, UserPlus, Flame, X } from "lucide-react";
 import { useApp } from "../store";
 import { useT, LANGS } from "../i18n";
 import { COUNTRIES } from "../data";
 import { Field, inputCls, btnGold } from "./ui";
+
+function SocialButton({ onClick, children, busy }: { onClick: () => void; children: ReactNode; busy?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/10 bg-white/4 hover:bg-white/8 text-[12px] font-bold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function AuthScreen() {
   const t = useT();
@@ -16,9 +28,13 @@ export default function AuthScreen() {
   const [name, setName] = useState("");
   const [country, setCountry] = useState("mx");
   const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const submit = async () => {
     setErr("");
+    setInfo("");
     if (mode === "login") {
       if (!email.trim() || !password) return setErr(t("au_need_fields"));
       const ok = await s.loginAppUser(email.trim(), password);
@@ -29,6 +45,16 @@ export default function AuthScreen() {
     if (password.length < 6) return setErr(t("au_weak_password"));
     const ok = await s.registerAppUser(email.trim(), password, name.trim(), country);
     if (!ok) setErr(t("au_error"));
+  };
+
+  const doReset = async () => {
+    if (!resetEmail.trim()) return;
+    setInfo("");
+    const ok = await s.resetPassword(resetEmail.trim());
+    if (ok) {
+      setResetOpen(false);
+      setInfo(t("au_reset_sent"));
+    }
   };
 
   return (
@@ -58,7 +84,7 @@ export default function AuthScreen() {
             {(["login", "register"] as const).map((m) => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setErr(""); }}
+                onClick={() => { setMode(m); setErr(""); setInfo(""); }}
                 className={`flex-1 py-2 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${mode === m ? "bg-gold text-[#171200]" : "text-white/50 hover:text-white"}`}
               >
                 {m === "login" ? t("au_login_tab") : t("au_register_tab")}
@@ -66,7 +92,30 @@ export default function AuthScreen() {
             ))}
           </div>
 
-          <div className="mt-5 space-y-3">
+          {/* social login */}
+          <p className="text-center text-[9.5px] uppercase tracking-widest text-white/30 font-bold mt-6 mb-3">{t("au_social_title")}</p>
+          <div className="grid gap-2">
+            <SocialButton onClick={() => s.socialLogin("google")} busy={s.authBusy}>
+              <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6 29.4 4 24 4 16.3 4 9.6 8.2 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+              {t("au_google")}
+            </SocialButton>
+            <SocialButton onClick={() => s.socialLogin("apple")} busy={s.authBusy}>
+              <svg width="16" height="16" viewBox="0 0 384 512"><path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>
+              {t("au_apple")}
+            </SocialButton>
+            <SocialButton onClick={() => s.socialLogin("facebook")} busy={s.authBusy}>
+              <svg width="16" height="16" viewBox="0 0 320 512"><path fill="#1877F2" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+              {t("au_facebook")}
+            </SocialButton>
+          </div>
+
+          <div className="flex items-center gap-3 my-5">
+            <span className="flex-1 h-px bg-white/8" />
+            <span className="text-[9.5px] uppercase tracking-widest text-white/25 font-bold">{t("au_or")}</span>
+            <span className="flex-1 h-px bg-white/8" />
+          </div>
+
+          <div className="space-y-3">
             {mode === "register" && (
               <>
                 <Field label={t("au_name")}>
@@ -92,7 +141,12 @@ export default function AuthScreen() {
               </div>
             </Field>
 
+            {mode === "login" && (
+              <button onClick={() => setResetOpen(true)} className="text-[11px] text-white/40 hover:text-gold transition-colors cursor-pointer">{t("au_forgot")}</button>
+            )}
+
             {err && <p className="text-[11.5px] text-ember font-semibold">{err}</p>}
+            {info && <p className="text-[11.5px] text-mint font-semibold">{info}</p>}
 
             <button
               onClick={submit}
@@ -116,6 +170,36 @@ export default function AuthScreen() {
           </div>
         </div>
       </motion.div>
+
+      {/* reset password modal */}
+      {resetOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setResetOpen(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, y: 10 }}
+            animate={{ scale: 1, y: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm panel p-6 relative"
+          >
+            <button onClick={() => setResetOpen(false)} className="absolute top-4 right-4 text-white/40 hover:text-white cursor-pointer" aria-label={t("c_close")}><X size={16} /></button>
+            <h3 className="display text-base font-extrabold mb-1">{t("au_reset_btn")}</h3>
+            <p className="text-[11px] text-white/45 mb-4">{t("au_reset_sent")}</p>
+            <Field label={t("au_email")}>
+              <div className="relative">
+                <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input type="email" className={inputCls + " !pl-8"} value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder={t("au_email_ph")} autoFocus onKeyDown={(e) => e.key === "Enter" && doReset()} />
+              </div>
+            </Field>
+            <button onClick={doReset} disabled={s.authBusy} className={btnGold + " w-full mt-4 !py-3"}>
+              {s.authBusy ? "..." : t("au_reset_btn")}
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

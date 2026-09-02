@@ -104,6 +104,8 @@ interface AppState {
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
   loginAppUser: (email: string, password: string) => Promise<boolean>;
   registerAppUser: (email: string, password: string, name: string, country: string) => Promise<boolean>;
+  socialLogin: (provider: "google" | "apple" | "facebook") => Promise<void>;
+  resetPassword: (email: string) => Promise<boolean>;
   logoutOrganizer: () => Promise<void>;
   logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
@@ -678,9 +680,11 @@ export const useApp = create<AppState>()(
         }
 
         const localProfile = get().profile;
+        const metaName = (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || "";
+        const nameToUse = metaName || localProfile.name;
         const { data: created, error: insertError } = await supabase
           .from("profiles")
-          .insert({ auth_id: userId, name: localProfile.name, country: localProfile.country })
+          .insert({ auth_id: userId, name: nameToUse, country: localProfile.country })
           .select("id")
           .single();
 
@@ -689,6 +693,7 @@ export const useApp = create<AppState>()(
           return;
         }
         set({ supabaseProfileId: created.id });
+        if (metaName) set({ profile: { ...get().profile, name: metaName } });
       },
 
       loginAppUser: async (email, password) => {
@@ -697,7 +702,16 @@ export const useApp = create<AppState>()(
         set({ authBusy: true });
         try {
           const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error || !data.user) {
+          if (error) {
+            const code = (error as any)?.code;
+            if (code === "email_not_confirmed") {
+              s.toast(translate(s.lang, "au_unconfirmed"), "warn");
+            } else {
+              s.toast(translate(s.lang, "t_wrong_pin"), "warn");
+            }
+            return false;
+          }
+          if (!data.user || !data.session) {
             s.toast(translate(s.lang, "t_wrong_pin"), "warn");
             return false;
           }
@@ -733,6 +747,10 @@ export const useApp = create<AppState>()(
             s.toast(translate(s.lang, "t_reg_error"), "warn");
             return false;
           }
+          if (!data.session) {
+            s.toast(translate(s.lang, "au_check_email"), "ok");
+            return false;
+          }
           set({
             supabaseUserId: data.user.id, authed: true,
             profile: { ...get().profile, name, country: country || "mx" },
@@ -744,6 +762,51 @@ export const useApp = create<AppState>()(
         } catch (e) {
           console.error("Error al registrarse:", e);
           s.toast(translate(s.lang, "t_reg_error"), "warn");
+          return false;
+        } finally {
+          set({ authBusy: false });
+        }
+      },
+
+      socialLogin: async (provider) => {
+        const s = get();
+        if (s.authBusy) return;
+        set({ authBusy: true });
+        try {
+          const redirectTo = `${window.location.origin}${window.location.pathname}`;
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: { redirectTo },
+          });
+          if (error) {
+            console.error("Error OAuth:", error.message);
+            s.toast(translate(s.lang, "au_provider_err"), "warn");
+          }
+        } catch (e) {
+          console.error("Error OAuth:", e);
+          s.toast(translate(s.lang, "au_provider_err"), "warn");
+        } finally {
+          set({ authBusy: false });
+        }
+      },
+
+      resetPassword: async (email) => {
+        const s = get();
+        if (s.authBusy) return false;
+        set({ authBusy: true });
+        try {
+          const redirectTo = `${window.location.origin}${window.location.pathname}`;
+          const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+          if (error) {
+            console.error("Error reset:", error.message);
+            s.toast(translate(s.lang, "au_reset_err"), "warn");
+            return false;
+          }
+          s.toast(translate(s.lang, "au_reset_sent"), "ok");
+          return true;
+        } catch (e) {
+          console.error("Error reset:", e);
+          s.toast(translate(s.lang, "au_reset_err"), "warn");
           return false;
         } finally {
           set({ authBusy: false });
