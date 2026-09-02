@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Lock, Mail, LogIn, UserPlus, Flame, X } from "lucide-react";
 import { useApp } from "../store";
 import { useT, LANGS } from "../i18n";
-import { COUNTRIES } from "../data";
 import { Field, inputCls, btnGold } from "./ui";
 
 function SocialButton({ onClick, children, busy }: { onClick: () => void; children: ReactNode; busy?: boolean }) {
@@ -21,12 +20,10 @@ function SocialButton({ onClick, children, busy }: { onClick: () => void; childr
 export default function AuthScreen() {
   const t = useT();
   const s = useApp();
-  const lang = useApp((x) => x.lang);
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [country, setCountry] = useState("mx");
   const [err, setErr] = useState("");
   const [info, setInfo] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
@@ -43,7 +40,7 @@ export default function AuthScreen() {
     }
     if (!name.trim() || !email.trim() || !password) return setErr(t("au_need_fields"));
     if (password.length < 6) return setErr(t("au_weak_password"));
-    const ok = await s.registerAppUser(email.trim(), password, name.trim(), country);
+    const ok = await s.registerAppUser(email.trim(), password, name.trim(), "");
     if (!ok) setErr(t("au_error"));
   };
 
@@ -112,11 +109,6 @@ export default function AuthScreen() {
               <>
                 <Field label={t("au_name")}>
                   <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("au_name_ph")} />
-                </Field>
-                <Field label={t("au_country")}>
-                  <select className={inputCls + " cursor-pointer"} value={country} onChange={(e) => setCountry(e.target.value)}>
-                    {COUNTRIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>)}
-                  </select>
                 </Field>
               </>
             )}
