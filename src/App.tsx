@@ -6,6 +6,7 @@ import type { Tab } from "./store";
 import { LANGS } from "./i18n";
 import { useT } from "./i18n";
 import { Avatar, Toasts } from "./components/ui";
+import AuthScreen from "./components/AuthScreen";
 const LiveBoard = lazy(() => import("./components/LiveBoard"));
 const EventsBoard = lazy(() => import("./components/EventsBoard"));
 const OrganizerBoard = lazy(() => import("./components/OrganizerBoard"));
@@ -31,6 +32,7 @@ export default function App() {
   const premium = useApp((s) => s.premium);
   const banners = useApp((s) => s.banners);
   const activeEventId = useApp((s) => s.activeEventId);
+  const authed = useApp((s) => s.authed);
   const { setTab, setLang, enterArena } = useApp.getState();
   const [langOpen, setLangOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState("all");
@@ -63,6 +65,15 @@ export default function App() {
 
   const adBanner = !premium ? banners.find((b) => b.active) : undefined;
   const currentLang = LANGS.find((l) => l.code === lang)!;
+
+  if (!authed) {
+    return (
+      <>
+        <Toasts />
+        <AuthScreen />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen">

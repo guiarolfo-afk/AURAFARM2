@@ -59,7 +59,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
-  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean;
+  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
@@ -102,6 +102,8 @@ interface AppState {
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
+  loginAppUser: (email: string, password: string) => Promise<boolean>;
+  registerAppUser: (email: string, password: string, name: string, country: string) => Promise<boolean>;
   logoutOrganizer: () => Promise<void>;
   logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
@@ -139,7 +141,7 @@ export const useApp = create<AppState>()(
         attended: 3, participated: 1, organized: 0,
         history: [6200, 7800, 9100, 10400, 12100, 13900, 15200, 17800, 19600, 21400, 23100, 24680],
       },
-      supabaseUserId: null, supabaseProfileId: null, authBusy: false,
+      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false,
       votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: EVENTS,
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
@@ -585,7 +587,7 @@ export const useApp = create<AppState>()(
         }
         localStorage.removeItem("aurafarm-store");
         set({
-          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false,
+          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false,
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
         await get().initSupabaseAuth();
@@ -645,19 +647,17 @@ export const useApp = create<AppState>()(
 
       initSupabaseAuth: async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        let userId = session?.user?.id ?? null;
+        const user = session?.user ?? null;
 
-        if (!userId) {
-          const { data, error } = await supabase.auth.signInAnonymously();
-          if (error) {
-            console.error("Error creando sesión anónima:", error.message);
-            return;
-          }
-          userId = data.user?.id ?? null;
+        const isAnon = (user as any)?.is_anonymous === true || user?.email == null;
+        if (!user || isAnon) {
+          if (isAnon) await supabase.auth.signOut().catch(() => {});
+          set({ authed: false, supabaseUserId: null, supabaseProfileId: null });
+          return;
         }
-        if (!userId) return;
 
-        set({ supabaseUserId: userId });
+        const userId = user.id;
+        set({ supabaseUserId: userId, authed: true });
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -671,6 +671,7 @@ export const useApp = create<AppState>()(
             set({
               organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
               orgUnlocked: true,
+              profile: { ...get().profile, name: existing.name },
             });
           }
           return;
@@ -688,6 +689,65 @@ export const useApp = create<AppState>()(
           return;
         }
         set({ supabaseProfileId: created.id });
+      },
+
+      loginAppUser: async (email, password) => {
+        const s = get();
+        if (s.authBusy) return false;
+        set({ authBusy: true });
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error || !data.user) {
+            s.toast(translate(s.lang, "t_wrong_pin"), "warn");
+            return false;
+          }
+          set({ supabaseUserId: data.user.id, authed: true });
+          await get().initSupabaseAuth();
+          await get().loadEventsFromSupabase();
+          s.toast(translate(s.lang, "t_welcome_back"), "ok");
+          return true;
+        } catch (e) {
+          console.error("Error al iniciar sesión:", e);
+          s.toast(translate(s.lang, "t_wrong_pin"), "warn");
+          return false;
+        } finally {
+          set({ authBusy: false });
+        }
+      },
+
+      registerAppUser: async (email, password, name, country) => {
+        const s = get();
+        if (s.authBusy) return false;
+        set({ authBusy: true });
+        try {
+          const { data, error } = await supabase.auth.signUp({ email, password });
+          if (error || !data.user) {
+            s.toast(translate(s.lang, "t_reg_error"), "warn");
+            return false;
+          }
+          const { error: profError } = await supabase
+            .from("profiles")
+            .insert({ auth_id: data.user.id, name, country: country || "mx", role: "user" });
+          if (profError) {
+            console.error("Error creando perfil:", profError.message);
+            s.toast(translate(s.lang, "t_reg_error"), "warn");
+            return false;
+          }
+          set({
+            supabaseUserId: data.user.id, authed: true,
+            profile: { ...get().profile, name, country: country || "mx" },
+          });
+          await get().initSupabaseAuth();
+          await get().loadEventsFromSupabase();
+          s.toast(translate(s.lang, "t_registered_ok"), "gold");
+          return true;
+        } catch (e) {
+          console.error("Error al registrarse:", e);
+          s.toast(translate(s.lang, "t_reg_error"), "warn");
+          return false;
+        } finally {
+          set({ authBusy: false });
+        }
       },
 
       addGuestParticipant: async (eventId, name) => {
