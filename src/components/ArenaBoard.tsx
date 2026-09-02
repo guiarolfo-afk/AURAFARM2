@@ -423,6 +423,7 @@ export default function ArenaBoard() {
                         <div className="flex-1 min-w-[140px]">
                           <p className="text-[12.5px] font-bold">{userNameById(pid)}</p>
                           <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
+                          <p className="text-[9.5px] text-white/35 mt-0.5">🗳️ <span className="text-gold font-bold">{ev.votes[pid] ?? 0}</span> votos</p>
                         </div>
                         {my ? (
                           <div className="flex items-center gap-2.5">
