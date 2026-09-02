@@ -774,9 +774,10 @@ export const useApp = create<AppState>()(
         set({ authBusy: true });
         try {
           const redirectTo = `${window.location.origin}${window.location.pathname}`;
+          const base = import.meta.env.VITE_SITE_URL as string | undefined;
           const { error } = await supabase.auth.signInWithOAuth({
             provider,
-            options: { redirectTo },
+            options: { redirectTo: base || redirectTo },
           });
           if (error) {
             console.error("Error OAuth:", error.message);
