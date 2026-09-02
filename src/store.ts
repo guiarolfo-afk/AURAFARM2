@@ -567,7 +567,11 @@ export const useApp = create<AppState>()(
       logoutOrganizer: () => set({ organizer: null, orgUnlocked: false }),
 
       logoutAppUser: async () => {
-        await supabase.auth.signOut();
+        try {
+          await supabase.auth.signOut({ scope: "local" });
+        } catch (e) {
+          console.error("Error al cerrar sesión:", e);
+        }
         set({ supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
