@@ -59,7 +59,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
-  supabaseUserId: string | null; supabaseProfileId: string | null;
+  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
@@ -139,7 +139,7 @@ export const useApp = create<AppState>()(
         attended: 3, participated: 1, organized: 0,
         history: [6200, 7800, 9100, 10400, 12100, 13900, 15200, 17800, 19600, 21400, 23100, 24680],
       },
-      supabaseUserId: null, supabaseProfileId: null,
+      supabaseUserId: null, supabaseProfileId: null, authBusy: false,
       votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: EVENTS,
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
@@ -567,14 +567,17 @@ export const useApp = create<AppState>()(
       logoutOrganizer: () => set({ organizer: null, orgUnlocked: false }),
 
       logoutAppUser: async () => {
+        if (get().authBusy) return;
+        set({ authBusy: true });
         try {
-          await supabase.auth.signOut({ scope: "local" });
+          Object.keys(localStorage).filter((k) => k.includes("auth-token")).forEach((k) => localStorage.removeItem(k));
         } catch (e) {
-          console.error("Error al cerrar sesión:", e);
+          console.error("Error limpiando sesión local:", e);
         }
         set({ supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
+        set({ authBusy: false });
       },
 
       registerOrganizerReal: async (email, password, name, contact, country, refs) => {
