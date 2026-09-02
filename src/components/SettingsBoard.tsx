@@ -151,6 +151,7 @@ export default function SettingsBoard() {
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPhoto(e.target.files?.[0])} />
               <div>
                 <p className="display text-sm font-extrabold">{draft.name || profile.name}</p>
+                {s.userEmail && <p className="text-[10.5px] text-white/55 break-all">{s.userEmail}</p>}
                 <p className="text-[10.5px] text-white/45">{t("c_level")} {levelFromAura(profile.aura)} · {profile.aura.toLocaleString()} {t("c_aura")}</p>
                 <p className="text-[10px] text-violet font-bold mt-1 cursor-pointer hover:underline" onClick={() => fileRef.current?.click()}>{t("st_photo")} ↑</p>
               </div>
