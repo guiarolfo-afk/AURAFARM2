@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Trophy, Ticket, Vote, Swords, Megaphone, Flame, TrendingUp, Globe2, Crown, Medal, Lock } from "lucide-react";
-import { useApp, levelFromAura, titleFromLevel } from "../store";
+import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById, BADGES } from "../data";
 import { Avatar, AnimatedNumber, SectionHead, Chip, AuraBar } from "./ui";
@@ -37,7 +37,13 @@ export default function RankingsBoard() {
       .sort((a, b) => (sort === "total" ? b.aura - a.aura : sort === "votes" ? b.auraByVotes - a.auraByVotes : b.trophies - a.trophies));
   }, [country, sort, profile, level]);
 
-  const chartData = profile.history.map((v, i) => ({ s: `${i + 1}`, aura: v }));
+  // Evolución real del aura: el historial se registra cada día al completar
+  // los retos. Si aún no hay registros, mostramos el valor actual como base
+  // para que el gráfico nunca quede vacío.
+  const chartData = (profile.history.length > 0
+    ? profile.history.map((v, i) => ({ g: i + 1, t: t("rk_session") + " " + (i + 1), aura: v }))
+    : [{ g: 1, t: t("rk_session") + " 1", aura: profile.aura }]
+  ).concat(profile.history.length > 0 ? [{ g: profile.history.length + 1, t: t("rk_now"), aura: profile.aura }] : []);
 
   return (
     <div className="space-y-6">
@@ -52,7 +58,7 @@ export default function RankingsBoard() {
             <div className="flex-1 min-w-0">
               <h3 className="display text-base sm:text-lg font-extrabold truncate">{profile.name}</h3>
               <p className="text-[10.5px] sm:text-[11.5px] text-white/50 truncate">{countryById(profile.country).flag} {countryById(profile.country).name[lang]} · {t("c_level")} {level} · {titleFromLevel(level, lang)}</p>
-              <AuraBar value={(profile.aura % 10000) / 100} color="#FFD700" className="mt-2" />
+              <AuraBar value={progressToNextLevel(profile.aura)} color="#FFD700" className="mt-2" />
             </div>
             <div className="text-right shrink-0">
               <AnimatedNumber value={profile.aura} className="display text-base sm:text-2xl font-extrabold text-gold" />
@@ -87,11 +93,12 @@ export default function RankingsBoard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-                <XAxis dataKey="s" tick={{ fill: "rgba(255,255,255,.3)", fontSize: 9 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="g" tick={{ fill: "rgba(255,255,255,.3)", fontSize: 9 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "rgba(255,255,255,.3)", fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${Math.round(v / 1000)}K`} />
                 <Tooltip
                   contentStyle={{ background: "#121226", border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, fontSize: 11, color: "#fff" }}
                   labelStyle={{ color: "rgba(255,255,255,.5)" }}
+                  labelFormatter={(_, payload) => (payload?.[0]?.payload?.t as string) ?? ""}
                   formatter={(v) => [`${Number(v).toLocaleString()} aura`, ""]}
                 />
                 <Area type="monotone" dataKey="aura" stroke="#FFD700" strokeWidth={2.5} fill="url(#auraGrad)" />
