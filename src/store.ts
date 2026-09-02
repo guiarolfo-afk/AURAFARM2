@@ -565,8 +565,12 @@ export const useApp = create<AppState>()(
       },
 
       logoutOrganizer: async () => {
-        try { await supabase.auth.signOut(); } catch (e) { console.error("Error cerrando sesión organizador:", e); }
-        set({ organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null });
+        try { await supabase.auth.signOut({ scope: "global" }); } catch (e) { console.error("Error cerrando sesión organizador:", e); }
+        localStorage.removeItem("aurafarm-store");
+        set({
+          organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null,
+          profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
+        });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
       },
@@ -579,9 +583,10 @@ export const useApp = create<AppState>()(
         } catch (e) {
           console.error("Error cerrando sesión Supabase:", e);
         }
+        localStorage.removeItem("aurafarm-store");
         set({
           supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false,
-          profile: { ...get().profile, name: "Alex Rivera", contact: "@alex.aura" },
+          profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
@@ -661,12 +666,11 @@ export const useApp = create<AppState>()(
           .maybeSingle();
 
         if (existing) {
-          set({ supabaseProfileId: existing.id });
+          set({ supabaseProfileId: existing.id, profile: { ...get().profile, name: existing.name, country: existing.country ?? get().profile.country } });
           if (existing.role === "organizer" && !get().orgUnlocked) {
             set({
               organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
               orgUnlocked: true,
-              profile: { ...get().profile, name: existing.name },
             });
           }
           return;
