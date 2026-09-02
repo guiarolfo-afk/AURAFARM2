@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, Vote, ArrowRight, Activity, Crown, MapPin, Check } from "lucide-react";
-import { useApp, levelFromAura, titleFromLevel } from "../store";
+import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { Avatar, AuraBar, AnimatedNumber, SectionHead, LiveBadge } from "./ui";
@@ -14,7 +14,7 @@ const reveal = {
 
 export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
   const t = useT();
-  const { users, farmProg, feed, challenges, streak, totalAura, events, lang, enterArena, toggleChallenge, setTab } = useApp();
+  const { users, feed, challenges, streak, totalAura, events, lang, enterArena, toggleChallenge, setTab } = useApp();
 
   const online = users.filter((u) => u.online);
   const liveEvents = events.filter((e) => e.status === "live");
@@ -94,7 +94,8 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
         <div className="hscroll flex gap-3 pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
           {online.slice(0, 12).map((u, i) => {
             const c = countryById(u.country);
-            const delta = Math.floor((farmProg[u.id] ?? 0) / 8) + 4;
+            const lvl = levelFromAura(u.aura);
+            const nextPct = progressToNextLevel(u.aura);
             return (
               <motion.div
                 key={u.id}
@@ -113,10 +114,10 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 </div>
                 <div className="mt-3 flex items-baseline justify-between">
                   <AnimatedNumber value={u.aura} className="display text-[13px] font-bold" />
-                  <span key={delta} className="tick-in text-[10.5px] font-bold text-mint">+{delta}</span>
+                  <span className="display text-[9.5px] font-bold text-mint">Nv {lvl}</span>
                 </div>
-                <AuraBar value={farmProg[u.id] ?? 0} className="mt-2" />
-                <p className="text-[9.5px] text-white/35 mt-1.5 uppercase tracking-wider">{t("c_level")} {levelFromAura(u.aura)} · {titleFromLevel(levelFromAura(u.aura), lang)}</p>
+                <AuraBar value={nextPct} className="mt-2" />
+                <p className="text-[9.5px] text-white/35 mt-1.5 uppercase tracking-wider">{titleFromLevel(lvl, lang)} · {Math.round(nextPct)}% al Nv {lvl + 1}</p>
               </motion.div>
             );
           })}
@@ -139,7 +140,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                       <p className="text-[12.5px] font-semibold truncate">{u.name} <span className="text-[11px]">{c.flag}</span></p>
                       <AnimatedNumber value={u.aura} className="display text-[11.5px] font-bold text-white/80" />
                     </div>
-                    <AuraBar value={farmProg[u.id] ?? 0} className="mt-1.5" />
+                    <AuraBar value={progressToNextLevel(u.aura)} className="mt-1.5" />
                   </div>
                 </div>
               );

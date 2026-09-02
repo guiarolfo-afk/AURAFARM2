@@ -32,6 +32,14 @@ export const titleFromLevel = (level: number, lang: string) => {
   return "Bronce";
 };
 
+export const progressToNextLevel = (aura: number) => {
+  const level = levelFromAura(aura);
+  const lo = (level - 1) * (level - 1) * 90;
+  const hi = level * level * 90;
+  const span = Math.max(1, hi - lo);
+  return Math.min(100, Math.max(0, ((aura - lo) / span) * 100));
+};
+
 let toastSeq = 1;
 let feedSeq = 100;
 let chatSeq = 1000;
