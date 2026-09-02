@@ -634,9 +634,10 @@ export const useApp = create<AppState>()(
         }
         const updated = [...ev.collaborators, c];
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: updated } : e)) });
+        if (!s.supabaseProfileId) { s.toast(translate(s.lang, "t_collab_added")); return; }
         try {
           await supabase.from("event_collaborators").insert({
-            event_id: eventId, collaborator_email: c.email ?? "", perm: c.perm, name: c.name,
+            event_id: eventId, collaborator_email: c.email ?? "", perm: c.perm, name: c.name, owner_id: s.supabaseProfileId,
           });
         } catch (e) { console.error("Error guardando colaborador:", e); }
         s.toast(translate(s.lang, "t_collab_added"));
@@ -888,12 +889,14 @@ export const useApp = create<AppState>()(
         }
 
         let collabByEvent: Record<string, { name: string; email?: string; perm: string }[]> = {};
+        const mineProfileId = get().supabaseProfileId;
         try {
           const { data: collabRows, error: collabError } = await supabase.from("event_collaborators").select("*");
           if (collabError) {
             console.error("Error cargando colaboradores:", collabError.message);
           } else {
             collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
+              if (mineProfileId && r.owner_id !== mineProfileId) return acc;
               (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
               return acc;
             }, {});
