@@ -28,10 +28,11 @@ export default function OrganizerBoard() {
       profile: st.profile,
       supabaseProfileId: st.supabaseProfileId,
       userEmail: st.userEmail,
+      isOAuth: st.isOAuth,
     }))
   );
   const s = { ...useApp.getState(), ...data };
-  const { orgUnlocked, organizer, events, lang, supabaseProfileId, userEmail, profile } = s;
+  const { orgUnlocked, organizer, events, lang, supabaseProfileId, userEmail, profile, isOAuth } = s;
 
   /* ---------- access gate ---------- */
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -39,6 +40,8 @@ export default function OrganizerBoard() {
   const [loginPassword, setLoginPassword] = useState("");
   const [reg, setReg] = useState({ name: "", contact: "", country: "mx", refs: "", email: "", password: "" });
   const [authErr, setAuthErr] = useState("");
+  const [becomeForm, setBecomeForm] = useState({ name: profile.name || "", contact: "", refs: "" });
+  const [becomeErr, setBecomeErr] = useState("");
 
   const doUnlock = async () => {
     setAuthErr("");
@@ -114,48 +117,70 @@ export default function OrganizerBoard() {
               <Lock size={20} className="text-violet" />
             </div>
             <h2 className="display text-lg font-extrabold">{t("org_locked_title")}</h2>
-            <p className="text-[12px] text-white/45 mt-1">{t("org_locked_sub")}</p>
+            <p className="text-[12px] text-white/45 mt-1">{isOAuth ? "Completa tus datos para ser organizador" : t("org_locked_sub")}</p>
 
-            <div className="flex gap-1.5 mt-5 p-1 rounded-xl bg-white/4 border border-white/8">
-              {(["login", "register"] as const).map((m) => (
-                <button key={m} onClick={() => setMode(m)} className={`flex-1 py-2 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${mode === m ? "bg-violet text-white" : "text-white/50 hover:text-white"}`}>
-                  {m === "login" ? t("org_login_tab") : t("org_register_tab")}
-                </button>
-              ))}
-            </div>
-
-            {mode === "login" ? (
+            {isOAuth ? (
               <div className="mt-5 space-y-3">
-                <Field label="Email"><input type="email" className={inputCls} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="tu@email.com" /></Field>
-                <Field label="Contraseña"><input type="password" className={inputCls} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && doUnlock()} /></Field>
-                {authErr && <p className="text-[10.5px] text-ember">{authErr} Email o contraseña incorrectos</p>}
-                <button onClick={doUnlock} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">{t("org_unlock")}</button>
-              </div>
-            ) : (
-              <div className="mt-5 space-y-3">
-                <Field label={t("org_reg_name")}><input className={inputCls} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Valentina Cruz" /></Field>
-                <Field label={t("org_reg_contact")}><input className={inputCls} value={reg.contact} onChange={(e) => setReg({ ...reg, contact: e.target.value })} placeholder="@usuario / +52 …" /></Field>
-                <Field label={t("org_reg_country")}>
-                  <select className={inputCls + " cursor-pointer"} value={reg.country} onChange={(e) => setReg({ ...reg, country: e.target.value })}>
-                    {COUNTRIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>)}
-                  </select>
-                </Field>
-                <Field label={t("org_reg_refs")}><textarea className={inputCls + " resize-none"} rows={2} value={reg.refs} onChange={(e) => setReg({ ...reg, refs: e.target.value })} placeholder="…" /></Field>
-                <Field label="Email"><input type="email" className={inputCls} value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="tu@email.com" /></Field>
-                <Field label="Contraseña"><input type="password" className={inputCls} value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Mínimo 6 caracteres" /></Field>
-                {formErr && <p className="text-[10.5px] text-ember">{formErr} Revisa los datos ingresados</p>}
+                <Field label={t("org_reg_name")}><input className={inputCls} value={becomeForm.name} onChange={(e) => setBecomeForm({ ...becomeForm, name: e.target.value })} placeholder="Valentina Cruz" /></Field>
+                <Field label={t("org_reg_contact")}><input className={inputCls} value={becomeForm.contact} onChange={(e) => setBecomeForm({ ...becomeForm, contact: e.target.value })} placeholder="@usuario / +52 …" /></Field>
+                <Field label={t("org_reg_refs")}><textarea className={inputCls + " resize-none"} rows={2} value={becomeForm.refs} onChange={(e) => setBecomeForm({ ...becomeForm, refs: e.target.value })} placeholder="…" /></Field>
+                {becomeErr && <p className="text-[10.5px] text-ember">{becomeErr}</p>}
                 <button
                   onClick={async () => {
-                    if (!reg.name.trim() || !reg.email.trim() || reg.password.length < 6) { setFormErr("⚠️"); return; }
-                    setFormErr("");
-                    await s.registerOrganizerReal(reg.email.trim(), reg.password, reg.name.trim(), reg.contact, reg.country, reg.refs);
+                    if (!becomeForm.name.trim()) { setBecomeErr("⚠️"); return; }
+                    setBecomeErr("");
+                    const ok = await s.becomeOrganizer(becomeForm.name.trim(), becomeForm.contact, becomeForm.refs);
+                    if (!ok) setBecomeErr("Error al registrar");
                   }}
                   className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   {t("org_create_org")}
                 </button>
-                {formErr && <p className="text-ember text-[11.5px] font-semibold">{formErr}</p>}
               </div>
+            ) : (
+              <>
+                <div className="flex gap-1.5 mt-5 p-1 rounded-xl bg-white/4 border border-white/8">
+                  {(["login", "register"] as const).map((m) => (
+                    <button key={m} onClick={() => setMode(m)} className={`flex-1 py-2 rounded-lg text-[12px] font-bold transition-all cursor-pointer ${mode === m ? "bg-violet text-white" : "text-white/50 hover:text-white"}`}>
+                      {m === "login" ? t("org_login_tab") : t("org_register_tab")}
+                    </button>
+                  ))}
+                </div>
+
+                {mode === "login" ? (
+                  <div className="mt-5 space-y-3">
+                    <Field label="Email"><input type="email" className={inputCls} value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="tu@email.com" /></Field>
+                    <Field label="Contraseña"><input type="password" className={inputCls} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && doUnlock()} /></Field>
+                    {authErr && <p className="text-[10.5px] text-ember">{authErr} Email o contraseña incorrectos</p>}
+                    <button onClick={doUnlock} className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer">{t("org_unlock")}</button>
+                  </div>
+                ) : (
+                  <div className="mt-5 space-y-3">
+                    <Field label={t("org_reg_name")}><input className={inputCls} value={reg.name} onChange={(e) => setReg({ ...reg, name: e.target.value })} placeholder="Valentina Cruz" /></Field>
+                    <Field label={t("org_reg_contact")}><input className={inputCls} value={reg.contact} onChange={(e) => setReg({ ...reg, contact: e.target.value })} placeholder="@usuario / +52 …" /></Field>
+                    <Field label={t("org_reg_country")}>
+                      <select className={inputCls + " cursor-pointer"} value={reg.country} onChange={(e) => setReg({ ...reg, country: e.target.value })}>
+                        {COUNTRIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>)}
+                      </select>
+                    </Field>
+                    <Field label={t("org_reg_refs")}><textarea className={inputCls + " resize-none"} rows={2} value={reg.refs} onChange={(e) => setReg({ ...reg, refs: e.target.value })} placeholder="…" /></Field>
+                    <Field label="Email"><input type="email" className={inputCls} value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="tu@email.com" /></Field>
+                    <Field label="Contraseña"><input type="password" className={inputCls} value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="Mínimo 6 caracteres" /></Field>
+                    {formErr && <p className="text-[10.5px] text-ember">{formErr} Revisa los datos ingresados</p>}
+                    <button
+                      onClick={async () => {
+                        if (!reg.name.trim() || !reg.email.trim() || reg.password.length < 6) { setFormErr("⚠️"); return; }
+                        setFormErr("");
+                        await s.registerOrganizerReal(reg.email.trim(), reg.password, reg.name.trim(), reg.contact, reg.country, reg.refs);
+                      }}
+                      className="w-full py-3 rounded-xl display text-[12px] font-bold bg-violet text-white hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      {t("org_create_org")}
+                    </button>
+                    {formErr && <p className="text-ember text-[11.5px] font-semibold">{formErr}</p>}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </motion.div>

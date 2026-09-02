@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Lang } from "./i18n";
 import { translate } from "./i18n";
-import { USERS, EVENTS, CHALLENGES, BOT_REPLIES, CHAT_NAMES, countryById } from "./data";
+import { CHALLENGES, countryById } from "./data";
 import { supabase } from "./supabaseClient";
 import type { FarmUser, EventItem, Challenge, BracketMatch, ChatMsg, BattleGroup } from "./data";
 
@@ -59,7 +59,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
-  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; userEmail: string | null;
+  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
@@ -110,6 +110,7 @@ interface AppState {
   logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
+  becomeOrganizer: (name: string, contact: string, refs: string) => Promise<boolean>;
   inviteCollab: (eventId: string, c: Collaborator) => Promise<void>; removeCollab: (eventId: string, i: number) => Promise<void>; setCollabPerm: (eventId: string, i: number, p: Collaborator["perm"]) => Promise<void>;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
@@ -121,35 +122,31 @@ const feedItem = (type: FeedItem["type"], user: string, flag: string, n?: number
   ({ id: ++feedSeq, type, user, flag, n, event, ts: Date.now() });
 
 const initialFeed: FeedItem[] = [
-  feedItem("farm", "Kai Nakamura", "🇯🇵", 240),
-  feedItem("vote", "Emma Johnson", "🇺🇸", undefined, "Duelo de Auras CDMX"),
-  feedItem("win", "Luna Reyes", "🇲🇽", undefined, "Duelo de Auras CDMX"),
-  feedItem("farm", "Zoe Laurent", "🇫🇷", 180),
-  feedItem("badge", "Sofía Almeida", "🇵🇹"),
-  feedItem("join", "Lucas Weber", "🇩🇪", undefined, "Paris Aura Clash"),
+  feedItem("join", "Bienvenido a Aura Farm", "🌍", undefined, "Completa tus primeros retos"),
 ];
 
 export const useApp = create<AppState>()(
   persist(
     (set, get) => ({
       lang: "es", tab: "live", activeEventId: "e1",
-      users: USERS, totalAura: 84_211_540, farmProg: Object.fromEntries(USERS.map((u, i) => [u.id, (i * 23) % 100])),
+            users: [], totalAura: 0, farmProg: {},
       feed: initialFeed,
-      challenges: CHALLENGES, streak: 4, lastStreakDate: new Date().toDateString(),
+
+      challenges: CHALLENGES, streak: 0, lastStreakDate: new Date().toDateString(),
       profile: {
-        name: "Alex Rivera", country: "mx", photo: null, contact: "@alex.aura",
-        socials: { ig: "@alex.aura", x: "@alexfarm", tt: "@alex.aura" },
-        aura: 24680, auraByVotes: 8420, trophies: 2,
-        attended: 3, participated: 1, organized: 0,
-        history: [6200, 7800, 9100, 10400, 12100, 13900, 15200, 17800, 19600, 21400, 23100, 24680],
+        name: "Usuario", country: "mx", photo: null, contact: "",
+        socials: { ig: "", x: "", tt: "" },
+        aura: 0, auraByVotes: 0, trophies: 0,
+        attended: 0, participated: 0, organized: 0,
+        history: [],
       },
-      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, userEmail: null,
+      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null,
       votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
-      events: EVENTS,
+      events: [],
+
+
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
-      banners: [
-        { id: "bn1", text: "⚡ AuraEnergy Drink — Energía para farmear toda la noche", link: "https://example.com/aura-energy", color: "#9B30FF", active: true },
-      ],
+      banners: [],
       settings: { notifFarm: true, notifEvents: true, publicProfile: true, showCountry: true },
       adminUnlocked: false,
 
@@ -166,22 +163,7 @@ export const useApp = create<AppState>()(
       },
       dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-      tick: () =>
-        set((s) => {
-          const users = s.users.map((u) =>
-            u.online && Math.random() < 0.65 ? { ...u, aura: u.aura + 8 + Math.floor(Math.random() * 42) } : u
-          );
-          const farmProg = { ...s.farmProg };
-          users.forEach((u) => { farmProg[u.id] = (farmProg[u.id] + 7 + Math.random() * 16) % 100; });
-          let feed = s.feed;
-          const roll = Math.random();
-          const ru = users[Math.floor(Math.random() * users.length)];
-          const randomEvent = () => (s.events.length > 0 ? s.events[Math.floor(Math.random() * s.events.length)] : undefined);
-          if (roll < 0.45) feed = [feedItem("farm", ru.name, countryById(ru.country).flag, 20 + Math.floor(Math.random() * 220)), ...feed];
-          else if (roll < 0.62) feed = [feedItem("vote", ru.name, countryById(ru.country).flag, undefined, randomEvent()?.name), ...feed];
-          else if (roll < 0.72) feed = [feedItem("join", ru.name, countryById(ru.country).flag, undefined, randomEvent()?.name), ...feed];
-          return { users, farmProg, feed: feed.slice(0, 9), totalAura: s.totalAura + 400 + Math.floor(Math.random() * 2400) };
-        }),
+      tick: () => set((s) => ({ users: s.users, farmProg: s.farmProg, feed: s.feed, totalAura: s.totalAura })),
 
       toggleChallenge: (id) => {
         const s = get();
@@ -284,13 +266,6 @@ export const useApp = create<AppState>()(
         const s = get();
         const mine: ChatMsg = { id: ++chatSeq, user: s.profile.name, hue: 46, text, mine: true, ts: Date.now() };
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, chat: [...e.chat, mine] } : e)) });
-        if (Math.random() < 0.75) {
-          const name = CHAT_NAMES[Math.floor(Math.random() * CHAT_NAMES.length)];
-          const reply: ChatMsg = { id: ++chatSeq, user: name, hue: Math.floor(Math.random() * 360), text: BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)], ts: Date.now() + 1800 };
-          setTimeout(() => {
-            set((st) => ({ events: st.events.map((e) => (e.id === eventId ? { ...e, chat: [...e.chat, { ...reply, ts: Date.now() }] } : e)) }));
-          }, 1600 + Math.random() * 1600);
-        }
       },
 
       confirmAttendance: (eventId, role, name) => {
@@ -593,11 +568,9 @@ export const useApp = create<AppState>()(
         try { await supabase.auth.signOut({ scope: "global" }); } catch (e) { console.error("Error cerrando sesión organizador:", e); }
         localStorage.removeItem("aurafarm-store");
         set({
-          organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null, userEmail: null,
+          organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null, isOAuth: false, userEmail: null,
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
-        await get().initSupabaseAuth();
-        await get().loadEventsFromSupabase();
       },
 
       logoutAppUser: async () => {
@@ -610,11 +583,9 @@ export const useApp = create<AppState>()(
         }
         localStorage.removeItem("aurafarm-store");
         set({
-          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false, userEmail: null,
+          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false, isOAuth: false, userEmail: null,
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
-        await get().initSupabaseAuth();
-        await get().loadEventsFromSupabase();
         get().toast(translate(get().lang, "t_session_closed") || "Sesión cerrada", "ok");
         set({ authBusy: false });
       },
@@ -625,7 +596,7 @@ export const useApp = create<AppState>()(
         if (error) { console.error(error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { supabaseProfileId } = get();
         if (supabaseProfileId) await supabase.from("profiles").update({ name, role: "organizer" }).eq("id", supabaseProfileId);
-        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name } });
+        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name }, userEmail: email });
         s.toast(translate(s.lang, "t_registered"), "gold");
         return true;
       },
@@ -635,8 +606,21 @@ export const useApp = create<AppState>()(
         if (error || !data.user) { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { data: profile } = await supabase.from("profiles").select("id, name, role").eq("auth_id", data.user.id).maybeSingle();
         if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
-        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name: profile.name } });
+        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
         await get().loadEventsFromSupabase();
+        s.toast(translate(s.lang, "t_unlocked"), "gold");
+        return true;
+      },
+      becomeOrganizer: async (name, contact, refs) => {
+        const s = get();
+        if (!s.supabaseProfileId) return false;
+        const { error } = await supabase.from("profiles").update({ role: "organizer", name }).eq("id", s.supabaseProfileId);
+        if (error) { console.error("Error becoming organizer:", error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
+        set({
+          organizer: { name, contact, country: s.profile.country, refs, email: s.userEmail ?? "", collaborators: [] },
+          orgUnlocked: true,
+          profile: { ...get().profile, name },
+        });
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;
       },
@@ -711,7 +695,11 @@ export const useApp = create<AppState>()(
         }
 
         const userId = user.id;
-        set({ supabaseUserId: userId, authed: true, userEmail: user.email ?? null });
+        const provider = (user as any).app_metadata?.provider;
+        const isOAuth = provider && provider !== "email";
+        set({ supabaseUserId: userId, authed: true, isOAuth: !!isOAuth, userEmail: user.email ?? null });
+
+        await get().loadEventsFromSupabase();
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -901,11 +889,15 @@ export const useApp = create<AppState>()(
 
         let collabByEvent: Record<string, { name: string; email?: string; perm: string }[]> = {};
         try {
-          const { data: collabRows } = await supabase.from("event_collaborators").select("*");
-          collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
-            (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
-            return acc;
-          }, {});
+          const { data: collabRows, error: collabError } = await supabase.from("event_collaborators").select("*");
+          if (collabError) {
+            console.error("Error cargando colaboradores:", collabError.message);
+          } else {
+            collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
+              (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
+              return acc;
+            }, {});
+          }
         } catch (e) { console.error("Error cargando colaboradores:", e); }
 
         const { data: participantRows, error: partError } = await supabase
@@ -944,22 +936,30 @@ export const useApp = create<AppState>()(
           }
         }
 
-        const mapped: EventItem[] = (data ?? []).map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          desc: { es: row.description ?? "", pt: row.description ?? "", fr: row.description ?? "", en: row.description ?? "" },
-          country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
-          dateISO: row.date_iso, time: row.event_time ?? "",
-          organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
-          collaborators: collabByEvent[row.id] ?? [],
-          maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
-          status: row.status,
-          features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
-          votes: {}, bracket: [], currentMatchId: null,
-          groups: [],
-          chat: [], notes: row.notes ?? "",
-        }));
-        set({ events: mapped });
+        const prevByEvent = new Map(get().events.map((e) => [e.id, e]));
+        const mapped: EventItem[] = (data ?? []).map((row: any) => {
+          const prev = prevByEvent.get(row.id);
+          let collabs = collabByEvent[row.id] ?? [];
+          if (collabs.length === 0 && prev && prev.collaborators.length > 0) collabs = prev.collaborators;
+          return {
+            id: row.id,
+            name: row.name,
+            desc: { es: row.description ?? "", pt: row.description ?? "", fr: row.description ?? "", en: row.description ?? "" },
+            country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
+            dateISO: row.date_iso, time: row.event_time ?? "",
+            organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
+            collaborators: collabs,
+            maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
+            status: row.status,
+            features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
+            votes: {}, bracket: [], currentMatchId: null,
+            groups: [],
+            chat: [], notes: row.notes ?? "",
+          };
+        });
+        const realUsers = get().users;
+        const totalAura = realUsers.reduce((a, u) => a + (u.aura || 0), 0) + (get().profile.aura || 0);
+        set({ events: mapped, totalAura });
       },
 
       adminLogin: async (pass) => {
@@ -996,6 +996,7 @@ export const useApp = create<AppState>()(
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
         votesCast: s.votesCast, myVotes: s.myVotes, battleVotes: s.battleVotes,
         myRatings: s.myRatings, myAttendance: s.myAttendance,
+        users: s.users, events: s.events, feed: s.feed, totalAura: s.totalAura, farmProg: s.farmProg,
       }),
     }
   )

@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { Trophy, Ticket, Vote, Swords, Megaphone, Flame, TrendingUp, Globe2, Crown, Medal, Lock } from "lucide-react";
 import { useApp, levelFromAura } from "../store";
 import { useT } from "../i18n";
-import { COUNTRIES, countryById, BADGES, USERS } from "../data";
+import { COUNTRIES, countryById, BADGES } from "../data";
 import { Avatar, AnimatedNumber, SectionHead, Chip, AuraBar } from "./ui";
 
 const BADGE_ICONS: Record<string, typeof Trophy> = {
@@ -31,7 +31,7 @@ export default function RankingsBoard() {
       aura: profile.aura, auraByVotes: profile.auraByVotes, trophies: profile.trophies,
       level, role: "user" as const, online: true,
     };
-    const all = [...USERS.map((u) => ({ ...u })), me];
+    const all = [...users.map((u) => ({ ...u })), me];
     return all
       .filter((u) => country === "all" || u.country === country)
       .sort((a, b) => (sort === "total" ? b.aura - a.aura : sort === "votes" ? b.auraByVotes - a.auraByVotes : b.trophies - a.trophies));
