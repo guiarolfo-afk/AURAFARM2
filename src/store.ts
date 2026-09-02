@@ -85,7 +85,7 @@ interface AppState {
   rateEvent: (eventId: string, stars: number) => void;
   sendChat: (eventId: string, text: string) => void;
   confirmAttendance: (eventId: string, role: "participant" | "spectator", name: string) => boolean;
-  createEvent: (e: EventItem) => void; updateEvent: (id: string, patch: Partial<EventItem>) => void;
+  createEvent: (e: EventItem) => Promise<void>; updateEvent: (id: string, patch: Partial<EventItem>) => void;
   cancelEvent: (id: string) => void;
   generateBracket: (eventId: string) => void;
   setMatchDuration: (eventId: string, matchId: string, duration: number) => void;
@@ -341,12 +341,33 @@ export const useApp = create<AppState>()(
         return true;
       },
 
-      createEvent: (e) => {
+      createEvent: async (e) => {
         const s = get();
+        const ownerId = s.supabaseProfileId ?? s.supabaseUserId;
+        const base: EventItem = { ...e, organizerId: ownerId || "me", organizer: e.organizer || s.profile.name, organizerRating: 5 };
+        const insertPayload: any = {
+          name: e.name, description: e.desc.es ?? "", country: e.country, city: e.city ?? "",
+          lat: e.lat ?? 0, lng: e.lng ?? 0, address: e.address ?? "",
+          date_iso: e.dateISO, event_time: e.time ?? "",
+          organizer_id: ownerId ?? null, max_participants: e.maxParticipants ?? 32,
+          status: e.status, notes: e.notes ?? "",
+        };
+        let saved: EventItem = base;
+        try {
+          const { data, error } = await supabase
+            .from("events")
+            .insert(insertPayload)
+            .select("id")
+            .single();
+          if (error) {
+            console.error("Error guardando evento en Supabase:", error.message);
+          } else if (data?.id) {
+            saved = { ...base, id: data.id };
+          }
+        } catch (err) { console.error("Error guardando evento:", err); }
         set({
-          events: [e, ...s.events],
+          events: [saved, ...s.events.filter((x) => x.id !== e.id)],
           profile: { ...s.profile, organized: s.profile.organized + 1 },
-          feed: [feedItem("badge", s.profile.name, countryById(s.profile.country).flag), ...s.feed].slice(0, 9),
         });
         s.toast(translate(s.lang, "t_event_created"), "gold");
       },
