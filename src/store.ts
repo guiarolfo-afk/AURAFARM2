@@ -102,7 +102,7 @@ interface AppState {
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
-  logoutOrganizer: () => void;
+  logoutOrganizer: () => Promise<void>;
   logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
@@ -564,17 +564,25 @@ export const useApp = create<AppState>()(
         s.toast(translate(s.lang, "t_votes_void"), "warn");
       },
 
-      logoutOrganizer: () => set({ organizer: null, orgUnlocked: false }),
+      logoutOrganizer: async () => {
+        try { await supabase.auth.signOut(); } catch (e) { console.error("Error cerrando sesión organizador:", e); }
+        set({ organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null });
+        await get().initSupabaseAuth();
+        await get().loadEventsFromSupabase();
+      },
 
       logoutAppUser: async () => {
         if (get().authBusy) return;
         set({ authBusy: true });
         try {
-          Object.keys(localStorage).filter((k) => k.includes("auth-token")).forEach((k) => localStorage.removeItem(k));
+          await supabase.auth.signOut();
         } catch (e) {
-          console.error("Error limpiando sesión local:", e);
+          console.error("Error cerrando sesión Supabase:", e);
         }
-        set({ supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false });
+        set({
+          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false,
+          profile: { ...get().profile, name: "Alex Rivera", contact: "@alex.aura" },
+        });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
         set({ authBusy: false });
