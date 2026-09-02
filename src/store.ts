@@ -575,7 +575,7 @@ export const useApp = create<AppState>()(
         if (get().authBusy) return;
         set({ authBusy: true });
         try {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: "global" });
         } catch (e) {
           console.error("Error cerrando sesión Supabase:", e);
         }
@@ -585,6 +585,7 @@ export const useApp = create<AppState>()(
         });
         await get().initSupabaseAuth();
         await get().loadEventsFromSupabase();
+        get().toast(translate(get().lang, "t_session_closed") || "Sesión cerrada", "ok");
         set({ authBusy: false });
       },
 
@@ -655,12 +656,19 @@ export const useApp = create<AppState>()(
 
         const { data: existing } = await supabase
           .from("profiles")
-          .select("id, name, country, aura, trophies")
+          .select("id, name, country, aura, trophies, role")
           .eq("auth_id", userId)
           .maybeSingle();
 
         if (existing) {
           set({ supabaseProfileId: existing.id });
+          if (existing.role === "organizer" && !get().orgUnlocked) {
+            set({
+              organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
+              orgUnlocked: true,
+              profile: { ...get().profile, name: existing.name },
+            });
+          }
           return;
         }
 
