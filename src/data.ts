@@ -77,11 +77,11 @@ export interface Challenge { id: string; points: number; done: boolean }
 
 export const CHALLENGES: Challenge[] = [
   { id: "ch1", points: 50, done: false },
-  { id: "ch2", points: 120, done: false },
+  { id: "ch2", points: 100, done: false },
   { id: "ch3", points: 150, done: false },
   { id: "ch4", points: 200, done: false },
-  { id: "ch5", points: 80, done: false },
-  { id: "ch6", points: 100, done: false },
+  { id: "ch5", points: 250, done: false },
+  { id: "ch6", points: 300, done: false },
 ];
 
 export const BADGES = [

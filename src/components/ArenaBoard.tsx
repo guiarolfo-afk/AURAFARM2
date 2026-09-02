@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users } from "lucide-react";
-import { useApp, userNameById, levelFromAura } from "../store";
+import { useApp, userNameById, levelFromAura, titleFromLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { Avatar, AuraBar, AnimatedNumber, SectionHead, Stars, LiveBadge } from "./ui";
@@ -481,7 +481,7 @@ export default function ArenaBoard() {
         )}
       </AnimatePresence>
 
-      <p className="text-center text-[10.5px] text-white/25">{t("c_level")} {levelFromAura(profile.aura)} · {profile.aura.toLocaleString()} {t("c_aura")} · {lang.toUpperCase()}</p>
+      <p className="text-center text-[10.5px] text-white/25">{t("c_level")} {levelFromAura(profile.aura)} · {titleFromLevel(levelFromAura(profile.aura), lang)} · {profile.aura.toLocaleString()} {t("c_aura")} · {lang.toUpperCase()}</p>
     </div>
   );
 }

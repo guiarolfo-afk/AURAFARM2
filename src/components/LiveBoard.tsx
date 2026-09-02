@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, Vote, ArrowRight, Activity, Crown, MapPin, Check } from "lucide-react";
-import { useApp, levelFromAura } from "../store";
+import { useApp, levelFromAura, titleFromLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { Avatar, AuraBar, AnimatedNumber, SectionHead, LiveBadge } from "./ui";
@@ -116,7 +116,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                   <span key={delta} className="tick-in text-[10.5px] font-bold text-mint">+{delta}</span>
                 </div>
                 <AuraBar value={farmProg[u.id] ?? 0} className="mt-2" />
-                <p className="text-[9.5px] text-white/35 mt-1.5 uppercase tracking-wider">{t("c_level")} {levelFromAura(u.aura)}</p>
+                <p className="text-[9.5px] text-white/35 mt-1.5 uppercase tracking-wider">{t("c_level")} {levelFromAura(u.aura)} · {titleFromLevel(levelFromAura(u.aura), lang)}</p>
               </motion.div>
             );
           })}

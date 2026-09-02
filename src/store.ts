@@ -25,6 +25,13 @@ export interface OrganizerAccount { name: string; contact: string; country: stri
 
 export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(aura / 90)));
 
+export const titleFromLevel = (level: number, lang: string) => {
+  if (level >= 16) return lang === "en" ? "Master" : lang === "fr" ? "Maître" : lang === "pt" ? "Mestre" : "Maestro";
+  if (level >= 10) return "Oro";
+  if (level >= 5) return "Plata";
+  return "Bronce";
+};
+
 let toastSeq = 1;
 let feedSeq = 100;
 let chatSeq = 1000;
@@ -173,13 +180,20 @@ export const useApp = create<AppState>()(
         const allDone = challenges.every((c) => c.done);
         const today = new Date().toDateString();
         const streak = allDone && s.lastStreakDate !== today ? s.streak + 1 : s.streak;
-        const history = allDone ? [...s.profile.history, s.profile.aura + ch.points] : s.profile.history;
+        const beforeLevel = levelFromAura(s.profile.aura);
+        const afterAura = s.profile.aura + ch.points;
+        const afterLevel = levelFromAura(afterAura);
+        const levelUp = afterLevel > beforeLevel;
+        const bonus = levelUp ? 500 : 0;
+        const finalAura = afterAura + bonus;
+        const history = allDone ? [...s.profile.history, finalAura] : s.profile.history;
         set({
           challenges, streak,
           lastStreakDate: allDone ? today : s.lastStreakDate,
-          profile: { ...s.profile, aura: s.profile.aura + ch.points, history },
+          profile: { ...s.profile, aura: finalAura, history },
         });
         s.toast(translate(s.lang, "t_challenge", { n: ch.points }), "gold");
+        if (levelUp) s.toast(`⭐ Nivel ${afterLevel} · ${titleFromLevel(afterLevel, s.lang)} · +500 bonus`, "gold");
         if (allDone) s.toast(translate(s.lang, "ch_all_done"), "gold");
       },
 

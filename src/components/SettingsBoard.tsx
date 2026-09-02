@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Bell, Lock, Crown, ShieldCheck, LogOut, Megaphone, Trash2, Save, Plus, Users, Database, Radio, Link2, KeyRound } from "lucide-react";
-import { useApp, levelFromAura } from "../store";
+import { useApp, levelFromAura, titleFromLevel } from "../store";
 import { useT, LANGS } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import { Avatar, Modal, SectionHead, Toggle, Field, inputCls, btnGold, AnimatedNumber } from "./ui";
@@ -152,7 +152,7 @@ export default function SettingsBoard() {
               <div>
                 <p className="display text-sm font-extrabold">{draft.name || profile.name}</p>
                 {s.userEmail && <p className="text-[10.5px] text-white/55 break-all">{s.userEmail}</p>}
-                <p className="text-[10.5px] text-white/45">{t("c_level")} {levelFromAura(profile.aura)} · {profile.aura.toLocaleString()} {t("c_aura")}</p>
+                <p className="text-[10.5px] text-white/45">{t("c_level")} {levelFromAura(profile.aura)} · {titleFromLevel(levelFromAura(profile.aura), lang)} · {profile.aura.toLocaleString()} {t("c_aura")}</p>
                 <p className="text-[10px] text-violet font-bold mt-1 cursor-pointer hover:underline" onClick={() => fileRef.current?.click()}>{t("st_photo")} ↑</p>
               </div>
               <button onClick={() => s.logoutAppUser()} disabled={s.authBusy} className="ml-auto self-start text-[10.5px] font-bold text-white/40 hover:text-ember border border-white/10 hover:border-ember/30 px-2.5 py-1 rounded-full transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">{s.authBusy ? "..." : "Cerrar sesión"}</button>

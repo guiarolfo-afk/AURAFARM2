@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Trophy, Ticket, Vote, Swords, Megaphone, Flame, TrendingUp, Globe2, Crown, Medal, Lock } from "lucide-react";
-import { useApp, levelFromAura } from "../store";
+import { useApp, levelFromAura, titleFromLevel } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById, BADGES } from "../data";
 import { Avatar, AnimatedNumber, SectionHead, Chip, AuraBar } from "./ui";
@@ -51,7 +51,7 @@ export default function RankingsBoard() {
             <Avatar name={profile.name} hue={46} size={52} src={profile.photo} premium={premium} />
             <div className="flex-1 min-w-0">
               <h3 className="display text-base sm:text-lg font-extrabold truncate">{profile.name}</h3>
-              <p className="text-[10.5px] sm:text-[11.5px] text-white/50 truncate">{countryById(profile.country).flag} {countryById(profile.country).name[lang]} · {t("c_level")} {level}</p>
+              <p className="text-[10.5px] sm:text-[11.5px] text-white/50 truncate">{countryById(profile.country).flag} {countryById(profile.country).name[lang]} · {t("c_level")} {level} · {titleFromLevel(level, lang)}</p>
               <AuraBar value={(profile.aura % 10000) / 100} color="#FFD700" className="mt-2" />
             </div>
             <div className="text-right shrink-0">
