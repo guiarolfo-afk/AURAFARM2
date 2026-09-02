@@ -88,7 +88,7 @@ export interface EventItem {
   id: string; name: string; desc: Record<Lang, string>; country: string; city: string;
   lat: number; lng: number; address: string; dateISO: string; time: string;
   organizer: string; organizerId: string; organizerRating: number; organizerRefs: string[];
-  collaborators: { name: string; perm: string }[];
+  collaborators: { name: string; email?: string; perm: string }[];
   maxParticipants: number; participants: string[]; attendees: number; waitlist: string[];
   status: "live" | "upcoming" | "cancelled";
   features: string[]; banner: [string, string];

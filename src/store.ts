@@ -11,7 +11,7 @@ export type Tab = "live" | "events" | "org" | "arena" | "rank" | "set";
 export interface FeedItem { id: number; type: "farm" | "join" | "vote" | "badge" | "win"; user: string; flag: string; event?: string; n?: number; ts: number }
 export interface Toast { id: number; msg: string; kind: "ok" | "warn" | "gold" }
 export interface Banner { id: string; text: string; link: string; color: string; active: boolean }
-export interface Collaborator { name: string; perm: "vote" | "edit" | "full" }
+export interface Collaborator { name: string; email?: string; perm: "vote" | "edit" | "full" }
 
 export interface Profile {
   name: string; country: string; photo: string | null; contact: string;
@@ -59,7 +59,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
-  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean;
+  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; userEmail: string | null;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string;
   profile: Profile; votesCast: number;
@@ -110,7 +110,7 @@ interface AppState {
   logoutAppUser: () => Promise<void>;
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
-  inviteCollab: (c: Collaborator) => void; removeCollab: (i: number) => void; setCollabPerm: (i: number, p: Collaborator["perm"]) => void;
+  inviteCollab: (eventId: string, c: Collaborator) => Promise<void>; removeCollab: (eventId: string, i: number) => Promise<void>; setCollabPerm: (eventId: string, i: number, p: Collaborator["perm"]) => Promise<void>;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
   adminLogin: (pass: string) => Promise<boolean>; adminExit: () => void;
@@ -143,7 +143,7 @@ export const useApp = create<AppState>()(
         attended: 3, participated: 1, organized: 0,
         history: [6200, 7800, 9100, 10400, 12100, 13900, 15200, 17800, 19600, 21400, 23100, 24680],
       },
-      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false,
+      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, userEmail: null,
       votesCast: 0, myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: EVENTS,
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
@@ -572,7 +572,7 @@ export const useApp = create<AppState>()(
         try { await supabase.auth.signOut({ scope: "global" }); } catch (e) { console.error("Error cerrando sesión organizador:", e); }
         localStorage.removeItem("aurafarm-store");
         set({
-          organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null,
+          organizer: null, orgUnlocked: false, supabaseUserId: null, supabaseProfileId: null, userEmail: null,
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
         await get().initSupabaseAuth();
@@ -589,7 +589,7 @@ export const useApp = create<AppState>()(
         }
         localStorage.removeItem("aurafarm-store");
         set({
-          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false,
+          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false, userEmail: null,
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
         await get().initSupabaseAuth();
@@ -619,22 +619,53 @@ export const useApp = create<AppState>()(
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;
       },
-      inviteCollab: (c) => {
+      inviteCollab: async (eventId, c) => {
         const s = get();
-        if (!s.organizer) return;
-        set({ organizer: { ...s.organizer, collaborators: [...s.organizer.collaborators, c] } });
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev) return;
+        if (ev.collaborators.some((x) => (c.email && x.email === c.email) || (!c.email && x.name === c.name))) {
+          s.toast(translate(s.lang, "t_collab_dup"), "warn");
+          return;
+        }
+        const updated = [...ev.collaborators, c];
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: updated } : e)) });
+        try {
+          await supabase.from("event_collaborators").insert({
+            event_id: eventId, collaborator_email: c.email ?? "", perm: c.perm, name: c.name,
+          });
+        } catch (e) { console.error("Error guardando colaborador:", e); }
         s.toast(translate(s.lang, "t_collab_added"));
       },
-      removeCollab: (i) => {
+      removeCollab: async (eventId, i) => {
         const s = get();
-        if (!s.organizer) return;
-        set({ organizer: { ...s.organizer, collaborators: s.organizer.collaborators.filter((_, x) => x !== i) } });
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev) return;
+        const removed = ev.collaborators[i];
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: e.collaborators.filter((_, x) => x !== i) } : e)) });
+        if (removed?.email) {
+          try {
+            await supabase.from("event_collaborators")
+              .delete()
+              .eq("event_id", eventId)
+              .eq("collaborator_email", removed.email);
+          } catch (e) { console.error("Error borrando colaborador:", e); }
+        }
         s.toast(translate(s.lang, "t_collab_removed"), "warn");
       },
-      setCollabPerm: (i, p) => {
+      setCollabPerm: async (eventId, i, p) => {
         const s = get();
-        if (!s.organizer) return;
-        set({ organizer: { ...s.organizer, collaborators: s.organizer.collaborators.map((c, x) => (x === i ? { ...c, perm: p } : c)) } });
+        const ev = s.events.find((e) => e.id === eventId);
+        if (!ev) return;
+        const target = ev.collaborators[i];
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: e.collaborators.map((c, x) => (x === i ? { ...c, perm: p } : c)) } : e)) });
+        if (target?.email) {
+          try {
+            await supabase.from("event_collaborators")
+              .update({ perm: p })
+              .eq("event_id", eventId)
+              .eq("collaborator_email", target.email);
+          } catch (e) { console.error("Error actualizando permiso:", e); }
+        }
       },
 
       setProfile: (p) => {
@@ -659,7 +690,7 @@ export const useApp = create<AppState>()(
         }
 
         const userId = user.id;
-        set({ supabaseUserId: userId, authed: true });
+        set({ supabaseUserId: userId, authed: true, userEmail: user.email ?? null });
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -715,7 +746,7 @@ export const useApp = create<AppState>()(
             s.toast(translate(s.lang, "t_wrong_pin"), "warn");
             return false;
           }
-          set({ supabaseUserId: data.user.id, authed: true });
+          set({ supabaseUserId: data.user.id, authed: true, userEmail: data.user.email ?? null });
           await get().initSupabaseAuth();
           await get().loadEventsFromSupabase();
           s.toast(translate(s.lang, "t_welcome_back"), "ok");
@@ -752,7 +783,7 @@ export const useApp = create<AppState>()(
             return false;
           }
           set({
-            supabaseUserId: data.user.id, authed: true,
+            supabaseUserId: data.user.id, authed: true, userEmail: data.user.email ?? null,
             profile: { ...get().profile, name, country: country || "mx" },
           });
           await get().initSupabaseAuth();
@@ -847,6 +878,15 @@ export const useApp = create<AppState>()(
           return;
         }
 
+        let collabByEvent: Record<string, { name: string; email?: string; perm: string }[]> = {};
+        try {
+          const { data: collabRows } = await supabase.from("event_collaborators").select("*");
+          collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
+            (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
+            return acc;
+          }, {});
+        } catch (e) { console.error("Error cargando colaboradores:", e); }
+
         const { data: participantRows, error: partError } = await supabase
           .from("event_participants")
           .select("event_id, user_id, role");
@@ -890,7 +930,7 @@ export const useApp = create<AppState>()(
           country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
           dateISO: row.date_iso, time: row.event_time ?? "",
           organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
-          collaborators: [],
+          collaborators: collabByEvent[row.id] ?? [],
           maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
           status: row.status,
           features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],

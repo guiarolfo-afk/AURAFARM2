@@ -6,7 +6,7 @@ import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
-import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, Stars } from "./ui";
+import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold } from "./ui";
 import LocationPicker, { type PickedPlace } from "./LocationPicker";
 
 const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
@@ -26,10 +26,12 @@ export default function OrganizerBoard() {
       events: st.events,
       lang: st.lang,
       profile: st.profile,
+      supabaseProfileId: st.supabaseProfileId,
+      userEmail: st.userEmail,
     }))
   );
   const s = { ...useApp.getState(), ...data };
-  const { orgUnlocked, organizer, events, lang } = s;
+  const { orgUnlocked, organizer, events, lang, supabaseProfileId, userEmail, profile } = s;
 
   /* ---------- access gate ---------- */
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -48,12 +50,28 @@ export default function OrganizerBoard() {
   /* ---------- create form ---------- */
   const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
   const [formErr, setFormErr] = useState("");
-  const supabaseProfileId = useApp((st) => st.supabaseProfileId);
   const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId)), [events, supabaseProfileId]);
-  const [manageId, setManageId] = useState<string | null>(null);
-  const managed = events.find((e) => e.id === manageId) ?? myEvents[0] ?? null;
+  const userEmailNorm = userEmail?.trim().toLowerCase() ?? "";
+  const [manageIdLocal, setManageIdLocal] = useState<string | null>(null);
+  const collabEvents = useMemo(() => events.filter((e) => e.collaborators.some((c) => (c.email ?? "").trim().toLowerCase() === userEmailNorm)), [events, userEmailNorm]);
+  const isOwnerOf = (e: EventItem) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId);
+  const myPermFor = (e: EventItem): "owner" | "full" | "edit" | "vote" | null => {
+    if (isOwnerOf(e)) return "owner";
+    const c = e.collaborators.find((x) => (x.email ?? "").trim().toLowerCase() === userEmailNorm);
+    if (!c) return null;
+    return (c.perm as "full" | "edit" | "vote") || null;
+  };
+  const allManageable = useMemo(() => {
+    const set = new Map<string, EventItem>();
+    myEvents.forEach((e) => set.set(e.id, e));
+    collabEvents.forEach((e) => set.set(e.id, e));
+    return Array.from(set.values());
+  }, [myEvents, collabEvents]);
+  const managed = allManageable.find((e) => e.id === manageIdLocal) ?? allManageable[0] ?? null;
+  const permOfManaged = managed ? myPermFor(managed) : null;
+  const canManageEvent = permOfManaged === "owner" || permOfManaged === "full" || permOfManaged === "edit";
 
-  const [collab, setCollab] = useState({ name: "", perm: "vote" as "vote" | "edit" | "full" });
+  const [collab, setCollab] = useState({ name: "", nameDisplay: "", perm: "vote" as "vote" | "edit" | "full" });
   const [guestName, setGuestName] = useState("");
   const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
@@ -74,7 +92,7 @@ export default function OrganizerBoard() {
       dateISO: form.date, time: form.time,
       organizer: organizer?.name ?? s.profile.name, organizerId: "me", organizerRating: 5,
       organizerRefs: organizer?.refs ? organizer.refs.split("·") : [t("c_free")],
-      collaborators: organizer?.collaborators.map((c) => ({ name: c.name, perm: c.perm })) ?? [],
+      collaborators: [],
       maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
       status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
       votes: {}, bracket: [], currentMatchId: null, groups: [], chat: [], notes: form.notes,
@@ -85,7 +103,8 @@ export default function OrganizerBoard() {
   };
 
   /* ================= GATE UI ================= */
-  if (!orgUnlocked) {
+  const canManage = allManageable.length > 0 || orgUnlocked;
+  if (allManageable.length === 0 && !orgUnlocked) {
     return (
       <div className="max-w-md mx-auto">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="panel p-6 sm:p-7 relative overflow-hidden">
@@ -157,9 +176,9 @@ export default function OrganizerBoard() {
         <div className="w-11 h-11 rounded-2xl grid place-items-center bg-violet/12 border border-violet/35"><ShieldCheck size={19} className="text-violet" /></div>
         <div className="flex-1 min-w-0">
           <h2 className="display text-base font-extrabold leading-tight">{t("org_title")}</h2>
-          <p className="text-[11.5px] text-white/45">{organizer?.name} · {countryById(organizer?.country ?? "mx").flag} <Stars value={4.8} size={10} /></p>
+          <p className="text-[11.5px] text-white/45">{organizer?.name ?? profile?.name ?? userEmail ?? ""} · {organizer ? countryById(organizer.country ?? "mx").flag : "🧑‍💻"}</p>
         </div>
-        <button onClick={() => s.logoutOrganizer()} className="text-[11.5px] font-bold text-ember/70 hover:text-ember border border-ember/25 px-3 py-1.5 rounded-full transition-colors cursor-pointer mr-2">Cerrar sesión</button>
+        <button onClick={() => (orgUnlocked ? s.logoutOrganizer() : s.logoutAppUser())} className="text-[11.5px] font-bold text-ember/70 hover:text-ember border border-ember/25 px-3 py-1.5 rounded-full transition-colors cursor-pointer mr-2">Cerrar sesión</button>
         <button onClick={() => s.setTab("events")} className="text-[11.5px] font-bold text-white/50 hover:text-white border border-white/12 px-3 py-1.5 rounded-full transition-colors cursor-pointer">{t("c_back")}</button>
       </div>
 
@@ -178,9 +197,10 @@ export default function OrganizerBoard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 items-start">
+      <div className={`grid items-start gap-4 ${orgUnlocked ? "lg:grid-cols-2" : ""}`}>
         {/* ===== create event ===== */}
-        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="panel p-5">
+        {orgUnlocked && (
+          <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="panel p-5">
           <SectionHead hue={46} icon={<Plus size={16} />} title={t("org_create_title")} sub={t("org_create_sub")} />
           <div className="space-y-3">
             <Field label={t("org_ev_name") + " *"}><input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
@@ -223,48 +243,70 @@ export default function OrganizerBoard() {
             {formErr && <p className="text-ember text-[11.5px] font-semibold">{formErr}</p>}
             <button onClick={submitCreate} className={btnGold + " w-full"}><Zap size={15} /> {t("org_ev_create")}</button>
           </div>
-        </motion.section>
+          </motion.section>
+        )}
 
         <div className="space-y-4">
-          {/* ===== collaborators ===== */}
-          <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-5">
-            <SectionHead hue={316} icon={<UserPlus size={16} />} title={t("org_collab_title")} />
-            <div className="space-y-2 mb-3">
-              {organizer?.collaborators.map((c, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/3 border border-white/7">
-                  <Avatar name={c.name} hue={(i * 90 + 200) % 360} size={30} />
-                  <span className="flex-1 min-w-0 text-[12.5px] font-semibold truncate">{c.name}</span>
-                  <select value={c.perm} onChange={(e) => s.setCollabPerm(i, e.target.value as typeof c.perm)} className="text-[10.5px] font-bold px-2 py-1 rounded-lg bg-violet/10 border border-violet/30 text-white/75 outline-none cursor-pointer" aria-label={t("org_perm")}>
-                    <option value="vote" className="bg-[#0d0d1c]">🗳️ vote</option>
-                    <option value="edit" className="bg-[#0d0d1c]">✏️ edit</option>
-                    <option value="full" className="bg-[#0d0d1c]">👑 full</option>
-                  </select>
-                  <button onClick={() => s.removeCollab(i)} aria-label={t("org_remove")} className="text-white/30 hover:text-ember transition-colors cursor-pointer"><Trash2 size={14} /></button>
+          {/* ===== collaborators (per event, owner only) ===== */}
+          {managed && myPermFor(managed) === "owner" && (
+            <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-5">
+              <SectionHead hue={316} icon={<UserPlus size={16} />} title={t("org_collab_title")} />
+              <p className="text-[10.5px] text-white/40 mb-3">{managed.name} · {t("org_invite")}</p>
+              <div className="space-y-2 mb-3">
+                {managed.collaborators.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/3 border border-white/7">
+                    <Avatar name={c.name} hue={(i * 90 + 200) % 360} size={30} />
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[12.5px] font-semibold truncate">{c.name}</span>
+                      {c.email && <span className="block text-[10px] text-white/40 truncate">{c.email}</span>}
+                    </div>
+                    <select value={c.perm} onChange={(e) => s.setCollabPerm(managed.id, i, e.target.value as "vote" | "edit" | "full")} className="text-[10.5px] font-bold px-2 py-1 rounded-lg bg-violet/10 border border-violet/30 text-white/75 outline-none cursor-pointer" aria-label={t("org_perm")}>
+                      <option value="vote" className="bg-[#0d0d1c]">🗳️ vote</option>
+                      <option value="edit" className="bg-[#0d0d1c]">✏️ edit</option>
+                      <option value="full" className="bg-[#0d0d1c]">👑 full</option>
+                    </select>
+                    <button onClick={() => s.removeCollab(managed.id, i)} aria-label={t("org_remove")} className="text-white/30 hover:text-ember transition-colors cursor-pointer"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+                {managed.collaborators.length === 0 && <p className="text-[11.5px] text-white/35">—</p>}
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2">
+                <div>
+                  <input className={inputCls} placeholder="Email del colaborador" value={collab.name} onChange={(e) => setCollab({ ...collab, name: e.target.value })} />
+                  <input className={inputCls + " mt-2"} placeholder="Nombre (opcional)" value={collab.nameDisplay ?? ""} onChange={(e) => setCollab({ ...collab, nameDisplay: e.target.value })} />
                 </div>
-              ))}
-              {(organizer?.collaborators.length ?? 0) === 0 && <p className="text-[11.5px] text-white/35">—</p>}
-            </div>
-            <div className="flex gap-2">
-              <input className={inputCls} placeholder={t("org_invite") + "…"} value={collab.name} onChange={(e) => setCollab({ ...collab, name: e.target.value })} />
-              <select value={collab.perm} onChange={(e) => setCollab({ ...collab, perm: e.target.value as typeof collab.perm })} className="px-2 rounded-xl bg-white/5 border border-white/10 text-[11px] outline-none cursor-pointer">
-                <option value="vote" className="bg-[#0d0d1c]">vote</option>
-                <option value="edit" className="bg-[#0d0d1c]">edit</option>
-                <option value="full" className="bg-[#0d0d1c]">full</option>
-              </select>
-              <button onClick={() => { if (collab.name.trim()) { s.inviteCollab({ name: collab.name.trim(), perm: collab.perm }); setCollab({ name: "", perm: "vote" }); } }} className="px-3.5 rounded-xl bg-violet text-white display text-[11px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_invite")}</button>
-            </div>
-          </motion.section>
+                <div className="flex gap-2">
+                  <select value={collab.perm} onChange={(e) => setCollab({ ...collab, perm: e.target.value as typeof collab.perm })} className="px-2 rounded-xl bg-white/5 border border-white/10 text-[11px] outline-none cursor-pointer">
+                    <option value="vote" className="bg-[#0d0d1c]">vote</option>
+                    <option value="edit" className="bg-[#0d0d1c]">edit</option>
+                    <option value="full" className="bg-[#0d0d1c]">full</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      const email = collab.name.trim();
+                      if (!email) return;
+                      s.inviteCollab(managed.id, { name: collab.nameDisplay?.trim() || email, email, perm: collab.perm });
+                      setCollab({ name: "", nameDisplay: "", perm: "vote" });
+                    }}
+                    className="px-3.5 rounded-xl bg-violet text-white display text-[11px] font-bold hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    {t("org_invite")}
+                  </button>
+                </div>
+              </div>
+            </motion.section>
+          )}
 
           {/* ===== manage events ===== */}
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-5">
             <SectionHead hue={0} icon={<Swords size={16} />} title={t("org_my_events")} sub={t("org_control")} />
-            {myEvents.length === 0 ? (
+            {allManageable.length === 0 ? (
               <p className="text-[12px] text-white/40">{t("org_no_events")}</p>
             ) : (
               <>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
-                  {myEvents.map((e) => (
-                    <Chip key={e.id} active={managed?.id === e.id} onClick={() => setManageId(e.id)} hue={0}>{e.name}</Chip>
+                  {allManageable.map((e) => (
+                    <Chip key={e.id} active={managed?.id === e.id} onClick={() => setManageIdLocal(e.id)} hue={0}>{e.name}</Chip>
                   ))}
                 </div>
 
@@ -276,21 +318,23 @@ export default function OrganizerBoard() {
                       </span>
                       <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
                       <div className="flex-1" />
-                      <div className="flex items-center gap-1.5 w-full sm:w-auto order-last sm:order-none">
-                        <input
-                          type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
-                          placeholder="Nombre del participante"
-                          className="flex-1 sm:w-40 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/12 text-[11.5px] outline-none focus:border-mint/40"
-                        />
-                        <button
-                          onClick={() => { s.addGuestParticipant(managed.id, guestName); setGuestName(""); }}
-                          disabled={!guestName.trim()}
-                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
-                        >
-                          + Agregar
-                        </button>
-                      </div>
-                      {managed.status !== "cancelled" && (
+                      {canManageEvent && (
+                        <div className="flex items-center gap-1.5 w-full sm:w-auto order-last sm:order-none">
+                          <input
+                            type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
+                            placeholder="Nombre del participante"
+                            className="flex-1 sm:w-40 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/12 text-[11.5px] outline-none focus:border-mint/40"
+                          />
+                          <button
+                            onClick={() => { s.addGuestParticipant(managed.id, guestName); setGuestName(""); }}
+                            disabled={!guestName.trim()}
+                            className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            + Agregar
+                          </button>
+                        </div>
+                      )}
+                      {managed.status !== "cancelled" && permOfManaged === "owner" && (
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
@@ -306,40 +350,44 @@ export default function OrganizerBoard() {
                           <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_groups_sub")}</span>
                         </p>
                         <div className="flex gap-1.5">
-                          <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
-                            {t("org_gen_groups")} · Auto
-                          </button>
-                          {managed.groups.some((g) => g.status === "closed" && g.winner) && (
+                          {canManageEvent && (
+                            <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
+                              {t("org_gen_groups")} · Auto
+                            </button>
+                          )}
+                          {canManageEvent && managed.groups.some((g) => g.status === "closed" && g.winner) && (
                             <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
                               {t("org_promote_bracket")}
                             </button>
                           )}
                         </div>
                       </div>
-                      <div className="mb-3 p-2.5 rounded-lg bg-white/4 border border-white/8">
-                        <p className="text-[10.5px] font-bold text-white/40 uppercase tracking-wider mb-1.5">Armar grupo manual</p>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {managed.participants.map((pid) => {
-                            const picked = manualPicks.includes(pid);
-                            return (
-                              <button
-                                key={pid}
-                                onClick={() => setManualPicks((prev) => (picked ? prev.filter((x) => x !== pid) : [...prev, pid]))}
-                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${picked ? "bg-mint/20 border-mint/50 text-mint" : "bg-white/5 border-white/12 text-white/60 hover:bg-white/10"}`}
-                              >
-                                {userNameById(pid)}
-                              </button>
-                            );
-                          })}
+                      {canManageEvent && (
+                        <div className="mb-3 p-2.5 rounded-lg bg-white/4 border border-white/8">
+                          <p className="text-[10.5px] font-bold text-white/40 uppercase tracking-wider mb-1.5">Armar grupo manual</p>
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {managed.participants.map((pid) => {
+                              const picked = manualPicks.includes(pid);
+                              return (
+                                <button
+                                  key={pid}
+                                  onClick={() => setManualPicks((prev) => (picked ? prev.filter((x) => x !== pid) : [...prev, pid]))}
+                                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${picked ? "bg-mint/20 border-mint/50 text-mint" : "bg-white/5 border-white/12 text-white/60 hover:bg-white/10"}`}
+                                >
+                                  {userNameById(pid)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button
+                            onClick={() => { s.addManualGroup(managed.id, manualPicks); setManualPicks([]); }}
+                            disabled={manualPicks.length < 2}
+                            className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                          >
+                            Crear grupo con {manualPicks.length} seleccionados
+                          </button>
                         </div>
-                        <button
-                          onClick={() => { s.addManualGroup(managed.id, manualPicks); setManualPicks([]); }}
-                          disabled={manualPicks.length < 2}
-                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                        >
-                          Crear grupo con {manualPicks.length} seleccionados
-                        </button>
-                      </div>
+                      )}
 
                       {managed.groups.length === 0 ? (
                         <p className="text-[11.5px] text-white/35">— {t("org_gen_groups")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
@@ -356,16 +404,16 @@ export default function OrganizerBoard() {
                                     {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
                                   </span>
                                   <div className="flex-1" />
-                                  {g.status === "open" && (
+                                  {canManageEvent && g.status === "open" && (
                                     <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
                                   )}
-                                  {g.status === "live" && (
+                                  {canManageEvent && g.status === "live" && (
                                     <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 transition-colors cursor-pointer">{t("org_close_group")}</button>
                                   )}
-                                  {total > 1 && g.status !== "closed" && (
+                                  {canManageEvent && total > 1 && g.status !== "closed" && (
                                     <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                   )}
-                                  {g.status === "open" && (
+                                  {canManageEvent && g.status === "open" && (
                                     <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">✕</button>
                                   )}
                                 </div>
@@ -397,7 +445,7 @@ export default function OrganizerBoard() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5"><Trophy size={12} className="text-gold" /> {t("org_bracket_title")}</p>
-                        <button onClick={() => s.generateBracket(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-gold/12 border border-gold/35 text-gold hover:bg-gold/20 transition-colors cursor-pointer">{t("org_gen_bracket")}</button>
+                        {canManageEvent && <button onClick={() => s.generateBracket(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-gold/12 border border-gold/35 text-gold hover:bg-gold/20 transition-colors cursor-pointer">{t("org_gen_bracket")}</button>}
                       </div>
                       {managed.bracket.length === 0 ? (
                         <p className="text-[11.5px] text-white/35">— {t("org_gen_bracket")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
@@ -420,20 +468,22 @@ export default function OrganizerBoard() {
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
                                           <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
                                           <span className="display text-[10px] font-bold text-white/40">{v}</span>
-                                          {isCurrent && !m.winner && pid && (
+                                          {canManageEvent && isCurrent && !m.winner && pid && (
                                             <button onClick={() => s.pickWinner(managed.id, m.id, side)} aria-label={t("org_pick_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer">✓</button>
                                           )}
                                         </div>
                                       );
                                     })}
                                     <div className="flex items-center flex-wrap gap-1 mt-1">
-                                      <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
-                                      <span className="text-[9px] text-white/35">{t("c_min")}</span>
+                                      {canManageEvent && (
+                                        <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
+                                      )}
+                                      {canManageEvent && <span className="text-[9px] text-white/35">{t("c_min")}</span>}
                                       <div className="flex-1" />
-                                      {!isCurrent && !m.winner && m.a && m.b && (
+                                      {canManageEvent && !isCurrent && !m.winner && m.a && m.b && (
                                         <button onClick={() => s.setCurrentMatch(managed.id, m.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
                                       )}
-                                      {m.votesA + m.votesB > 0 && (
+                                      {canManageEvent && m.votesA + m.votesB > 0 && (
                                         <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                       )}
                                     </div>
@@ -466,7 +516,7 @@ export default function OrganizerBoard() {
                             );
                           })}
                         </div>
-                        <button onClick={() => s.voidEventVotes(managed.id)} className="mt-2.5 text-[10.5px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_void_votes")} · {t("c_all")}</button>
+                        {canManageEvent && <button onClick={() => s.voidEventVotes(managed.id)} className="mt-2.5 text-[10.5px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_void_votes")} · {t("c_all")}</button>}
                       </div>
                     )}
                   </div>

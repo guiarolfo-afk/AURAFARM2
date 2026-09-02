@@ -117,7 +117,7 @@ const es: Dict = {
   t_winner_set: "Ganador avanzado a la siguiente ronda 🏆", t_votes_void: "Votos anulados",
   t_saved: "Guardado ✓", t_premium: "¡Bienvenido a Premium! ✦", t_banner_saved: "Banner guardado",
   t_banner_del: "Banner eliminado", t_admin_ok: "Modo administrador activo", t_admin_bad: "Contraseña incorrecta",
-  t_registered: "Registro de organizador creado ✓", t_collab_added: "Colaborador invitado",
+  t_registered: "Registro de organizador creado ✓", t_collab_added: "Colaborador invitado", t_collab_dup: "Ese colaborador ya está en el evento",
   t_session_closed: "Sesión cerrada",
   // ---- app user auth ----
   au_welcome: "Bienvenido a AuraFARM", au_welcome_sub: "Inicia sesión o crea tu cuenta para farmear aura",
@@ -266,7 +266,7 @@ const pt: Dict = {
   t_winner_set: "Vencedor avançou de rodada 🏆", t_votes_void: "Votos anulados",
   t_saved: "Salvo ✓", t_premium: "Bem-vindo ao Premium! ✦", t_banner_saved: "Banner salvo",
   t_banner_del: "Banner excluído", t_admin_ok: "Modo administrador ativo", t_admin_bad: "Senha incorreta",
-  t_registered: "Cadastro de organizador criado ✓", t_collab_added: "Colaborador convidado",
+  t_registered: "Cadastro de organizador criado ✓", t_collab_added: "Colaborador convidado", t_collab_dup: "Esse colaborador já está no evento",
   t_session_closed: "Sessão encerrada",
   // ---- app user auth ----
   au_welcome: "Bem-vindo ao AuraFARM", au_welcome_sub: "Entre ou crie sua conta para farmar aura",
@@ -415,7 +415,7 @@ const fr: Dict = {
   t_winner_set: "Vainqueur qualifié pour le tour suivant 🏆", t_votes_void: "Votes annulés",
   t_saved: "Enregistré ✓", t_premium: "Bienvenue dans Premium ! ✦", t_banner_saved: "Bannière enregistrée",
   t_banner_del: "Bannière supprimée", t_admin_ok: "Mode administrateur actif", t_admin_bad: "Mot de passe incorrect",
-  t_registered: "Inscription organisateur créée ✓", t_collab_added: "Collaborateur invité",
+  t_registered: "Inscription organisateur créée ✓", t_collab_added: "Collaborateur invité", t_collab_dup: "Ce collaborateur est déjà dans l'événement",
   t_session_closed: "Session fermée",
   // ---- app user auth ----
   au_welcome: "Bienvenue sur AuraFARM", au_welcome_sub: "Connectez-vous ou créez votre compte pour farmer de l'aura",
@@ -564,7 +564,7 @@ const en: Dict = {
   t_winner_set: "Winner advanced to the next round 🏆", t_votes_void: "Votes voided",
   t_saved: "Saved ✓", t_premium: "Welcome to Premium! ✦", t_banner_saved: "Banner saved",
   t_banner_del: "Banner deleted", t_admin_ok: "Admin mode active", t_admin_bad: "Wrong password",
-  t_registered: "Organizer registration created ✓", t_collab_added: "Collaborator invited",
+  t_registered: "Organizer registration created ✓", t_collab_added: "Collaborator invited", t_collab_dup: "That collaborator is already in the event",
   t_session_closed: "Session closed",
   // ---- app user auth ----
   au_welcome: "Welcome to AuraFARM", au_welcome_sub: "Log in or create your account to farm aura",
