@@ -34,7 +34,8 @@ export default function RankingsBoard() {
     const all = [...users.map((u) => ({ ...u })), me];
     return all
       .filter((u) => country === "all" || u.country === country)
-      .sort((a, b) => (sort === "total" ? b.aura - a.aura : sort === "votes" ? b.auraByVotes - a.auraByVotes : b.trophies - a.trophies));
+      .sort((a, b) => (sort === "total" ? b.aura - a.aura : sort === "votes" ? b.auraByVotes - a.auraByVotes : b.trophies - a.trophies))
+      .slice(0, 20);
   }, [country, sort, profile, level]);
 
   // Evolución real del aura: el historial se registra cada día al completar

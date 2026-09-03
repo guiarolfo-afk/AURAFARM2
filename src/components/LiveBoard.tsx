@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Globe2, ChevronRight, ChevronDown, Vote, ArrowRight, Calendar, MapPin, Share2 } from "lucide-react";
-import { useApp } from "../store";
+import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown } from "lucide-react";
+import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { AnimatedNumber, SectionHead, LiveBadge, ShareRow } from "./ui";
@@ -17,12 +16,23 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
   const t = useT();
   const { totalAura, events, lang, enterArena, setTab } = useApp();
 
-  const [nextOpen, setNextOpen] = useState(false);
   const liveEvents = events.filter((e) => e.status === "live");
-  const nextEvents = events
+  const upcoming = events
     .filter((e) => e.status === "upcoming" && e.dateISO)
-    .sort((a, b) => (a.dateISO + a.time).localeCompare(b.dateISO + b.time) || a.name.localeCompare(b.name))
-    .slice(0, 3);
+    .sort((a, b) => (a.dateISO + a.time).localeCompare(b.dateISO + b.time) || a.name.localeCompare(b.name));
+  const nextEvents = upcoming.slice(0, 3);
+  /* eventos de esta semana (hoy + 7 días) */
+  const weekStart = new Date(); weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart.getTime() + 7 * 86400000);
+  const weekEvents = upcoming.filter((e) => {
+    const d = new Date(e.dateISO + "T12:00:00");
+    return d >= weekStart && d < weekEnd;
+  });
+  /* ganadores de hoy */
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayWinners = events
+    .filter((e) => e.status === "finished" && e.dateISO === todayStr)
+    .sort((a, b) => (b.winnerAura || 0) - (a.winnerAura || 0));
   const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled" && e.status !== "finished").map((e) => e.country))];
 
   return (
@@ -93,50 +103,25 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 {nextEvents.length}/3
               </span>
             </div>
-            {events.filter((e) => e.status !== "cancelled" && e.status !== "finished").length > 0 && (
-              <div className="relative mb-3">
-                <button
-                  onClick={() => setNextOpen((o) => !o)}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors cursor-pointer"
-                  aria-expanded={nextOpen}
-                >
-                  <Globe2 size={13} className="text-azure shrink-0" />
-                  <span className="flex-1 text-left text-[11.5px] font-bold text-white/80 truncate">{t("live_by_country")}</span>
-                  <span className="text-[9.5px] font-extrabold text-white/35 shrink-0">{events.filter((e) => e.status !== "cancelled" && e.status !== "finished").length}</span>
-                  <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${nextOpen ? "rotate-180" : ""}`} />
-                </button>
-                {nextOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setNextOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute left-0 right-0 mt-2 max-h-64 overflow-y-auto panel !rounded-xl p-1.5 z-40 shadow-2xl"
+            {weekEvents.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5 mb-1.5">
+                  <Globe2 size={12} className="text-azure" /> {t("live_week_events")}
+                </p>
+                <div className="space-y-1">
+                  {weekEvents.map((e) => (
+                    <button
+                      key={e.id}
+                      onClick={() => enterArena(e.id)}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/3 border border-white/6 hover:bg-white/7 transition-colors cursor-pointer text-left"
                     >
-                      {events.filter((e) => e.status !== "cancelled" && e.status !== "finished").map((e) => (
-                        <button
-                          key={e.id}
-                          onClick={() => { enterArena(e.id); setNextOpen(false); }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer hover:bg-white/6"
-                        >
-                          {e.status === "live" ? (
-                            <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse shrink-0" />
-                          ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-azure/60 shrink-0" />
-                          )}
-                          <span className="flex-1 min-w-0">
-                            <span className="block text-[12px] font-bold truncate">{e.name}</span>
-                            <span className="block text-[9.5px] text-white/40">{countryById(e.country).flag} {e.participants.length} ⚔️</span>
-                          </span>
-                          <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : e.status === "finished" ? "bg-white/10 text-white/50 border border-white/15" : "bg-azure/10 text-azure border border-azure/30"}`}>
-                            {e.status === "live" ? t("c_live") : e.status === "finished" ? t("ev_finished") : t("c_upcoming")}
-                          </span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
+                      <Calendar size={12} className="text-azure shrink-0" />
+                      <span className="flex-1 min-w-0 text-[11.5px] font-semibold truncate">{e.name}</span>
+                      <span className="text-[9px] text-white/40 shrink-0">{countryById(e.country).flag} {e.dateISO} · {e.time || "19:00"}</span>
+                      <ArrowRight size={11} className="text-white/30 shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {nextEvents.length > 0 ? (
@@ -166,6 +151,38 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
           </motion.div>
         </div>
       </div>
+
+      {/* ===== Today's winners ===== */}
+      {todayWinners.length > 0 && (
+        <motion.section {...reveal}>
+          <SectionHead hue={46} icon={<Trophy size={16} />} title={t("live_today_winners")} sub={t("live_today_winners_sub")} />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {todayWinners.map((e) => (
+              <div key={e.id} className="panel p-4 relative overflow-hidden">
+                <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-gold/10 blur-2xl pointer-events-none" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-9 h-9 rounded-xl bg-gold/12 border border-gold/30 grid place-items-center shrink-0"><Trophy size={16} className="text-gold" /></span>
+                    <div className="min-w-0">
+                      <p className="display text-[13px] font-extrabold truncate">{e.name}</p>
+                      <p className="text-[10px] text-white/40 flex items-center gap-1 flex-wrap">
+                        <Calendar size={10} className="text-gold" /> {e.dateISO} · <MapPin size={10} className="text-rose" /> {e.city || e.address}
+                      </p>
+                    </div>
+                  </div>
+                  {e.winner && (
+                    <div className="mt-2 flex items-center gap-2 rounded-lg bg-mint/8 border border-mint/25 px-2.5 py-2">
+                      <Crown size={14} className="text-gold shrink-0" />
+                      <span className="flex-1 text-[12.5px] font-bold text-mint truncate">{userNameById(e.winner)}</span>
+                      {e.winnerAura > 0 && <span className="display text-[11px] font-extrabold text-gold shrink-0">+{e.winnerAura}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+      )}
 
       {/* ===== Active competitions by country ===== */}
       <motion.section {...reveal}>
