@@ -51,7 +51,7 @@ export default function OrganizerBoard() {
   };
 
   /* ---------- create form ---------- */
-  const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
+  const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", endTime: "21:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
   const [formErr, setFormErr] = useState("");
   const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId)), [events, supabaseProfileId]);
   const userEmailNorm = userEmail?.trim().toLowerCase() ?? "";
@@ -79,7 +79,7 @@ export default function OrganizerBoard() {
   const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
   const [delAsk, setDelAsk] = useState(false);
-  const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
+  const [edit, setEdit] = useState<{ name: string; date: string; time: string; endTime: string; notes: string } | null>(null);
 
   const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
 
@@ -93,13 +93,14 @@ export default function OrganizerBoard() {
       id: "ev" + Date.now(), name: form.name.trim(),
       desc: { es: form.desc, pt: form.desc, fr: form.desc, en: form.desc },
       country: loc.countryCode || "world", city: loc.label, lat: loc.lat, lng: loc.lng, address: form.address.trim(),
-      dateISO: form.date, time: form.time,
+      dateISO: form.date, time: form.time, endTime: form.endTime,
       organizer: organizer?.name ?? s.profile.name, organizerId: "me", organizerRating: 5,
       organizerRefs: organizer?.refs ? organizer.refs.split("·") : [t("c_free")],
       collaborators: [],
       maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
       status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
       votes: {}, bracket: [], currentMatchId: null, matchStartedAt: null, groups: [], chat: [], notes: form.notes,
+      winner: null, winnerAura: 0,
     };
     s.createEvent(ev);
     setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "", loc: null });
@@ -234,6 +235,7 @@ export default function OrganizerBoard() {
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("org_ev_date") + " *"}><input type="date" className={inputCls} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
               <Field label={t("org_ev_time")}><input type="time" className={inputCls} value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} /></Field>
+              <Field label={t("org_ev_end_time")}><input type="time" className={inputCls} value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} /></Field>
             </div>
             <Field label={t("org_ev_address") + " *"}><input className={inputCls} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
             <div>
@@ -339,10 +341,15 @@ export default function OrganizerBoard() {
                 {managed && (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full ${managed.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : managed.status === "cancelled" ? "bg-white/6 text-white/40 border border-white/12" : "bg-azure/12 text-azure border border-azure/35"}`}>
-                        {managed.status === "live" ? t("c_live") : managed.status === "cancelled" ? t("ev_cancelled").toUpperCase() : t("c_upcoming").toUpperCase()}
+                      <span className={`text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full ${managed.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : managed.status === "cancelled" ? "bg-white/6 text-white/40 border border-white/12" : managed.status === "finished" ? "bg-mint/10 text-mint border border-mint/30" : "bg-azure/12 text-azure border border-azure/35"}`}>
+                        {managed.status === "live" ? t("c_live") : managed.status === "cancelled" ? t("ev_cancelled").toUpperCase() : managed.status === "finished" ? t("ev_finished").toUpperCase() : t("c_upcoming").toUpperCase()}
                       </span>
                       <span className="text-[11.5px] text-white/50">{managed.participants.length}/{managed.maxParticipants} {t("ev_participants").toLowerCase()} · {managed.attendees} {t("org_assist_count").toLowerCase()}</span>
+                      {managed.status === "finished" && managed.winner && (
+                        <span className="flex items-center gap-1 text-[10.5px] font-bold text-gold bg-gold/10 border border-gold/30 px-2 py-0.5 rounded-full">
+                          <Trophy size={11} /> {t("ev_winner_title")}: {userNameById(managed.winner)} +{managed.winnerAura} <Zap size={9} className="text-gold" />
+                        </span>
+                      )}
                       <div className="flex-1" />
                       {canManageEvent && (
                         <div className="flex items-center gap-1.5 w-full sm:w-auto order-last sm:order-none">
@@ -362,8 +369,11 @@ export default function OrganizerBoard() {
                       )}
                       {managed.status !== "cancelled" && permOfManaged === "owner" && (
                         <>
-                          <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
+                          <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
+                          {managed.status !== "finished" && (
+                            <button onClick={() => s.finishEvent(managed.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-mint/35 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer">{t("org_finish_ev")}</button>
+                          )}
                           <button onClick={() => setDelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/45 text-ember bg-ember/12 hover:bg-ember/22 transition-colors cursor-pointer">{t("org_delete_ev")}</button>
                         </>
                       )}
@@ -577,8 +587,11 @@ export default function OrganizerBoard() {
               <Field label={t("org_ev_date")}><input type="date" className={inputCls} value={edit.date} onChange={(e) => setEdit({ ...edit, date: e.target.value })} /></Field>
               <Field label={t("org_ev_time")}><input type="time" className={inputCls} value={edit.time} onChange={(e) => setEdit({ ...edit, time: e.target.value })} /></Field>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t("org_ev_end_time")}><input type="time" className={inputCls} value={edit.endTime} onChange={(e) => setEdit({ ...edit, endTime: e.target.value })} /></Field>
+            </div>
             <Field label={t("org_ev_notes")}><input className={inputCls} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} /></Field>
-            <button onClick={() => { s.updateEvent(managed.id, { name: edit.name, dateISO: edit.date, time: edit.time, notes: edit.notes }); setEdit(null); }} className={btnGold + " w-full"}><Save size={14} /> {t("c_save")}</button>
+            <button onClick={() => { s.updateEvent(managed.id, { name: edit.name, dateISO: edit.date, time: edit.time, endTime: edit.endTime, notes: edit.notes }); setEdit(null); }} className={btnGold + " w-full"}><Save size={14} /> {t("c_save")}</button>
           </div>
         )}
       </Modal>

@@ -200,6 +200,15 @@ export const eventStartTimestamp = (dateISO: string, time: string): number | nul
   return dt.getTime();
 };
 
+/* End timestamp = start date + (endTime ?? start hour), later of the two. */
+export const eventEndTimestamp = (dateISO: string, time: string, endTime: string): number | null => {
+  const start = eventStartTimestamp(dateISO, time);
+  if (start == null) return null;
+  // end time defaults to +2h if absent or earlier than start
+  const end = eventStartTimestamp(dateISO, endTime || "00:00") ?? start;
+  return Math.max(end, start) > start ? Math.max(end, start) : start + 2 * 3600 * 1000;
+};
+
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 /* Build a seeded elimination bracket from any list of competitor ids */
@@ -260,6 +269,7 @@ interface AppState {
   confirmAttendance: (eventId: string, role: "participant" | "spectator", name: string) => boolean;
   createEvent: (e: EventItem) => Promise<void>; updateEvent: (id: string, patch: Partial<EventItem>) => void;
   cancelEvent: (id: string) => void; deleteEvent: (id: string) => Promise<void>;
+  finishEvent: (id: string) => void;
   generateBracket: (eventId: string) => void;
   setMatchDuration: (eventId: string, matchId: string, duration: number) => void;
   setCurrentMatch: (eventId: string, matchId: string) => void;
@@ -359,11 +369,36 @@ export const useApp = create<AppState>()(
         }
         /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
         const toGoLive: string[] = [];
+        const toFinish: string[] = [];
         get().events.forEach((ev) => {
-          if (ev.status !== "upcoming") return;
-          const ts = eventStartTimestamp(ev.dateISO, ev.time);
-          if (ts != null && ts <= now) toGoLive.push(ev.id);
+          if (ev.status === "live") {
+            const endTs = eventEndTimestamp(ev.dateISO, ev.time, ev.endTime);
+            if (endTs != null && endTs <= now) toFinish.push(ev.id);
+          } else if (ev.status === "upcoming") {
+            const ts = eventStartTimestamp(ev.dateISO, ev.time);
+            if (ts != null && ts <= now) toGoLive.push(ev.id);
+          }
         });
+        if (toFinish.length > 0) {
+          const s = get();
+          set((st) => ({
+            events: st.events.map((e) => {
+              if (!toFinish.includes(e.id) || e.status !== "live") return e;
+              const maxRound = Math.max(...e.bracket.map((m) => m.round), -1);
+              const fm = maxRound >= 0 ? e.bracket.find((m) => m.round === maxRound && m.winner) : null;
+              const winner = fm ? (fm.winner === "a" ? fm.a : fm.b) : null;
+              return { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura: winner ? (e.votes[winner] ?? 0) * VOTE_REWARD : 0 };
+            }),
+          }));
+          toFinish.forEach((eid) => {
+            const ev = s.events.find((x) => x.id === eid);
+            if (!ev) return;
+            const maxRound = Math.max(...ev.bracket.map((m) => m.round), -1);
+            const fm = maxRound >= 0 ? ev.bracket.find((m) => m.round === maxRound && m.winner) : null;
+            const winner = fm ? (fm.winner === "a" ? fm.a : fm.b) : null;
+            supabase.from("events").update({ status: "finished", winner: winner ?? null, winner_aura: winner ? (ev.votes[winner] ?? 0) * VOTE_REWARD : 0 }).eq("id", eid).then(() => {});
+          });
+        }
         if (toGoLive.length > 0) {
           set((s) => ({
             events: s.events.map((e) =>
@@ -586,7 +621,7 @@ export const useApp = create<AppState>()(
         const insertPayload: any = {
           name: e.name, description: e.desc.es ?? "", country: e.country, city: e.city ?? "",
           lat: e.lat ?? 0, lng: e.lng ?? 0, address: e.address ?? "",
-          date_iso: e.dateISO, event_time: e.time ?? "",
+          date_iso: e.dateISO, event_time: e.time ?? "", event_end_time: e.endTime ?? "",
           organizer_id: ownerId ?? null, max_participants: e.maxParticipants ?? 32,
           status: e.status, notes: e.notes ?? "",
         };
@@ -623,6 +658,27 @@ export const useApp = create<AppState>()(
         if (error) console.error("Error eliminando evento en Supabase:", error.message);
         set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
         get().toast(translate(get().lang, "t_event_deleted"), "warn");
+      },
+      finishEvent: async (id) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === id);
+        if (!ev) return;
+        /* Ganador final = ganador de la última ronda del bracket (la final) */
+        const maxRound = Math.max(...ev.bracket.map((m) => m.round), -1);
+        const finalMatch = maxRound >= 0 ? ev.bracket.find((m) => m.round === maxRound && m.winner) : null;
+        const winner = finalMatch ? (finalMatch.winner === "a" ? finalMatch.a : finalMatch.b) : null;
+        const winnerAura = winner ? (ev.votes[winner] ?? 0) * VOTE_REWARD : 0;
+        set((s) => ({
+          events: s.events.map((e) =>
+            e.id === id ? { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura } : e
+          ),
+        }));
+        const { error } = await supabase
+          .from("events")
+          .update({ status: "finished", winner: winner ?? null, winner_aura: winnerAura })
+          .eq("id", id);
+        if (error) console.error("Error finalizando evento en Supabase:", error.message);
+        get().toast(translate(get().lang, "t_event_finished"), "ok");
       },
 
       generateBracket: (eventId) => {
@@ -1292,11 +1348,12 @@ export const useApp = create<AppState>()(
             name: row.name,
             desc: { es: row.description ?? "", pt: row.description ?? "", fr: row.description ?? "", en: row.description ?? "" },
             country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
-            dateISO: row.date_iso, time: row.event_time ?? "",
+            dateISO: row.date_iso, time: row.event_time ?? "", endTime: row.event_end_time ?? prev?.endTime ?? "",
             organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
             collaborators: collabs,
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
             status: row.status,
+            winner: row.winner ?? prev?.winner ?? null, winnerAura: row.winner_aura ?? prev?.winnerAura ?? 0,
             features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
             votes: { ...(votesByEvent[row.id] ?? {}), ...(prev?.votes ?? {}) },
             bracket: applyMatchVotes(prev?.bracket ?? [], matchVotesByEvent[row.id] ?? {}),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Trophy, Medal, ShieldCheck } from "lucide-react";
+import { Trophy, Medal, ShieldCheck, Star } from "lucide-react";
 import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -17,6 +17,7 @@ export default function PublicProfileView({ profileId }: { profileId: string }) 
   const lang = useApp((s) => s.lang);
   const [p, setP] = useState<PubProfile | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [orgScore, setOrgScore] = useState<{ avg: number; count: number } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -28,6 +29,15 @@ export default function PublicProfileView({ profileId }: { profileId: string }) 
         if (alive) {
           if (data) {
             setP({ ...data, aura: data.aura ?? 0, trophies: data.trophies ?? 0 });
+            if (data.role === "organizer" || data.role === "admin") {
+              const { data: ratings } = await import("../supabaseClient").then((m) =>
+                m.supabase.from("organizer_ratings").select("score").eq("organizer_id", data.id)
+              );
+              if (alive && ratings && ratings.length > 0) {
+                const total = ratings.reduce((a: number, r: any) => a + (r.score ?? 0), 0);
+                setOrgScore({ avg: Math.round((total / ratings.length) * 10) / 10, count: ratings.length });
+              }
+            }
           } else {
             setNotFound(true);
           }
@@ -89,6 +99,19 @@ export default function PublicProfileView({ profileId }: { profileId: string }) 
             <Stat icon={<Medal size={14} className="text-azure" />} value={level} label={t("c_level")} />
             <Stat icon={<ShieldCheck size={14} className="text-mint" />} value={p.aura} label="Aura" />
           </div>
+
+          {isOrg && orgScore && (
+            <div className="mt-3 flex items-center gap-2.5 p-3 rounded-xl bg-violet/8 border border-violet/25">
+              <ShieldCheck size={16} className="text-violet shrink-0" />
+              <div className="flex-1">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-violet/80">{t("d4")}</p>
+                <p className="display text-[15px] font-extrabold flex items-center gap-1">
+                  {orgScore.avg.toFixed(1)} <Star size={13} className="text-yellow-400 fill-yellow-400" />
+                  <span className="text-[11px] font-semibold text-white/50">· {orgScore.count} {t("ar_rate_org").toLowerCase()}</span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

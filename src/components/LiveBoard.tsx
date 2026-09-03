@@ -140,8 +140,8 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                             <span className="block text-[12px] font-bold truncate">{e.name}</span>
                             <span className="block text-[9.5px] text-white/40">{countryById(e.country).flag} {e.participants.length} ⚔️</span>
                           </span>
-                          <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : "bg-azure/10 text-azure border border-azure/30"}`}>
-                            {e.status === "live" ? t("c_live") : t("c_upcoming")}
+                          <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : e.status === "finished" ? "bg-white/10 text-white/50 border border-white/15" : "bg-azure/10 text-azure border border-azure/30"}`}>
+                            {e.status === "live" ? t("c_live") : e.status === "finished" ? t("ev_finished") : t("c_upcoming")}
                           </span>
                         </button>
                       ))}

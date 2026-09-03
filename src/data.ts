@@ -62,11 +62,12 @@ export interface BattleGroup {
 
 export interface EventItem {
   id: string; name: string; desc: Record<Lang, string>; country: string; city: string;
-  lat: number; lng: number; address: string; dateISO: string; time: string;
+  lat: number; lng: number; address: string; dateISO: string; time: string; endTime: string;
   organizer: string; organizerId: string; organizerRating: number; organizerRefs: string[];
   collaborators: { name: string; email?: string; perm: string }[];
   maxParticipants: number; participants: string[]; attendees: number; waitlist: string[];
-  status: "live" | "upcoming" | "cancelled";
+  status: "live" | "upcoming" | "cancelled" | "finished";
+  winner: string | null; winnerAura: number;
   features: string[]; banner: [string, string];
   votes: Record<string, number>; bracket: BracketMatch[]; currentMatchId: string | null;
   matchStartedAt: number | null;

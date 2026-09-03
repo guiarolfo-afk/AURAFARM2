@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Clock, Users, Swords, Eye, ArrowRight, Hourglass, UserCheck, Sparkles } from "lucide-react";
+import { MapPin, Calendar, Clock, Users, Swords, Eye, ArrowRight, Hourglass, UserCheck, Sparkles, Trophy, Zap } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -30,6 +30,7 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
       events.filter(
         (e) =>
           e.status !== "cancelled" &&
+          e.status !== "finished" &&
           (status === "all" || (status === "live" ? e.status === "live" : e.status === "upcoming")) &&
           (country === "all" || e.country === country)
       ),
@@ -177,14 +178,25 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
           return (
             <div className="space-y-5">
               <div className="h-28 rounded-xl relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${detail.banner[0]}40, ${detail.banner[1]}50), radial-gradient(20rem 10rem at 80% 0%, ${detail.banner[0]}66, transparent)` }}>
-                <div className="absolute top-3 left-3">{detail.status === "live" ? <LiveBadge label={t("c_live")} /> : <span className="text-[10.5px] font-extrabold tracking-wider text-azure bg-azure/12 border border-azure/35 px-2 py-0.5 rounded-full">{t("c_upcoming").toUpperCase()}</span>}</div>
+                <div className="absolute top-3 left-3">{detail.status === "live" ? <LiveBadge label={t("c_live")} /> : detail.status === "finished" ? <span className="text-[10.5px] font-extrabold tracking-wider text-white/60 bg-white/10 border border-white/20 px-2 py-0.5 rounded-full">{t("ev_finished").toUpperCase()}</span> : <span className="text-[10.5px] font-extrabold tracking-wider text-azure bg-azure/12 border border-azure/35 px-2 py-0.5 rounded-full">{t("c_upcoming").toUpperCase()}</span>}</div>
                 <h3 className="absolute bottom-3 left-4 right-10 display text-lg sm:text-xl font-extrabold leading-tight">{detail.name}</h3>
               </div>
 
               <p className="text-[13px] text-white/70 leading-relaxed">{detail.desc[lang]}</p>
 
+              {detail.status === "finished" && detail.winner && (
+                <div className="panel p-4 flex items-center gap-3 border border-gold/30 bg-gold/5">
+                  <Trophy size={22} className="text-gold shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-gold/80">{t("ev_winner_title")}</p>
+                    <p className="display text-[16px] font-extrabold">{userNameById(detail.winner)}</p>
+                    {detail.winnerAura > 0 && <p className="text-[11px] text-white/55">+{detail.winnerAura.toLocaleString()} {t("c_aura")} <Zap size={10} className="inline text-gold" /></p>}
+                  </div>
+                </div>
+              )}
+
               <div className="grid sm:grid-cols-2 gap-3 text-[12.5px]">
-                <div className="flex items-center gap-2.5 panel p-3"><Calendar size={15} className="text-gold shrink-0" /><div><p className="font-bold">{fmtDate(detail.dateISO)}</p><p className="text-white/45 text-[11px] flex items-center gap-1"><Clock size={10} /> {detail.time} h</p></div></div>
+                <div className="flex items-center gap-2.5 panel p-3"><Calendar size={15} className="text-gold shrink-0" /><div><p className="font-bold">{fmtDate(detail.dateISO)}</p><p className="text-white/45 text-[11px] flex items-center gap-1"><Clock size={10} /> {detail.time} – {detail.endTime || "–"} h</p></div></div>
                 <div className="flex items-center gap-2.5 panel p-3"><MapPin size={15} className="text-rose shrink-0" /><div><p className="font-bold">{c.flag} {c.name[lang]}</p><p className="text-white/45 text-[11px]">{detail.address}</p></div></div>
               </div>
 
@@ -244,7 +256,9 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                {attended ? (
+                {detail.status === "finished" ? (
+                  <div className="flex-1 py-3 rounded-xl text-center text-[12.5px] font-bold text-white/50 border border-white/12 bg-white/4">🏁 {t("ev_finished")}</div>
+                ) : attended ? (
                   <div className="flex-1 py-3 rounded-xl text-center text-[13px] font-bold text-mint border border-mint/35 bg-mint/8">✓ {t("ev_registered")}</div>
                 ) : (
                   <button onClick={() => { openConfirm(detail.id); }} className={`${btnGold} flex-1 !py-3.5`}>

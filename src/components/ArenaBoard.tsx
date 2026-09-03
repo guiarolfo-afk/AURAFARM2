@@ -119,8 +119,8 @@ export default function ArenaBoard() {
                       <span className="block text-[12.5px] font-bold truncate">{e.name}</span>
                       <span className="block text-[10px] text-white/40">{countryById(e.country).flag} {e.attendees} 👥 · {Object.keys(e.votes).length > 0 ? `${e.participants.length} ⚔️` : `${e.participants.length} ${t("ev_participants").toLowerCase()}`}</span>
                     </span>
-                    <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : "bg-azure/10 text-azure border border-azure/30"}`}>
-                      {e.status === "live" ? t("c_live") : t("c_upcoming")}
+                    <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : e.status === "finished" ? "bg-white/10 text-white/50 border border-white/15" : "bg-azure/10 text-azure border border-azure/30"}`}>
+                      {e.status === "live" ? t("c_live") : e.status === "finished" ? t("ev_finished") : t("c_upcoming")}
                     </span>
                     {e.id === ev.id && <span className="text-ember font-extrabold text-[12px] shrink-0">✓</span>}
                   </button>
