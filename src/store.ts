@@ -241,7 +241,7 @@ interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
   supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
-  challenges: Challenge[]; streak: number; lastStreakDate: string;
+  challenges: Challenge[]; streak: number; lastStreakDate: string; challengeDay: string;
   profile: Profile; votesCast: number;
   dailyVotes: number; dailyVotesDate: string;
   myVotes: Record<string, Record<string, number>>;
@@ -321,7 +321,7 @@ export const useApp = create<AppState>()(
             users: [], totalAura: 0, farmProg: {},
       feed: initialFeed,
 
-      challenges: CHALLENGES, streak: 0, lastStreakDate: new Date().toDateString(),
+      challenges: CHALLENGES, streak: 0, lastStreakDate: new Date().toDateString(), challengeDay: new Date().toDateString(),
       profile: {
         name: "Usuario", country: "mx", photo: null, contact: "",
         socials: { ig: "", x: "", tt: "" },
@@ -366,6 +366,14 @@ export const useApp = create<AppState>()(
             const [eventId, matchId] = key.split("|");
             get().autoCloseMatch(eventId, matchId);
           });
+        }
+        /* ---- Reinicio diario de RE-TOS: en un día nuevo los retos vuelven a estar disponibles ---- */
+        const challengeToday = new Date().toDateString();
+        if (get().challengeDay !== challengeToday) {
+          set((st) => ({
+            challenges: CHALLENGES.map((c) => ({ ...c, done: false })),
+            challengeDay: challengeToday,
+          }));
         }
         /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
         const toGoLive: string[] = [];
@@ -430,6 +438,9 @@ export const useApp = create<AppState>()(
           lastStreakDate: allDone ? today : s.lastStreakDate,
           profile: { ...s.profile, aura: finalAura, history },
         });
+        if (s.supabaseProfileId) {
+          supabase.from("profiles").update({ aura: finalAura }).eq("id", s.supabaseProfileId).then(() => {});
+        }
         s.toast(translate(s.lang, "t_challenge", { n: ch.points }), "gold");
         if (levelUp) s.toast(`⭐ Nivel ${afterLevel} · ${titleFromLevel(afterLevel, s.lang)} · +500 bonus`, "gold");
         if (allDone) s.toast(translate(s.lang, "ch_all_done"), "gold");
@@ -1094,7 +1105,13 @@ export const useApp = create<AppState>()(
           .maybeSingle();
 
         if (existing) {
-          set({ supabaseProfileId: existing.id, profile: { ...get().profile, name: existing.name, country: existing.country ?? get().profile.country } });
+          const localAura = get().profile.aura ?? 0;
+          const dbAura = existing.aura ?? 0;
+          const mergedAura = Math.max(localAura, dbAura);
+          set({ supabaseProfileId: existing.id, profile: { ...get().profile, name: existing.name, country: existing.country ?? get().profile.country, aura: mergedAura } });
+          if (dbAura < mergedAura) {
+            supabase.from("profiles").update({ aura: mergedAura }).eq("id", existing.id).then(() => {});
+          }
             if (existing.role === "organizer" && !get().orgUnlocked) {
             set({
               organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
@@ -1448,7 +1465,7 @@ export const useApp = create<AppState>()(
       name: "aurafarm-store",
       partialize: (s) => ({
         lang: s.lang, profile: s.profile, premium: s.premium, banners: s.banners,
-        challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate,
+        challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate, challengeDay: s.challengeDay,
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
         organizerScore: s.organizerScore, organizerScoreCount: s.organizerScoreCount,
         votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,

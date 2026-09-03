@@ -8,9 +8,9 @@
 
 ## RESUMEN EJECUTIVO
 
-- **Tests unitarios:** 31 ejecutados, **31 aprobados, 0 fallos**.
-- **Bug encontrado y corregido:** 1 (severidad baja — edge case de aura negativa).
-- **Verificación de datos Supabase:** OK (2 eventos reales con columnas de ganador/horario presentes y legibles).
+- **Tests unitarios:** 42 ejecutados, **42 aprobados, 0 fallos** (31 lógica pura + 11 del ciclo diario de retos).
+- **Bugs encontrados y corregidos:** 2 (BUG-AF-01 aura negativa→NaN; BUG-AF-02 retos diarios sin reinicio + aura sin sync a Supabase).
+- **Verificación de datos Supabase:** OK (2 eventos reales con columnas de ganador/horario presentes y legibles; tabla `profiles` con columna `aura` lista para sincronización).
 - **Build:** `tsc --noEmit` limpio + `vite build` exitoso.
 
 > Nota de mapeo: AuraFarm2 **no es** un contador de aura simple como describía el pedido original de testing. Es una plataforma de eventos/arenas (LIVE, Eventos, Organizador, Arena, Rankings, Ajustes). La checklist solicitada ("aura del contador", "misiones/rachas", "rankings/logros", "navegación", "ajustes", "táctil/responsive", "a11y") se mapeó a las funciones reales equivalentes del store y los componentes.
@@ -100,6 +100,20 @@ Los items interactivos de UI (táctil real, contraste, foco teclado) requieren u
 
 ---
 
+## 3b. RETOS DEL DÍA (Ciclo diario) — Bug corregido tras feedback del usuario
+
+**BUG-AF-02 (CORREGIDO):** Los "Retos del día" no se reiniciaban nunca y el aura era solo local.
+- **Síntoma:** El usuario entraba a diario, veía los mismos retos marcados para siempre y no acumulaba aura real ("tendría que tener 700 y no los tengo").
+- **Causa 1 (reinicio):** No existía lógica de reinicio diario; los retos se persistían con `done:true` en localStorage y el guard `if (ch.done) return` impedía volver a clicarlos. Solo se podían ganar puntos UNA VEZ en la vida.
+- **Causa 2 (aura local):** El aura del perfil se guardaba solo en localStorage y jamás se sincronizaba con la tabla `profiles` de Supabase (la columna `aura` ya existía pero todos los perfiles tenían 0). Por eso no aparecía en el ranking ni en otros dispositivos.
+- **Fix:**
+  1. Nuevo campo persistido `challengeDay` + en `tick` se resetean los retos a `done:false` cuando cambia el día (en el mismo navegador, el acumulado de aura se conserva).
+  2. En `toggleChallenge` se persiste el `aura` resultante en `profiles` de Supabase cuando hay sesión (`supabaseProfileId`).
+  3. En `initSupabaseAuth` se lee el `aura` de la BD y se hace `max(local, BD)` para no perder lo ya ganado, subiendo a la BD el mayor si difiere.
+- **Validación (test automatizado del ciclo diario, 11/11):** día 1 completar 6 retos → +aura (2050 con bonus de nivel) + streak 1; día 2 el tick reinicia los retos conservando el aura acumulada y al re-completarlos el streak sube a 2. Confirmado que los retos marcados no se pueden re-clicar el mismo día.
+
+---
+
 ## 4. ESTADO DEL BUILD
 
 - `npx tsc --noEmit` → **sin errores**.
@@ -109,7 +123,7 @@ Los items interactivos de UI (táctil real, contraste, foco teclado) requieren u
 
 ## 5. CONCLUSIONES
 
-- La lógica de negocio pura de AuraFarm2 está **funcional y validada** con 31/31 tests.
-- **1 bug real corregido** (aura negativa → NaN en nivel).
+- La lógica de negocio pura de AuraFarm2 está **funcional y validada** con 42/42 tests.
+- **2 bugs reales corregidos** (aura negativa → NaN; retos del día sin reinicio + aura sin sincronizar a Supabase). Tras el fix, los retos se reinician cada día y el aura se vuelve real y visible en el ranking.
 - Los datos de eventos/ganador/horarios en Supabase **se leen correctamente** tras la migración.
 - Se recomienda (opcional) añadir una suite e2e (Playwright) y un script de test reproducible (p.ej. `npm run test`) para cubrir las capas de UI/a11y/responsive que hoy se validan solo estáticamente.
