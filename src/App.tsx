@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, MapPin, ShieldCheck, Swords, Trophy, Settings, Flame, ChevronDown, Megaphone, Crown } from "lucide-react";
+import { Radio, MapPin, ShieldCheck, Swords, Trophy, Settings, Flame, ChevronDown, Megaphone, Crown, LogIn } from "lucide-react";
 import { useApp } from "./store";
 import type { Tab } from "./store";
 import { LANGS } from "./i18n";
@@ -58,8 +58,14 @@ export default function App() {
   const authed = useApp((s) => s.authed);
   const { setTab, setLang, enterArena } = useApp.getState();
   const [langOpen, setLangOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState("all");
   const publicRoute = usePublicRoute();
+
+  /* al iniciar sesión, cerrar la pantalla de login */
+  useEffect(() => {
+    if (authed) setAuthOpen(false);
+  }, [authed]);
 
   useEffect(() => {
     const id = setInterval(() => useApp.getState().tick(), 2200);
@@ -115,7 +121,9 @@ export default function App() {
     );
   }
 
-  if (!authed) {
+  /* Los usuarios anónimos pueden entrar sin registrarse y votar.
+     Solo se muestra la pantalla de login si el usuario la abre expresamente. */
+  if (authOpen && !authed) {
     return (
       <>
         <Toasts />
@@ -204,6 +212,14 @@ export default function App() {
               </AnimatePresence>
             </div>
 
+            {!authed && (
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold/12 border border-gold/35 text-gold hover:bg-gold/20 text-[11.5px] font-bold transition-colors cursor-pointer"
+              >
+                <LogIn size={13} /> {t("au_login_tab")}
+              </button>
+            )}
             <button onClick={() => setTab("set")} className="cursor-pointer hover:scale-105 transition-transform" aria-label={t("nav_set")}>
               <Avatar name={profile.name} hue={46} size={32} src={profile.photo} premium={premium} />
             </button>
