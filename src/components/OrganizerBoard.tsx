@@ -62,7 +62,7 @@ export default function OrganizerBoard() {
 
   const [guestName, setGuestName] = useState("");
   const [manualPicks, setManualPicks] = useState<string[]>([]);
-  const [cancelAsk, setCancelAsk] = useState(false);
+  
   const [delAsk, setDelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; endTime: string; address: string; features: string[]; notes: string } | null>(null);
   const [timeUpAsk, setTimeUpAsk] = useState(false);
@@ -300,7 +300,6 @@ export default function OrganizerBoard() {
                           {managed.endState !== "timeUp" && (
                             <button onClick={() => s.finishEvent(managed.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-mint/35 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer">{t("org_finish_ev")}</button>
                           )}
-                          <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
                         </>
                       )}
                       {/* DELETE pinned top-right, separated from finish */}
@@ -454,10 +453,9 @@ export default function OrganizerBoard() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5"><Trophy size={12} className="text-gold" /> {t("org_bracket_title")}</p>
-                        {canManageEvent && <button onClick={() => s.generateBracket(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-gold/12 border border-gold/35 text-gold hover:bg-gold/20 transition-colors cursor-pointer">{t("org_gen_bracket")}</button>}
                       </div>
                       {managed.bracket.length === 0 ? (
-                        <p className="text-[11.5px] text-white/35">— {t("org_gen_bracket")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
+                        <p className="text-[11.5px] text-white/35">— {managed.participants.length} {t("ev_participants").toLowerCase()}</p>
                       ) : (
                         <div className="overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
                         <div className="grid gap-3 w-max min-w-full" style={{ gridTemplateColumns: `repeat(${R}, minmax(168px, 1fr))` }}>
@@ -660,21 +658,6 @@ export default function OrganizerBoard() {
               <button onClick={() => { setTimeUpAsk(false); setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, address: managed.address, features: managed.features, notes: managed.notes }); }} className="py-3 rounded-xl bg-mint text-[#032018] display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_more_time")}</button>
             </div>
             <p className="text-[10.5px] text-white/40">{t("org_more_time_hint")}</p>
-          </div>
-        )}
-      </Modal>
-
-      {/* ===== cancel confirm ===== */}
-      <Modal open={cancelAsk} onClose={() => setCancelAsk(false)}>
-        {managed && (
-          <div className="space-y-4 text-center">
-            <AlertTriangle size={30} className="mx-auto text-ember" />
-            <p className="text-[13px] text-white/80">{t("org_cancel_confirm")}</p>
-            <p className="display text-sm font-extrabold">{managed.name}</p>
-            <div className="flex gap-2">
-              <button onClick={() => setCancelAsk(false)} className="flex-1 py-2.5 rounded-xl border border-white/12 text-[12px] font-bold text-white/60 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
-              <button onClick={() => { s.cancelEvent(managed.id); setCancelAsk(false); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("ev_cancel")}</button>
-            </div>
           </div>
         )}
       </Modal>
