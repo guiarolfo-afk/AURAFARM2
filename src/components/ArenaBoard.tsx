@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users } from "lucide-react";
+import { MessageCircle, Send, Swords, Trophy, SlidersHorizontal, ListChecks, Crown, Zap, ChevronDown, Users, Lock } from "lucide-react";
 import { useApp, userNameById, levelFromAura, titleFromLevel, VOTES_PER_DAY_LABEL, VOTE_REWARD } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -496,39 +496,59 @@ export default function ArenaBoard() {
             ) : (
               <div className="panel p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
-                <p className="text-[12px] text-white/50 mb-1">{t("ar_open_vote")} · {t("ar_open_sub")}</p>
-                <p className="text-[11px] text-white/45 mb-4"><span className="text-gold font-bold">⚡ {VOTES_PER_DAY_LABEL - dailyVotes}/{VOTES_PER_DAY_LABEL}</span> votos hoy · +{VOTE_REWARD} aura por voto</p>
-                <div className="space-y-3">
-                  {ev.participants.map((pid) => {
-                    const my = myVotes[ev.id]?.[pid];
-                    const val = sliders[pid] ?? 7;
-                    return (
-                      <div key={pid} className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/7">
-                        <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={36} />
-                        <div className="flex-1 min-w-[140px]">
-                          <p className="text-[12.5px] font-bold">{userNameById(pid)}</p>
-                          <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
-                          <p className="text-[9.5px] text-white/35 mt-0.5">🗳️ <span className="text-gold font-bold">{ev.votes[pid] ?? 0}</span> votos</p>
+                {ev.status === "finished" ? (
+                  <>
+                    <p className="text-[12px] text-white/60 mb-4 flex items-center gap-1.5"><Lock size={13} className="text-gold" /> {t("ar_voting_finalized")}</p>
+                    <div className="space-y-2">
+                      {Object.entries(ev.votes).sort((a, b) => b[1] - a[1]).map(([pid, v], i) => (
+                        <div key={pid} className={`flex items-center gap-3 p-2.5 rounded-xl bg-white/3 border border-white/7 ${i === 0 ? "border-gold/40 bg-gold/6" : ""}`}>
+                          <span className="display text-[11px] font-extrabold w-5 shrink-0 text-white/40">{i + 1}</span>
+                          <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={30} />
+                          <span className={`flex-1 min-w-0 text-[12.5px] font-bold truncate ${i === 0 ? "text-gold" : "text-white/85"}`}>
+                            {i === 0 && <Crown size={12} className="inline mr-1 text-gold" />}{userNameById(pid)}
+                          </span>
+                          <span className="display text-[12px] font-extrabold text-azure shrink-0">{v}</span>
                         </div>
-                        {my ? (
-                          <div className="flex items-center gap-2.5">
-                            <span className="display text-lg font-extrabold text-gold">{my}<span className="text-[10px] text-white/40">/10</span></span>
-                            <span className="text-[10px] font-bold text-mint bg-mint/10 border border-mint/30 px-2 py-0.5 rounded-full">{t("ar_voted")}</span>
-                            <button onClick={() => s.removeVote(ev.id, pid)} className="text-[10.5px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[12px] font-bold text-white/70 mb-1">{t("ar_open_vote")}</p>
+                    <p className="text-[11px] text-white/45 mb-4"><span className="text-gold font-bold">⚡ {VOTES_PER_DAY_LABEL - dailyVotes}/{VOTES_PER_DAY_LABEL}</span> votos hoy · +{VOTE_REWARD} aura por voto</p>
+                    <div className="space-y-3">
+                      {ev.participants.map((pid) => {
+                        const my = myVotes[ev.id]?.[pid];
+                        const val = sliders[pid] ?? 7;
+                        return (
+                          <div key={pid} className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/7">
+                            <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={36} />
+                            <div className="flex-1 min-w-[140px]">
+                              <p className="text-[12.5px] font-bold">{userNameById(pid)}</p>
+                              <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
+                              <p className="text-[9.5px] text-white/35 mt-0.5">🗳️ <span className="text-gold font-bold">{ev.votes[pid] ?? 0}</span> votos</p>
+                            </div>
+                            {my ? (
+                              <div className="flex items-center gap-2.5">
+                                <span className="display text-lg font-extrabold text-gold">{my}<span className="text-[10px] text-white/40">/10</span></span>
+                                <span className="text-[10px] font-bold text-mint bg-mint/10 border border-mint/30 px-2 py-0.5 rounded-full">{t("ar_voted")}</span>
+                                <button onClick={() => s.removeVote(ev.id, pid)} className="text-[10.5px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
+                                <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-20 sm:w-28 shrink min-w-0" aria-label={t("ar_score_for")} />
+                                <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
+                                <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-1.5 rounded-lg display text-[10.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
+                                  {t("ar_cast_vote")}
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
-                            <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-20 sm:w-28 shrink min-w-0" aria-label={t("ar_score_for")} />
-                            <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
-                            <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-1.5 rounded-lg display text-[10.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
-                              {t("ar_cast_vote")}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </motion.div>

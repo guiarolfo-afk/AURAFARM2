@@ -1,6 +1,6 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Radio, MapPin, ShieldCheck, Swords, Trophy, Settings, Flame, ChevronDown, Megaphone, Crown, LogIn } from "lucide-react";
+import { Radio, MapPin, ShieldCheck, Swords, Trophy, Flame, ChevronDown, Megaphone, Crown, LogIn } from "lucide-react";
 import { useApp } from "./store";
 import type { Tab } from "./store";
 import { LANGS } from "./i18n";
@@ -96,7 +96,6 @@ export default function App() {
     { id: "org", icon: ShieldCheck, hue: 268, label: t("nav_org") },
     { id: "arena", icon: Swords, hue: 0, label: t("nav_arena") },
     { id: "rank", icon: Trophy, hue: 46, label: t("nav_rank") },
-    { id: "set", icon: Settings, hue: 316, label: t("nav_set") },
   ];
 
   const browseCountry = (c: string) => {
@@ -278,7 +277,7 @@ export default function App() {
 
       {/* ================= MOBILE BOTTOM NAV ================= */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-line bg-night/88 backdrop-blur-xl" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-5">
           {tabs.map((x) => {
             const active = tab === x.id;
             return (
