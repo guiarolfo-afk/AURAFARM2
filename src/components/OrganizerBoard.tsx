@@ -372,13 +372,6 @@ export default function OrganizerBoard() {
                           <Users size={12} className="text-mint" /> {t("org_groups_title")}
                           <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_groups_sub")}</span>
                         </p>
-                        <div className="flex gap-1.5">
-                          {canManageEvent && managed.groups.some((g) => g.status === "closed" && g.winner) && (
-                            <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
-                              {t("org_promote_bracket")}
-                            </button>
-                          )}
-                        </div>
                       </div>
                       {canManageEvent && (
                         <div className="mb-3 p-2.5 rounded-lg bg-white/4 border border-white/8">
@@ -390,7 +383,7 @@ export default function OrganizerBoard() {
                                 <button
                                   key={pid}
                                   onClick={() => setManualPicks((prev) => (picked ? prev.filter((x) => x !== pid) : [...prev, pid]))}
-                                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${picked ? "bg-mint/20 border-mint/50 text-mint" : "bg-white/5 border-white/12 text-white/60 hover:bg-white/10"}`}
+                                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${picked ? "bg-gold border-gold text-[#171200]" : "bg-white/5 border-white/12 text-white/60 hover:bg-white/10 active:bg-gold active:text-[#171200]"}`}
                                 >
                                   {userNameById(pid)}
                                 </button>
@@ -400,7 +393,7 @@ export default function OrganizerBoard() {
                           <button
                             onClick={() => { s.addManualGroup(managed.id, manualPicks); setManualPicks([]); }}
                             disabled={manualPicks.length < 2}
-                            className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 active:bg-gold active:text-[#171200] active:border-gold disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                           >
                             Crear grupo con {manualPicks.length} seleccionados
                           </button>
@@ -432,19 +425,19 @@ export default function OrganizerBoard() {
                                     </>
                                   )}
                                   {canManageEvent && g.status === "open" && (
-                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_set_current")}</button>
                                   )}
                                   {canManageEvent && g.status === "live" && (
-                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 transition-colors cursor-pointer">{t("org_close_group")}</button>
+                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_close_group")}</button>
                                   )}
                                   {canManageEvent && g.status === "closed" && (
-                                    <button onClick={() => s.reopenGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_reopen")}</button>
+                                    <button onClick={() => s.reopenGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_reopen")}</button>
                                   )}
                                   {canManageEvent && total > 1 && g.status !== "closed" && (
-                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                   )}
                                   {canManageEvent && g.status === "open" && (
-                                    <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">✕</button>
+                                    <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">✕</button>
                                   )}
                                 </div>
                                 <div className="space-y-1">
@@ -477,6 +470,15 @@ export default function OrganizerBoard() {
                             );
                           })}
                         </div>
+                      )}
+
+                      {canManageEvent && managed.groups.some((g) => g.status === "closed" && g.winner) && (
+                        <button
+                          onClick={() => s.promoteGroups(managed.id)}
+                          className="w-full mt-3 py-3 rounded-xl display text-[13px] font-extrabold tracking-wide bg-gold text-[#171200] hover:brightness-110 active:brightness-95 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <Swords size={16} /> {t("org_promote_bracket")}
+                        </button>
                       )}
                     </div>
 
