@@ -369,7 +369,10 @@ export const useApp = create<AppState>()(
         }
         /* ---- Reinicio diario de RE-TOS: en un día nuevo los retos vuelven a estar disponibles ---- */
         const challengeToday = new Date().toDateString();
-        if (get().challengeDay !== challengeToday) {
+        const chs = get().challenges;
+        const todosHechos = chs.length > 0 && chs.every((c) => c.done);
+        const completadosAyer = get().lastStreakDate !== challengeToday;
+        if (get().challengeDay !== challengeToday || (todosHechos && completadosAyer)) {
           set((st) => ({
             challenges: CHALLENGES.map((c) => ({ ...c, done: false })),
             challengeDay: challengeToday,
