@@ -238,7 +238,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
-  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null;
+  supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null; guestMode: boolean;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string; challengeDay: string;
   profile: Profile; votesCast: number;
@@ -259,7 +259,7 @@ interface AppState {
   organizerScore: number | null; organizerScoreCount: number;
 
   t: (key: string, vars?: Record<string, string | number>) => string;
-  setLang: (l: Lang) => void; setTab: (t: Tab) => void; enterArena: (eventId: string) => void;
+  setLang: (l: Lang) => void; setTab: (t: Tab) => void; enterArena: (eventId: string) => void; enterGuest: () => void;
   tick: () => void; toast: (msg: string, kind?: Toast["kind"]) => void; dismissToast: (id: number) => void;
   toggleChallenge: (id: string) => void;
   applyLoginChallenges: () => void;
@@ -336,7 +336,7 @@ export const useApp = create<AppState>()(
         attended: 0, participated: 0, organized: 0,
         history: [],
       },
-      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null,
+      supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null, guestMode: false,
       votesCast: 0, dailyVotes: 0, dailyVotesDate: new Date().toDateString(), myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: [], deletedEventIds: [], finishedEventIds: [],
 
@@ -351,6 +351,10 @@ export const useApp = create<AppState>()(
       setLang: (l) => set({ lang: l }),
       setTab: (t) => set({ tab: t }),
       enterArena: (eventId) => set({ tab: "arena", activeEventId: eventId }),
+      enterGuest: () => {
+        set({ guestMode: true });
+        get().toast(translate(get().lang, "t_guest_mode"), "ok");
+      },
 
       toast: (msg, kind = "ok") => {
         const id = ++toastSeq;
@@ -1469,7 +1473,7 @@ status: finishedEventIds.includes(row.id) ? "finished" : row.status,
     {
       name: "aurafarm-store",
       partialize: (s) => ({
-        lang: s.lang, profile: s.profile, premium: s.premium, banners: s.banners,
+        lang: s.lang, guestMode: s.guestMode, profile: s.profile, premium: s.premium, banners: s.banners,
         challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate, challengeDay: s.challengeDay,
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
         organizerScore: s.organizerScore, organizerScoreCount: s.organizerScoreCount,

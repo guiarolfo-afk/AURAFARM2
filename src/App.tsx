@@ -56,6 +56,7 @@ export default function App() {
   const banners = useApp((s) => s.banners);
   const activeEventId = useApp((s) => s.activeEventId);
   const authed = useApp((s) => s.authed);
+  const guestMode = useApp((s) => s.guestMode);
   const { setTab, setLang, enterArena } = useApp.getState();
   const [langOpen, setLangOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -121,7 +122,16 @@ export default function App() {
   }
 
   /* Los usuarios anónimos pueden entrar sin registrarse y votar.
-     Solo se muestra la pantalla de login si el usuario la abre expresamente. */
+     La pantalla inicial muestra un botón "Entrar sin registro" (invitado). */
+  if (!authed && !guestMode) {
+    return (
+      <>
+        <Toasts />
+        <AuthScreen />
+      </>
+    );
+  }
+  /* Si el invitado quiere crear cuenta / iniciar sesión, se muestra el login */
   if (authOpen && !authed) {
     return (
       <>

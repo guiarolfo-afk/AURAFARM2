@@ -77,7 +77,22 @@ export default function AuthScreen() {
           <p className="text-[12px] text-white/45 text-center mt-1">{t("au_welcome")}</p>
           <p className="text-[10.5px] text-white/30 text-center mt-0.5">{t("au_welcome_sub")}</p>
 
-          <div className="flex gap-1.5 mt-6 p-1 rounded-xl bg-white/4 border border-white/8">
+          {/* entrar sin registro / invitado */}
+          <button
+            onClick={() => s.enterGuest()}
+            className="w-full mt-5 py-3 rounded-xl display text-[13px] font-extrabold bg-mint text-[#032018] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Flame size={16} /> {t("au_enter_guest")}
+          </button>
+          <p className="text-center text-[10px] text-white/35 mt-1.5 mb-2">{t("au_enter_guest_sub")}</p>
+
+          <div className="flex items-center gap-3 my-3">
+            <span className="flex-1 h-px bg-white/8" />
+            <span className="text-[9.5px] uppercase tracking-widest text-white/25 font-bold">{t("au_or")}</span>
+            <span className="flex-1 h-px bg-white/8" />
+          </div>
+
+          <div className="flex gap-1.5 p-1 rounded-xl bg-white/4 border border-white/8">
             {(["login", "register"] as const).map((m) => (
               <button
                 key={m}
