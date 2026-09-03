@@ -56,6 +56,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
   const shareUrl = `${window.location.origin}${window.location.pathname}#/e/${ev.id}`;
 
   const copyLink = async () => {
+    s.toggleChallenge("ch5");
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
@@ -66,6 +67,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
   };
 
   const nativeShare = async () => {
+    s.toggleChallenge("ch5");
     if (navigator.share) {
       try {
         await navigator.share({ title: ev.name, text: `${ev.name} — ¡vota en vivo!`, url: shareUrl });

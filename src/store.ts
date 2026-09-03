@@ -261,6 +261,7 @@ interface AppState {
   setLang: (l: Lang) => void; setTab: (t: Tab) => void; enterArena: (eventId: string) => void;
   tick: () => void; toast: (msg: string, kind?: Toast["kind"]) => void; dismissToast: (id: number) => void;
   toggleChallenge: (id: string) => void;
+  applyLoginChallenges: () => void;
   voteCompetitor: (eventId: string, userId: string, score: number) => void;
   removeVote: (eventId: string, userId: string) => void;
   voteBattle: (eventId: string, matchId: string, side: "a" | "b") => void;
@@ -378,6 +379,9 @@ export const useApp = create<AppState>()(
             challengeDay: challengeToday,
           }));
         }
+        /* ---- Retos automáticos por condición (se marcan solos, sin clics) ---- */
+        if (get().profile.aura >= 500) get().toggleChallenge("ch4");
+        if (get().streak >= 1) get().toggleChallenge("ch6");
         /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
         const toGoLive: string[] = [];
         const toFinish: string[] = [];
@@ -426,19 +430,16 @@ export const useApp = create<AppState>()(
         const ch = s.challenges.find((c) => c.id === id);
         if (!ch || ch.done) return;
         const challenges = s.challenges.map((c) => (c.id === id ? { ...c, done: true } : c));
-        const allDone = challenges.every((c) => c.done);
-        const today = new Date().toDateString();
-        const streak = allDone && s.lastStreakDate !== today ? s.streak + 1 : s.streak;
         const beforeLevel = levelFromAura(s.profile.aura);
         const afterAura = s.profile.aura + ch.points;
         const afterLevel = levelFromAura(afterAura);
         const levelUp = afterLevel > beforeLevel;
         const bonus = levelUp ? 500 : 0;
         const finalAura = afterAura + bonus;
+        const allDone = challenges.every((c) => c.done);
         const history = allDone ? [...s.profile.history, finalAura] : s.profile.history;
         set({
-          challenges, streak,
-          lastStreakDate: allDone ? today : s.lastStreakDate,
+          challenges,
           profile: { ...s.profile, aura: finalAura, history },
         });
         if (s.supabaseProfileId) {
@@ -447,6 +448,15 @@ export const useApp = create<AppState>()(
         s.toast(translate(s.lang, "t_challenge", { n: ch.points }), "gold");
         if (levelUp) s.toast(`⭐ Nivel ${afterLevel} · ${titleFromLevel(afterLevel, s.lang)} · +500 bonus`, "gold");
         if (allDone) s.toast(translate(s.lang, "ch_all_done"), "gold");
+      },
+
+      applyLoginChallenges: () => {
+        const s = get();
+        const today = new Date().toDateString();
+        if (s.lastStreakDate !== today) {
+          set((st) => ({ streak: st.streak + 1, lastStreakDate: today }));
+        }
+        get().toggleChallenge("ch1");
       },
 
       voteCompetitor: (eventId, userId, score) => {
@@ -1123,6 +1133,7 @@ export const useApp = create<AppState>()(
             });
           }
           get().loadOrganizerScore();
+          get().applyLoginChallenges();
           return;
         }
 
@@ -1141,6 +1152,7 @@ export const useApp = create<AppState>()(
         }
         set({ supabaseProfileId: created.id });
         if (metaName) set({ profile: { ...get().profile, name: metaName } });
+        get().applyLoginChallenges();
       },
 
       loginAppUser: async (email, password) => {

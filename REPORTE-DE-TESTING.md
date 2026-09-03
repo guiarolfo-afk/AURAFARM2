@@ -8,8 +8,9 @@
 
 ## RESUMEN EJECUTIVO
 
-- **Tests unitarios:** 42 ejecutados, **42 aprobados, 0 fallos** (31 lógica pura + 11 del ciclo diario de retos).
+- **Tests unitarios:** 49 ejecutados, **49 aprobados, 0 fallos** (31 lógica pura + 10 ciclo diario/racha + 8 retos automáticos).
 - **Bugs encontrados y corregidos:** 2 (BUG-AF-01 aura negativa→NaN; BUG-AF-02 retos diarios sin reinicio + aura sin sync a Supabase).
+- **Rediseño funcional:** Retos del día ahora 100% automáticos (se marcan por acción, sin clics).
 - **Verificación de datos Supabase:** OK (2 eventos reales con columnas de ganador/horario presentes y legibles; tabla `profiles` con columna `aura` lista para sincronización).
 - **Build:** `tsc --noEmit` limpio + `vite build` exitoso.
 
@@ -114,6 +115,29 @@ Los items interactivos de UI (táctil real, contraste, foco teclado) requieren u
 
 ---
 
+## 3c. RETOS DEL DÍA 100% AUTOMÁTICOS (rediseño)
+
+**Rediseño:** Los retos ya NO se marcan con clics manuales; se marcan **solos** al hacer su acción, sumando su aura automáticamente al perfil (y sincronizándose a Supabase si hay sesión). En `LiveBoard` ahora se muestran como indicadores (divs), no como botones.
+
+| Reto | Acción que lo marca automáticamente | Dónde |
+|------|--------------------------------------|-------|
+| ch1 · Inicia sesión hoy | Al iniciar sesión / autenticar | `applyLoginChallenges` (en `initSupabaseAuth`) |
+| ch2 · Emite 3 votos | Al llegar a 3 votos (ya existía) | `voteCompetitor` |
+| ch3 · Únete a un evento | Al unirse/confirmar asistencia (ya existía) | `confirmAttendance` |
+| ch4 · Farmea 500 de aura | Automático al tener aura ≥ 500 | `tick` |
+| ch5 · Comparte un evento | Al hacer clic en compartir | `ShareRow` + `PublicEventView` |
+| ch6 · Mantén racha activa | Automático al tener racha activa (≥ 1) | `tick` |
+
+**Modelo de racha (streak) rediseñado:** la racha ya NO sube al completar retos; **sube 1 por cada día en que el usuario inicia sesión** (día consecutivo) en `applyLoginChallenges`. Esto elimina el bucle circular que impedía que la racha superara 1 (antes ch6 dependía de racha≥2, y la racha no subía sin completar ch6).
+
+- `toggleChallenge` conserva el guard `if (ch.done) return` → un reto ya marcado no vuelve a sumar (no hay doble recompensa el mismo día).
+- El reinicio diario (BUG-AF-02) se mantiene: al día siguiente los retos de acción vuelven a estar disponibles y pueden volver a dispararse con sus acciones.
+- **Validado (18/18 tests de retos + racha):** cada acción auto-marca su reto y suma aura; la racha sube 1 por día de login (no se duplica el mismo día); con clave baja (aura<500) ch4 no se marca; retos ya marcados no se re-suman; los retos de acción marcados de días pasados se limpian en el `tick`.
+
+## 3d. LIMPIEZA DE DATOS DE PRUEBA
+
+Script `supabase/cleanup.sql` para dejar la BD en 0 (borra todo el contenido de `events`, `profiles`, `event_participants`, `event_collaborators`, `votes`, `public_votes`, `organizer_ratings` en orden de FKs). No borra `auth.users` para no romper el login de la cuenta real; solo vacía el contenido de `profiles`. **Se ejecuta a mano en Supabase → SQL Editor → Run** (la key pública no permite DELETE por RLS).
+
 ## 4. ESTADO DEL BUILD
 
 - `npx tsc --noEmit` → **sin errores**.
@@ -123,7 +147,7 @@ Los items interactivos de UI (táctil real, contraste, foco teclado) requieren u
 
 ## 5. CONCLUSIONES
 
-- La lógica de negocio pura de AuraFarm2 está **funcional y validada** con 42/42 tests.
-- **2 bugs reales corregidos** (aura negativa → NaN; retos del día sin reinicio + aura sin sincronizar a Supabase). Tras el fix, los retos se reinician cada día y el aura se vuelve real y visible en el ranking.
+- La lógica de negocio pura de AuraFarm2 está **funcional y validada** con 49/49 tests.
+- **2 bugs reales corregidos** (aura negativa → NaN; retos del día sin reinicio + aura sin sincronizar a Supabase) y **1 rediseño funcional** (retos del día 100% automáticos + racha por días de sesión). Tras el fix, los retos se reinician cada día y el aura se vuelve real, visible en el ranking y sincronizada a Supabase.
 - Los datos de eventos/ganador/horarios en Supabase **se leen correctamente** tras la migración.
 - Se recomienda (opcional) añadir una suite e2e (Playwright) y un script de test reproducible (p.ej. `npm run test`) para cubrir las capas de UI/a11y/responsive que hoy se validan solo estáticamente.

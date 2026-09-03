@@ -15,7 +15,7 @@ const reveal = {
 
 export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
   const t = useT();
-  const { users, feed, challenges, streak, totalAura, events, lang, enterArena, toggleChallenge, setTab } = useApp();
+  const { users, feed, challenges, streak, totalAura, events, lang, enterArena, setTab } = useApp();
 
   const [nextOpen, setNextOpen] = useState(false);
   const online = users.filter((u) => u.online);
@@ -258,20 +258,18 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
           </div>
           <div className="space-y-1">
             {challenges.map((ch) => (
-              <button
+              <div
                 key={ch.id}
-                onClick={() => toggleChallenge(ch.id)}
-                disabled={ch.done}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${ch.done ? "bg-mint/6" : "bg-white/3 hover:bg-white/7 cursor-pointer"}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 ${ch.done ? "bg-mint/6" : "bg-white/3"}`}
               >
                 <span
                   className={`w-5 h-5 rounded-md grid place-items-center shrink-0 transition-all ${ch.done ? "bg-mint text-[#03150c]" : "border border-white/20"}`}
                 >
                   {ch.done && <Check size={12} strokeWidth={3.5} />}
                 </span>
-                <span className={`flex-1 min-w-0 text-[12.5px] leading-snug ${ch.done ? "text-white/35 line-through" : "text-white/85"}`}>{t(ch.id)}</span>
+                <span className={`flex-1 min-w-0 text-[12.5px] leading-snug ${ch.done ? "text-white/40 line-through" : "text-white/85"}`}>{t(ch.id)}</span>
                 <span className="display text-[11px] font-bold text-gold shrink-0">+{ch.points}</span>
-              </button>
+              </div>
             ))}
           </div>
         </motion.section>
