@@ -23,7 +23,7 @@ export interface Profile {
 
 export interface OrganizerAccount { name: string; contact: string; country: string; refs: string; email: string; collaborators: Collaborator[] }
 
-export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(aura / 90)));
+export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(Math.max(0, aura) / 90)));
 
 export const titleFromLevel = (level: number, lang: string) => {
   if (level >= 16) return lang === "en" ? "Master" : lang === "fr" ? "Maître" : lang === "pt" ? "Mestre" : "Maestro";
