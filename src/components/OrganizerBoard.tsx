@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
-import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2 } from "lucide-react";
+import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -70,7 +70,9 @@ export default function OrganizerBoard() {
     collabEvents.forEach((e) => set.set(e.id, e));
     return Array.from(set.values());
   }, [myEvents, collabEvents]);
-  const managed = allManageable.find((e) => e.id === manageIdLocal) ?? allManageable[0] ?? null;
+  const activeManageable = useMemo(() => allManageable.filter((e) => e.status !== "finished"), [allManageable]);
+  const finishedManageable = useMemo(() => allManageable.filter((e) => e.status === "finished"), [allManageable]);
+  const managed = activeManageable.find((e) => e.id === manageIdLocal) ?? activeManageable[0] ?? null;
   const permOfManaged = managed ? myPermFor(managed) : null;
   const canManageEvent = permOfManaged === "owner" || permOfManaged === "full" || permOfManaged === "edit";
 
@@ -79,7 +81,8 @@ export default function OrganizerBoard() {
   const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
   const [delAsk, setDelAsk] = useState(false);
-  const [edit, setEdit] = useState<{ name: string; date: string; time: string; endTime: string; notes: string } | null>(null);
+  const [edit, setEdit] = useState<{ name: string; date: string; time: string; endTime: string; address: string; features: string[]; notes: string } | null>(null);
+  const [timeUpAsk, setTimeUpAsk] = useState(false);
 
   const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
 
@@ -328,12 +331,12 @@ export default function OrganizerBoard() {
           {/* ===== manage events ===== */}
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-5">
             <SectionHead hue={0} icon={<Swords size={16} />} title={t("org_my_events")} sub={t("org_control")} />
-            {allManageable.length === 0 ? (
+            {activeManageable.length === 0 ? (
               <p className="text-[12px] text-white/40">{t("org_no_events")}</p>
             ) : (
               <>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
-                  {allManageable.map((e) => (
+                  {activeManageable.map((e) => (
                     <Chip key={e.id} active={managed?.id === e.id} onClick={() => setManageIdLocal(e.id)} hue={0}>{e.name}</Chip>
                   ))}
                 </div>
@@ -351,33 +354,45 @@ export default function OrganizerBoard() {
                         </span>
                       )}
                       <div className="flex-1" />
-                      {canManageEvent && (
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto order-last sm:order-none">
-                          <input
-                            type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
-                            placeholder="Nombre del participante"
-                            className="flex-1 sm:w-40 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/12 text-[11.5px] outline-none focus:border-mint/40"
-                          />
-                          <button
-                            onClick={() => { s.addGuestParticipant(managed.id, guestName); setGuestName(""); }}
-                            disabled={!guestName.trim()}
-                            className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
-                          >
-                            + Agregar
-                          </button>
-                        </div>
+                      {managed.endState === "timeUp" && (
+                        <button
+                          onClick={() => setTimeUpAsk(true)}
+                          className="flex items-center gap-1.5 text-[10.5px] font-extrabold tracking-wide px-2.5 py-1.5 rounded-lg border border-ember/50 bg-ember/15 text-ember hover:bg-ember/25 transition-colors cursor-pointer animate-pulse"
+                        >
+                          <Clock size={12} /> {t("org_time_up")}
+                        </button>
                       )}
-                      {managed.status !== "cancelled" && permOfManaged === "owner" && (
+                      {managed.status !== "finished" && managed.status !== "cancelled" && permOfManaged === "owner" && (
                         <>
-                          <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
-                          <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
-                          {managed.status !== "finished" && (
+                          <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, address: managed.address, features: managed.features, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
+                          {managed.endState !== "timeUp" && (
                             <button onClick={() => s.finishEvent(managed.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-mint/35 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer">{t("org_finish_ev")}</button>
                           )}
-                          <button onClick={() => setDelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/45 text-ember bg-ember/12 hover:bg-ember/22 transition-colors cursor-pointer">{t("org_delete_ev")}</button>
+                          <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
                         </>
                       )}
+                      {/* DELETE pinned top-right, separated from finish */}
+                      {permOfManaged === "owner" && (
+                        <button
+                          onClick={() => setDelAsk(true)}
+                          className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/50 text-ember bg-ember/10 hover:bg-ember/25 transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={12} /> {t("org_delete_ev")}
+                        </button>
+                      )}
                     </div>
+
+                    {/* time-up warning: finish now or extend */}
+                    {managed.endState === "timeUp" && (
+                      <div className="flex flex-wrap items-center gap-3 border border-ember/40 bg-ember/10 rounded-xl p-3 mt-2">
+                        <AlertTriangle size={18} className="text-ember shrink-0" />
+                        <p className="flex-1 min-w-0 text-[12px] text-white/85">{t("org_time_up_msg")}<br /><span className="text-white/45 text-[10.5px]">{t("org_time_up_end", { t: managed.endTime })}</span></p>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => setTimeUpAsk(true)} className="text-[11px] font-bold px-3 py-2 rounded-lg border border-mint/40 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer">{t("org_more_time")}</button>
+                          <button onClick={() => s.finishEvent(managed.id)} className="text-[11px] font-bold px-3 py-2 rounded-lg bg-ember text-white hover:brightness-110 transition-all cursor-pointer">{t("org_finish_now")}</button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* share this event */}
                     <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-white/8">
@@ -386,6 +401,23 @@ export default function OrganizerBoard() {
                       </span>
                       <ShareRow compact title={managed.name} url={`${window.location.origin}${window.location.pathname}#/e/${managed.id}`} />
                     </div>
+
+                    {canManageEvent && managed.status === "live" && (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
+                          placeholder={t("org_guest_ph")}
+                          className="flex-1 sm:w-44 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/12 text-[11.5px] outline-none focus:border-mint/40"
+                        />
+                        <button
+                          onClick={() => { s.addGuestParticipant(managed.id, guestName); setGuestName(""); }}
+                          disabled={!guestName.trim()}
+                          className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          + {t("org_add_guest")}
+                        </button>
+                      </div>
+                    )}
 
                     {/* group phase (3+ fighters per battle, before the bracket) */}
                     <div>
@@ -582,6 +614,55 @@ export default function OrganizerBoard() {
               </>
             )}
           </motion.section>
+
+          {/* ===== finished events (separate box, results) ===== */}
+          <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} className="panel p-5">
+            <SectionHead hue={316} icon={<Medal size={16} />} title={t("org_finished_events")} sub={t("org_finished_events_sub")} />
+            {finishedManageable.length === 0 ? (
+              <p className="text-[12px] text-white/40">{t("org_no_finished")}</p>
+            ) : (
+              <div className="space-y-3">
+                {finishedManageable.map((fe) => {
+                  const ranked = Object.entries(fe.votes).sort((a, b) => b[1] - a[1]);
+                  const champ = fe.winner ?? (ranked.length > 0 ? ranked[0][0] : null);
+                  const maxV = ranked.length > 0 ? ranked[0][1] : 1;
+                  return (
+                    <div key={fe.id} className="rounded-xl bg-mint/4 border border-mint/15 p-3.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="display text-[15px] font-extrabold flex-1 min-w-0 truncate">{fe.name}</span>
+                        <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-mint/10 text-mint border border-mint/30">{t("ev_finished").toUpperCase()}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[11px] text-white/45">{countryById(fe.country).flag} {fe.dateISO} · {fe.time}</span>
+                        {champ && (
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-gold bg-gold/10 border border-gold/30 px-2 py-0.5 rounded-full">
+                            <Crown size={12} /> {t("ev_winner_title")}: {userNameById(champ)} {fe.winnerAura > 0 && `+${fe.winnerAura}`} <Zap size={9} className="text-gold" />
+                          </span>
+                        )}
+                      </div>
+                      {ranked.length > 0 ? (
+                        <div className="mt-3 space-y-1.5">
+                          {ranked.map(([pid, v], i) => (
+                            <div key={pid} className={`flex items-center gap-2 ${pid === champ ? "text-gold" : ""}`}>
+                              <span className="display text-[10px] w-4 shrink-0 text-white/30">{i + 1}</span>
+                              <span className="text-[11.5px] font-semibold w-20 sm:w-28 shrink-0 truncate">{userNameById(pid)}</span>
+                              <div className="flex-1 min-w-0 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                                <div className={`h-full rounded-full transition-all duration-700 ${pid === champ ? "bg-gold" : "bg-azure"}`} style={{ width: `${(v / maxV) * 100}%` }} />
+                              </div>
+                              <span className="display text-[10.5px] font-bold text-azure w-9 sm:w-10 shrink-0 text-right">{v}</span>
+                              {pid === champ && <Crown size={12} className="text-gold shrink-0" />}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[11px] text-white/35">{t("org_no_votes")}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.section>
         </div>
       </div>
 
@@ -598,8 +679,55 @@ export default function OrganizerBoard() {
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("org_ev_end_time")}><input type="time" className={inputCls} value={edit.endTime} onChange={(e) => setEdit({ ...edit, endTime: e.target.value })} /></Field>
             </div>
+            <Field label={t("org_ev_address")}><input className={inputCls} value={edit.address} onChange={(e) => setEdit({ ...edit, address: e.target.value })} /></Field>
+            <Field label={t("org_ev_features")}>
+              <div className="flex flex-wrap gap-1.5 p-2.5 rounded-xl bg-white/4 border border-white/10">
+                {FEATURE_TAGS.map((f) => {
+                  const on = edit.features.includes(f);
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setEdit({ ...edit, features: on ? edit.features.filter((x) => x !== f) : [...edit.features, f] })}
+                      className={`text-[10.5px] font-bold px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${on ? "bg-violet/25 border-violet/50 text-violet" : "bg-white/4 border-white/12 text-white/45 hover:bg-white/8"}`}
+                    >
+                      {t(f)}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
             <Field label={t("org_ev_notes")}><input className={inputCls} value={edit.notes} onChange={(e) => setEdit({ ...edit, notes: e.target.value })} /></Field>
-            <button onClick={() => { s.updateEvent(managed.id, { name: edit.name, dateISO: edit.date, time: edit.time, endTime: edit.endTime, notes: edit.notes }); setEdit(null); }} className={btnGold + " w-full"}><Save size={14} /> {t("c_save")}</button>
+            {managed.endState === "timeUp" && (
+              <p className="text-[11px] text-ember/90 border border-ember/30 bg-ember/8 rounded-lg px-3 py-2">{t("org_extending_note")}</p>
+            )}
+            <button
+              onClick={() => {
+                s.updateEvent(managed.id, { name: edit.name, dateISO: edit.date, time: edit.time, endTime: edit.endTime, address: edit.address, features: edit.features, notes: edit.notes });
+                if (managed.endState === "timeUp") s.extendEvent(managed.id);
+                setEdit(null);
+              }}
+              className={btnGold + " w-full"}
+            >
+              <Save size={14} /> {t("c_save")}
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* ===== time-up choice: finish now or extend ===== */}
+      <Modal open={timeUpAsk} onClose={() => setTimeUpAsk(false)}>
+        {managed && managed.endState === "timeUp" && (
+          <div className="space-y-4 text-center">
+            <Clock size={30} className="mx-auto text-ember" />
+            <h3 className="display text-sm font-extrabold">{t("org_time_up_title")}</h3>
+            <p className="text-[13px] text-white/80">{t("org_time_up_msg")}</p>
+            <p className="display text-sm font-extrabold">{managed.name} · {t("org_ended_at", { t: managed.endTime })}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button onClick={() => { s.finishEvent(managed.id); setTimeUpAsk(false); }} className="py-3 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_finish_now")}</button>
+              <button onClick={() => { setTimeUpAsk(false); setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, address: managed.address, features: managed.features, notes: managed.notes }); }} className="py-3 rounded-xl bg-mint text-[#032018] display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_more_time")}</button>
+            </div>
+            <p className="text-[10.5px] text-white/40">{t("org_more_time_hint")}</p>
           </div>
         )}
       </Modal>
@@ -624,12 +752,14 @@ export default function OrganizerBoard() {
         {managed && (
           <div className="space-y-4 text-center">
             <Trash2 size={30} className="mx-auto text-ember" />
-            <p className="text-[13px] text-white/80">{t("org_delete_confirm")}</p>
-            <p className="display text-sm font-extrabold">{managed.name}</p>
-            <div className="flex gap-2">
+            <h3 className="display text-sm font-extrabold">{t("org_delete_title")}</h3>
+            <p className="text-[13px] text-white/85">{t("org_delete_confirm", { name: managed.name })}</p>
+            <p className="text-[11px] text-ember border border-ember/35 bg-ember/10 rounded-lg px-3 py-2">{t("org_delete_irreversible")}</p>
+            <div className="flex gap-2 pt-1">
               <button onClick={() => setDelAsk(false)} className="flex-1 py-2.5 rounded-xl border border-white/12 text-[12px] font-bold text-white/60 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
-              <button onClick={() => { s.deleteEvent(managed.id); setDelAsk(false); setManageIdLocal(null); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_delete_ev")}</button>
+              <button onClick={() => { s.deleteEvent(managed.id); setDelAsk(false); setManageIdLocal(null); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">🗑️ {t("org_delete_ev")}</button>
             </div>
+            <p className="text-[10px] text-white/35">{t("org_delete_unrecoverable")}</p>
           </div>
         )}
       </Modal>

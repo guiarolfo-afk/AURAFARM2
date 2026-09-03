@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Clock, Users, Swords, Eye, ArrowRight, Hourglass, UserCheck, Sparkles, Trophy, Zap } from "lucide-react";
+import { MapPin, Calendar, Clock, Users, Swords, Eye, ArrowRight, Hourglass, UserCheck, Sparkles, Trophy, Zap, Crown, Medal } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -167,6 +167,61 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
           {filtered.map((e, i) => eventCard(e, i))}
         </div>
       )}
+
+      {/* ===== finished events (separate box, results) ===== */}
+      {(() => {
+        const finished = events
+          .filter((e) => e.status === "finished" && (country === "all" || e.country === country))
+          .sort((a, b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
+        if (finished.length === 0) return null;
+        return (
+          <motion.section initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.5 }} className="pt-2">
+            <SectionHead hue={316} icon={<Medal size={16} />} title={t("ev_finished_events")} sub={t("ev_finished_events_sub")} />
+            <div className="space-y-3">
+              {finished.map((fe) => {
+                const ranked = Object.entries(fe.votes).sort((a, b) => b[1] - a[1]);
+                const champ = fe.winner ?? (ranked.length > 0 ? ranked[0][0] : null);
+                const maxV = ranked.length > 0 ? ranked[0][1] : 1;
+                return (
+                  <article key={fe.id} className="panel p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="display text-[15px] font-extrabold flex-1 min-w-0 truncate">{fe.name}</span>
+                      <span className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-mint/10 text-mint border border-mint/30"><Medal size={10} /> {t("ev_finished").toUpperCase()}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2 text-[11px] text-white/45">
+                      <span>{countryById(fe.country).flag} {countryById(fe.country).name[lang]}</span>
+                      <span>· {fe.dateISO} {fe.time}</span>
+                      <span>· {fe.participants.length} {t("ev_participants").toLowerCase()}</span>
+                      {champ && (
+                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-gold bg-gold/10 border border-gold/30 px-2 py-0.5 rounded-full">
+                          <Crown size={12} /> {t("ev_winner_title")}: {userNameById(champ)} {fe.winnerAura > 0 && `+${fe.winnerAura}`} <Zap size={9} className="text-gold" />
+                        </span>
+                      )}
+                    </div>
+                    {ranked.length > 0 ? (
+                      <div className="mt-3 space-y-1.5">
+                        {ranked.map(([pid, v], i) => (
+                          <div key={pid} className={`flex items-center gap-2 ${pid === champ ? "text-gold" : ""}`}>
+                            <span className="display text-[10px] w-4 shrink-0 text-white/30">{i + 1}</span>
+                            <span className="text-[11.5px] font-semibold w-20 sm:w-28 shrink-0 truncate">{userNameById(pid)}</span>
+                            <div className="flex-1 min-w-0 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                              <div className={`h-full rounded-full transition-all duration-700 ${pid === champ ? "bg-gold" : "bg-azure"}`} style={{ width: `${(v / maxV) * 100}%` }} />
+                            </div>
+                            <span className="display text-[10.5px] font-bold text-azure w-9 sm:w-10 shrink-0 text-right">{v}</span>
+                            {pid === champ && <Crown size={12} className="text-gold shrink-0" />}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-[11px] text-white/35">{t("org_no_votes")}</p>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </motion.section>
+        );
+      })()}
 
       {/* ================= EVENT DETAIL MODAL ================= */}
       <Modal open={!!detail} onClose={() => setDetailId(null)} wide>

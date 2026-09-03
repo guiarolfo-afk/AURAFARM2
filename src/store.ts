@@ -271,6 +271,7 @@ interface AppState {
   createEvent: (e: EventItem) => Promise<void>; updateEvent: (id: string, patch: Partial<EventItem>) => void;
   cancelEvent: (id: string) => void; deleteEvent: (id: string) => Promise<void>;
   finishEvent: (id: string) => void;
+  extendEvent: (id: string) => void;
   generateBracket: (eventId: string) => void;
   setMatchDuration: (eventId: string, matchId: string, duration: number) => void;
   setCurrentMatch: (eventId: string, matchId: string) => void;
@@ -384,34 +385,28 @@ export const useApp = create<AppState>()(
         if (get().streak >= 1) get().toggleChallenge("ch6");
         /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
         const toGoLive: string[] = [];
-        const toFinish: string[] = [];
+        const toTimeUp: string[] = [];
         get().events.forEach((ev) => {
           if (ev.status === "live") {
             const endTs = eventEndTimestamp(ev.dateISO, ev.time, ev.endTime);
-            if (endTs != null && endTs <= now) toFinish.push(ev.id);
+            if (endTs != null && endTs <= now && ev.endState !== "manual") toTimeUp.push(ev.id);
           } else if (ev.status === "upcoming") {
             const ts = eventStartTimestamp(ev.dateISO, ev.time);
             if (ts != null && ts <= now) toGoLive.push(ev.id);
           }
         });
-        if (toFinish.length > 0) {
-          const s = get();
+        /* Cuando el tiempo del evento se agota, NO se finaliza automáticamente:
+           se marca "timeUp" para que el organizador decida (Finalizar o Extender). */
+        if (toTimeUp.length > 0) {
           set((st) => ({
-            events: st.events.map((e) => {
-              if (!toFinish.includes(e.id) || e.status !== "live") return e;
-              const maxRound = Math.max(...e.bracket.map((m) => m.round), -1);
-              const fm = maxRound >= 0 ? e.bracket.find((m) => m.round === maxRound && m.winner) : null;
-              const winner = fm ? (fm.winner === "a" ? fm.a : fm.b) : null;
-              return { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura: winner ? (e.votes[winner] ?? 0) * VOTE_REWARD : 0 };
-            }),
+            events: st.events.map((e) =>
+              toTimeUp.includes(e.id) && e.status === "live"
+                ? { ...e, endState: "timeUp" as const }
+                : e
+            ),
           }));
-          toFinish.forEach((eid) => {
-            const ev = s.events.find((x) => x.id === eid);
-            if (!ev) return;
-            const maxRound = Math.max(...ev.bracket.map((m) => m.round), -1);
-            const fm = maxRound >= 0 ? ev.bracket.find((m) => m.round === maxRound && m.winner) : null;
-            const winner = fm ? (fm.winner === "a" ? fm.a : fm.b) : null;
-            supabase.from("events").update({ status: "finished", winner: winner ?? null, winner_aura: winner ? (ev.votes[winner] ?? 0) * VOTE_REWARD : 0 }).eq("id", eid).then(() => {});
+          toTimeUp.forEach((eid) => {
+            supabase.from("events").update({ end_state: "timeUp" }).eq("id", eid).then(() => {});
           });
         }
         if (toGoLive.length > 0) {
@@ -694,17 +689,26 @@ export const useApp = create<AppState>()(
         const winnerAura = winner ? (ev.votes[winner] ?? 0) * VOTE_REWARD : 0;
         set((s) => ({
           events: s.events.map((e) =>
-            e.id === id ? { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura } : e
+            e.id === id ? { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura, endState: undefined } : e
           ),
         }));
         const { error } = await supabase
           .from("events")
-          .update({ status: "finished", winner: winner ?? null, winner_aura: winnerAura })
+          .update({ status: "finished", winner: winner ?? null, winner_aura: winnerAura, end_state: null })
           .eq("id", id);
         if (error) console.error("Error finalizando evento en Supabase:", error.message);
         get().toast(translate(get().lang, "t_event_finished"), "ok");
       },
 
+      /* Cuando el organizador elige "más tiempo": desactiva el fin automático.
+         El evento solo finaliza cuando el organizador toca el botón de Finalizar. */
+      extendEvent: (id) => {
+        set((s) => ({
+          events: s.events.map((e) => (e.id === id ? { ...e, endState: "manual" as const } : e)),
+        }));
+        supabase.from("events").update({ end_state: "manual" }).eq("id", id).then(() => {});
+        get().toast(translate(get().lang, "org_extended"));
+      },
       generateBracket: (eventId) => {
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
@@ -1384,8 +1388,9 @@ export const useApp = create<AppState>()(
             organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
             collaborators: collabs,
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
-            status: row.status,
-            winner: row.winner ?? prev?.winner ?? null, winnerAura: row.winner_aura ?? prev?.winnerAura ?? 0,
+status: row.status,
+          endState: (row.end_state as "timeUp" | "manual" | null) ?? undefined,
+          winner: row.winner ?? prev?.winner ?? null, winnerAura: row.winner_aura ?? prev?.winnerAura ?? 0,
             features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
             votes: { ...(votesByEvent[row.id] ?? {}), ...(prev?.votes ?? {}) },
             bracket: applyMatchVotes(prev?.bracket ?? [], matchVotesByEvent[row.id] ?? {}),

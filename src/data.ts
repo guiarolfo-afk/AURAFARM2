@@ -67,6 +67,7 @@ export interface EventItem {
   collaborators: { name: string; email?: string; perm: string }[];
   maxParticipants: number; participants: string[]; attendees: number; waitlist: string[];
   status: "live" | "upcoming" | "cancelled" | "finished";
+  endState?: "timeUp" | "manual";
   winner: string | null; winnerAura: number;
   features: string[]; banner: [string, string];
   votes: Record<string, number>; bracket: BracketMatch[]; currentMatchId: string | null;
