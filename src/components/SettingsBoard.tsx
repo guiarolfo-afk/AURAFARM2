@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Bell, Lock, Crown, ShieldCheck, LogOut, Megaphone, Trash2, Save, Plus, Users, Database, Radio, Link2, KeyRound } from "lucide-react";
+import { Camera, Bell, Lock, Crown, ShieldCheck, LogOut, Megaphone, Trash2, Save, Plus, Users, Database, Radio, Link2, KeyRound, Bug } from "lucide-react";
 import { useApp, levelFromAura, titleFromLevel } from "../store";
 import { useT, LANGS } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -15,6 +15,20 @@ export default function SettingsBoard() {
   const [adminAsk, setAdminAsk] = useState(false);
   const [pass, setPass] = useState("");
   const [bannerDraft, setBannerDraft] = useState({ id: "", text: "", link: "", color: "#9B30FF", active: true });
+  const [fb, setFb] = useState({ type: "error" as "error" | "suggestion" | "other", msg: "", contact: s.userEmail || "" });
+  const [fbSent, setFbSent] = useState(false);
+
+  const sendFeedback = () => {
+    if (!fb.msg.trim()) return;
+    const typeLabel = fb.type === "error" ? t("st_fb_error") : fb.type === "suggestion" ? t("st_fb_suggestion") : t("st_fb_other");
+    const subject = encodeURIComponent(`[AuraFARM ${typeLabel}] ${fb.msg.slice(0, 60)}`);
+    const body = encodeURIComponent(
+      `Tipo: ${typeLabel}\n\nMensaje:\n${fb.msg}\n\nContacto: ${fb.contact || "—"}\nUsuario: ${s.userEmail || profile.name || "invitado"}`
+    );
+    window.location.href = `mailto:shop.aurafarm@gmail.com?subject=${subject}&body=${body}`;
+    setFbSent(true);
+    setTimeout(() => setFbSent(false), 3000);
+  };
 
   const onPhoto = (f: File | undefined) => {
     if (!f) return;
@@ -237,6 +251,45 @@ export default function SettingsBoard() {
                 <div className="flex items-center justify-between"><span className="text-[12px] text-white/70">{t("st_priv_country")}</span><Toggle on={settings.showCountry} onChange={() => s.toggleSetting("showCountry")} hue={152} /></div>
               </div>
             </div>
+          </motion.section>
+
+          {/* feedback / report error */}
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="panel p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Bug size={16} className="text-gold" />
+              <div>
+                <p className="display text-[12.5px] font-extrabold">{t("st_feedback")}</p>
+                <p className="text-[10.5px] text-white/40">{t("st_feedback_sub")}</p>
+              </div>
+            </div>
+            <div className="flex gap-1.5 mb-3">
+              {(["error", "suggestion", "other"] as const).map((tp) => (
+                <button
+                  key={tp}
+                  onClick={() => setFb({ ...fb, type: tp })}
+                  className={`flex-1 py-1.5 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer ${fb.type === tp ? "bg-gold border-gold text-[#171200]" : "border-white/12 bg-white/4 text-white/50 hover:bg-white/8"}`}
+                >
+                  {tp === "error" ? t("st_fb_error") : tp === "suggestion" ? t("st_fb_suggestion") : t("st_fb_other")}
+                </button>
+              ))}
+            </div>
+            <textarea
+              rows={3}
+              className={inputCls + " resize-none"}
+              value={fb.msg}
+              onChange={(e) => setFb({ ...fb, msg: e.target.value })}
+              placeholder={t("st_fb_desc")}
+            />
+            <Field label={t("st_fb_contact")}>
+              <input className={inputCls} value={fb.contact} onChange={(e) => setFb({ ...fb, contact: e.target.value })} placeholder="tu@email.com" />
+            </Field>
+            <button
+              onClick={sendFeedback}
+              disabled={!fb.msg.trim()}
+              className="w-full mt-2 py-2.5 rounded-xl display text-[12px] font-extrabold bg-gold text-[#171200] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {fbSent ? "✓ " + t("st_fb_ok") : t("st_fb_send")}
+            </button>
           </motion.section>
 
           {/* hidden admin access */}
