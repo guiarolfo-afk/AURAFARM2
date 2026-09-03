@@ -248,6 +248,8 @@ interface AppState {
   myRatings: Record<string, number>;
   myAttendance: Record<string, "participant" | "spectator">;
   events: EventItem[];
+  deletedEventIds: string[];
+  finishedEventIds: string[];
   toasts: Toast[];
   premium: boolean;
   organizer: OrganizerAccount | null; orgUnlocked: boolean;
@@ -331,7 +333,7 @@ export const useApp = create<AppState>()(
       },
       supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null,
       votesCast: 0, dailyVotes: 0, dailyVotesDate: new Date().toDateString(), myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
-      events: [],
+      events: [], deletedEventIds: [], finishedEventIds: [],
 
 
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
@@ -673,7 +675,10 @@ export const useApp = create<AppState>()(
       deleteEvent: async (id) => {
         const { error } = await supabase.from("events").delete().eq("id", id);
         if (error) console.error("Error eliminando evento en Supabase:", error.message);
-        set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
+        set((s) => ({
+          events: s.events.filter((e) => e.id !== id),
+          deletedEventIds: s.deletedEventIds.includes(id) ? s.deletedEventIds : [...s.deletedEventIds, id],
+        }));
         get().toast(translate(get().lang, "t_event_deleted"), "warn");
       },
       finishEvent: async (id) => {
@@ -689,6 +694,7 @@ export const useApp = create<AppState>()(
           events: s.events.map((e) =>
             e.id === id ? { ...e, status: "finished" as const, currentMatchId: null, winner, winnerAura, endState: undefined } : e
           ),
+          finishedEventIds: s.finishedEventIds.includes(id) ? s.finishedEventIds : [...s.finishedEventIds, id],
         }));
         const { error } = await supabase
           .from("events")
@@ -1305,7 +1311,9 @@ export const useApp = create<AppState>()(
         } = await fetchVoteTallies(eventIds);
 
         const prevByEvent = new Map(get().events.map((e) => [e.id, e]));
-        const mapped: EventItem[] = (data ?? []).map((row: any) => {
+        const { deletedEventIds, finishedEventIds } = get();
+        const visibleRows = (data ?? []).filter((row: any) => !deletedEventIds.includes(row.id));
+        const mapped: EventItem[] = visibleRows.map((row: any) => {
           const prev = prevByEvent.get(row.id);
           return {
             id: row.id,
@@ -1315,7 +1323,7 @@ export const useApp = create<AppState>()(
             dateISO: row.date_iso, time: row.event_time ?? "", endTime: row.event_end_time ?? prev?.endTime ?? "",
             organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
-status: row.status,
+status: finishedEventIds.includes(row.id) ? "finished" : row.status,
           endState: (row.end_state as "timeUp" | "manual" | null) ?? undefined,
           winner: row.winner ?? prev?.winner ?? null, winnerAura: row.winner_aura ?? prev?.winnerAura ?? 0,
             features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
@@ -1418,6 +1426,7 @@ status: row.status,
         votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,
         myVotes: s.myVotes, battleVotes: s.battleVotes,
         myRatings: s.myRatings, myAttendance: s.myAttendance,
+        deletedEventIds: s.deletedEventIds, finishedEventIds: s.finishedEventIds,
       }),
     }
   )

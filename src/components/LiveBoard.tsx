@@ -23,7 +23,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
     .filter((e) => e.status === "upcoming" && e.dateISO)
     .sort((a, b) => (a.dateISO + a.time).localeCompare(b.dateISO + b.time) || a.name.localeCompare(b.name))
     .slice(0, 3);
-  const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled").map((e) => e.country))];
+  const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled" && e.status !== "finished").map((e) => e.country))];
 
   return (
     <div className="space-y-8">
@@ -93,7 +93,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 {nextEvents.length}/3
               </span>
             </div>
-            {events.filter((e) => e.status !== "cancelled").length > 0 && (
+            {events.filter((e) => e.status !== "cancelled" && e.status !== "finished").length > 0 && (
               <div className="relative mb-3">
                 <button
                   onClick={() => setNextOpen((o) => !o)}
@@ -102,7 +102,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 >
                   <Globe2 size={13} className="text-azure shrink-0" />
                   <span className="flex-1 text-left text-[11.5px] font-bold text-white/80 truncate">{t("live_by_country")}</span>
-                  <span className="text-[9.5px] font-extrabold text-white/35 shrink-0">{events.filter((e) => e.status !== "cancelled").length}</span>
+                  <span className="text-[9.5px] font-extrabold text-white/35 shrink-0">{events.filter((e) => e.status !== "cancelled" && e.status !== "finished").length}</span>
                   <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${nextOpen ? "rotate-180" : ""}`} />
                 </button>
                 {nextOpen && (
@@ -114,7 +114,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                       transition={{ duration: 0.15 }}
                       className="absolute left-0 right-0 mt-2 max-h-64 overflow-y-auto panel !rounded-xl p-1.5 z-40 shadow-2xl"
                     >
-                      {events.filter((e) => e.status !== "cancelled").map((e) => (
+                      {events.filter((e) => e.status !== "cancelled" && e.status !== "finished").map((e) => (
                         <button
                           key={e.id}
                           onClick={() => { enterArena(e.id); setNextOpen(false); }}
@@ -184,7 +184,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
               </option>
               {byCountry.map((cid) => {
                 const c = countryById(cid);
-                const evs = events.filter((e) => e.country === cid && e.status !== "cancelled");
+                const evs = events.filter((e) => e.country === cid && e.status !== "cancelled" && e.status !== "finished");
                 const live = evs.filter((e) => e.status === "live").length;
                 return (
                   <option key={cid} value={cid} className="bg-[#0d0d1c]">

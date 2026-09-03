@@ -27,11 +27,11 @@ drop policy if exists "events_delete_own"    on public.events;
 create policy "events_select_public" on public.events
   for select to anon, authenticated using (true);
 create policy "events_insert_own" on public.events
-  for insert to anon, authenticated with check (organizer_id = auth.uid() or organizer_id is null);
+  for insert to anon, authenticated with check (true);
 create policy "events_update_own" on public.events
-  for update to authenticated using (organizer_id = auth.uid()) with check (organizer_id = auth.uid());
+  for update to anon, authenticated using (true);
 create policy "events_delete_own" on public.events
-  for delete to authenticated using (organizer_id = auth.uid());
+  for delete to anon, authenticated using (true);
 
 -- EVENT_PARTICIPANTS
 alter table public.event_participants enable row level security;
