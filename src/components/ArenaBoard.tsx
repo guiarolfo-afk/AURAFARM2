@@ -381,7 +381,7 @@ export default function ArenaBoard() {
               </div>
             )}
 
-            {viewMatch ? (
+            {viewMatch && (
               <div className="panel p-4 sm:p-5">
                 <div className="flex items-center gap-2 flex-wrap mb-4">
                   <p className={`text-[11px] font-bold uppercase tracking-[0.15em] flex items-center gap-1.5 ${viewMatch.id === ev.currentMatchId ? "text-ember" : "text-white/45"}`}>
@@ -493,7 +493,9 @@ export default function ArenaBoard() {
                   </div>
                 )}
               </div>
-            ) : (
+            )}
+
+              {/* ===== votación por competidor: siempre disponible hasta finalizar el evento ===== */}
               <div className="panel p-5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
                 {ev.status === "finished" ? (
@@ -550,7 +552,6 @@ export default function ArenaBoard() {
                   </>
                 )}
               </div>
-            )}
           </motion.div>
         )}
 
