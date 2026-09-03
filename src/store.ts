@@ -283,8 +283,13 @@ interface AppState {
   voidMatchVotes: (eventId: string, matchId: string) => void; voidEventVotes: (eventId: string) => void;
   voidMyBattleVote: (eventId: string, matchId: string) => void;
   createGroups: (eventId: string) => void; setGroupLive: (eventId: string, groupId: string) => void;
+  setGroupDuration: (eventId: string, groupId: string, duration: number) => void;
+  setGroupWinner: (eventId: string, groupId: string, pid: string) => void;
+  reopenGroup: (eventId: string, groupId: string) => void;
+  autoCloseGroup: (eventId: string, groupId: string) => void;
   addManualGroup: (eventId: string, participantIds: string[]) => void; removeGroup: (eventId: string, groupId: string) => void;
   closeGroup: (eventId: string, groupId: string) => void; promoteGroups: (eventId: string) => void;
+  setBracketPlayer: (eventId: string, matchId: string, slot: "a" | "b", pid: string) => void;
   voteGroup: (eventId: string, groupId: string, pid: string) => void;
   undoGroupVote: (eventId: string, groupId: string) => void;
   voidGroupVotes: (eventId: string, groupId: string) => void;
@@ -362,11 +367,18 @@ export const useApp = create<AppState>()(
           const m = ev.bracket.find((x) => x.id === ev.currentMatchId);
           if (!m) return;
           if (ev.matchStartedAt + m.duration * 60000 <= now) autoClosed.add(ev.id + "|" + m.id);
+          /* temporizador de la fase de grupos */
+          ev.groups.forEach((g) => {
+            if (g.status === "live" && g.matchStartedAt != null && g.matchStartedAt + (g.duration || 10) * 60000 <= now) {
+              autoClosed.add(ev.id + "|g:" + g.id);
+            }
+          });
         });
         if (autoClosed.size > 0) {
           autoClosed.forEach((key) => {
-            const [eventId, matchId] = key.split("|");
-            get().autoCloseMatch(eventId, matchId);
+            const [eventId, groupMatch] = key.split("|");
+            if (groupMatch.startsWith("g:")) get().autoCloseGroup(eventId, groupMatch.slice(2));
+            else get().autoCloseMatch(eventId, groupMatch);
           });
         }
         /* ---- Reinicio diario de RE-TOS: en un día nuevo los retos vuelven a estar disponibles ---- */
@@ -731,7 +743,7 @@ export const useApp = create<AppState>()(
         const nextLetter = String.fromCharCode(65 + ev.groups.length);
         const newGroup: BattleGroup = {
           id: `${eventId}g${Date.now()}`, name: nextLetter,
-          fighters: participantIds, votes: {}, status: "open", winner: null,
+          fighters: participantIds, votes: {}, status: "open", winner: null, duration: 10, matchStartedAt: null,
         };
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: [...e.groups, newGroup] } : e)) });
         s.toast(translate(s.lang, "t_bracket_gen"), "gold");
@@ -754,7 +766,7 @@ export const useApp = create<AppState>()(
         const k = Math.max(1, Math.ceil(pids.length / 4));
         const groups: BattleGroup[] = Array.from({ length: k }, (_, g) => ({
           id: `${eventId}g${g + 1}`, name: String.fromCharCode(65 + g),
-          fighters: [], votes: {}, status: "open" as const, winner: null,
+          fighters: [], votes: {}, status: "open" as const, winner: null, duration: 10, matchStartedAt: null,
         }));
         pids.forEach((p, i) => groups[i % k].fighters.push(p));
         set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups } : e)) });
@@ -763,8 +775,34 @@ export const useApp = create<AppState>()(
 
       setGroupLive: (eventId, groupId) => {
         const s = get();
-        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "live" as const } : g)) } : e)) });
-        s.toast(translate(s.lang, "t_current_set"), "gold");
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "live" as const, matchStartedAt: Date.now() } : g)) } : e)) });
+        s.toast(translate(s.lang, "org_battle_start"), "gold");
+      },
+
+      setGroupDuration: (eventId, groupId, duration) => {
+        set((s) => ({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, duration } : g)) } : e)) }));
+      },
+
+      setGroupWinner: (eventId, groupId, pid) => {
+        const s = get();
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "closed" as const, winner: pid, matchStartedAt: null } : g)) } : e)) });
+        s.toast(translate(s.lang, "org_group_winner_set"), "gold");
+      },
+
+      reopenGroup: (eventId, groupId) => {
+        const s = get();
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((g) => (g.id === groupId ? { ...g, status: "live" as const, winner: null, matchStartedAt: Date.now() } : g)) } : e)) });
+        s.toast(translate(s.lang, "org_group_reopened"), "gold");
+      },
+
+      autoCloseGroup: (eventId, groupId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const g = ev?.groups.find((x) => x.id === groupId);
+        if (!ev || !g || g.winner || g.status !== "live") return;
+        /* El tiempo se agotó: se cierra la votación, pero el ganador SIEMPRE lo decide el organizador */
+        set((st) => ({ events: st.events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, status: "closed" as const, matchStartedAt: null } : x)) } : e)) }));
+        s.toast(translate(s.lang, "org_group_auto"), "ok");
       },
 
       closeGroup: (eventId, groupId) => {
@@ -776,7 +814,7 @@ export const useApp = create<AppState>()(
         const wu = s.users.find((u) => u.id === winner);
         const feed = wu ? [feedItem("win", wu.name, countryById(wu.country).flag, undefined, ev.name), ...s.feed].slice(0, 9) : s.feed;
         set({
-          events: get().events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, status: "closed" as const, winner } : x)) } : e)),
+          events: get().events.map((e) => (e.id === eventId ? { ...e, groups: e.groups.map((x) => (x.id === groupId ? { ...x, status: "closed" as const, winner, matchStartedAt: null } : x)) } : e)),
           feed,
         });
         get().toast(translate(get().lang, "org_group_closed_toast"), "gold");
@@ -868,6 +906,18 @@ export const useApp = create<AppState>()(
 
       setMatchDuration: (eventId, matchId, duration) =>
         set((s) => ({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket: e.bracket.map((m) => (m.id === matchId ? { ...m, duration } : m)) } : e)) })),
+
+      setBracketPlayer: (eventId, matchId, slot, pid) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const m = ev?.bracket.find((x) => x.id === matchId);
+        if (!ev || !m || m.winner) return;
+        const other = slot === "a" ? m.b : m.a;
+        /* Evitar el mismo participante en ambos lados: si coincide, se limpia el otro */
+        const slotVal = pid;
+        const otherVal = other === pid ? null : other;
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket: e.bracket.map((x) => (x.id === matchId ? { ...x, a: slot === "a" ? slotVal : otherVal, b: slot === "b" ? slotVal : otherVal, votesA: 0, votesB: 0, winner: null } : x)) } : e)) });
+      },
 
       setCurrentMatch: (eventId, matchId) => {
         set((s) => ({ events: s.events.map((e) => (e.id === eventId ? { ...e, currentMatchId: matchId } : e)) }));

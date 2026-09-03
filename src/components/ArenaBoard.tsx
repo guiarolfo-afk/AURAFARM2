@@ -51,6 +51,11 @@ export default function ArenaBoard() {
   const timeLeft = isRunning && remainingMs <= 0 ? 0 : remainingSec;
   const mm = Math.floor(timeLeft / 60);
   const ss = timeLeft % 60;
+  const countdown = (start: number | null, minutes: number) => {
+    if (start == null) return "";
+    const left = Math.max(0, Math.ceil((start + minutes * 60000 - now) / 1000));
+    return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  };
   /* battle finder: the participant can open any battle from the bracket */
   const viewMatch = ev.bracket.find((m) => m.id === pickedMatch) ?? currentMatch;
   const R = Math.max(...ev.bracket.map((m) => m.round + 1), 0);
@@ -229,7 +234,13 @@ export default function ArenaBoard() {
                           ) : (
                             <span className="text-[9px] font-extrabold tracking-wider text-white/40 bg-white/6 border border-white/12 px-1.5 py-0.5 rounded-full">{t("ar_scheduled").toUpperCase()}</span>
                           )}
-                          <span className="ml-auto display text-[10px] font-bold text-white/35">{Object.values(g.votes).reduce((a, b) => a + b, 0)} 🗳️</span>
+                          <span className="ml-auto display text-[10px] font-bold text-white/35">
+                            {g.status === "live" && g.matchStartedAt != null ? (
+                              <span className="text-ember animate-pulse">⏱ {countdown(g.matchStartedAt, g.duration)}</span>
+                            ) : (
+                              Object.values(g.votes).reduce((a, b) => a + b, 0)
+                            )} {g.status === "live" && g.matchStartedAt != null ? "" : "🗳️"}
+                          </span>
                         </div>
                         <div className="space-y-1">
                           {sorted.map((pid) => {

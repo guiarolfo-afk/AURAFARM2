@@ -58,6 +58,8 @@ export interface BattleGroup {
   votes: Record<string, number>;
   status: "open" | "live" | "closed";
   winner: string | null;
+  duration: number;
+  matchStartedAt: number | null;
 }
 
 export interface EventItem {

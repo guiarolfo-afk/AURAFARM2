@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import { Lock, ShieldCheck, Swords, Trash2, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal } from "lucide-react";
@@ -62,6 +62,21 @@ export default function OrganizerBoard() {
 
   const [guestName, setGuestName] = useState("");
   const [manualPicks, setManualPicks] = useState<string[]>([]);
+
+  /* reloj local para la cuenta regresiva de las batallas */
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const countdown = (start: number | null, minutes: number) => {
+    if (start == null) return null;
+    const total = minutes * 60;
+    const left = Math.max(0, Math.ceil((start + total * 1000 - now) / 1000));
+    const m = Math.floor(left / 60);
+    const s = left % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
   
   const [delAsk, setDelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; endTime: string; address: string; features: string[]; notes: string } | null>(null);
@@ -333,7 +348,7 @@ export default function OrganizerBoard() {
                       <ShareRow compact title={managed.name} url={`${window.location.origin}${window.location.pathname}#/e/${managed.id}`} />
                     </div>
 
-                    {canManageEvent && managed.status === "live" && (
+                    {canManageEvent && (
                       <div className="flex items-center gap-1.5">
                         <input
                           type="text" value={guestName} onChange={(e) => setGuestName(e.target.value)}
@@ -358,11 +373,6 @@ export default function OrganizerBoard() {
                           <span className="normal-case font-medium text-white/30 tracking-normal hidden sm:inline">· {t("org_groups_sub")}</span>
                         </p>
                         <div className="flex gap-1.5">
-                          {canManageEvent && (
-                            <button onClick={() => s.createGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-mint/12 border border-mint/35 text-mint hover:bg-mint/22 transition-colors cursor-pointer">
-                              {t("org_gen_groups")} · Auto
-                            </button>
-                          )}
                           {canManageEvent && managed.groups.some((g) => g.status === "closed" && g.winner) && (
                             <button onClick={() => s.promoteGroups(managed.id)} className="text-[10.5px] font-bold px-2.5 py-1 rounded-lg bg-ember/12 border border-ember/35 text-ember hover:bg-ember/22 transition-colors cursor-pointer">
                               {t("org_promote_bracket")}
@@ -398,7 +408,7 @@ export default function OrganizerBoard() {
                       )}
 
                       {managed.groups.length === 0 ? (
-                        <p className="text-[11.5px] text-white/35">— {t("org_gen_groups")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
+                        <p className="text-[11.5px] text-white/35">— {t("org_group_hint")} ({managed.participants.length} {t("ev_participants").toLowerCase()})</p>
                       ) : (
                         <div className="grid sm:grid-cols-2 gap-2.5">
                           {managed.groups.map((g) => {
@@ -412,11 +422,23 @@ export default function OrganizerBoard() {
                                     {g.status === "live" ? t("org_current").toUpperCase() : g.status === "closed" ? t("ar_completed").toUpperCase() : t("ar_scheduled").toUpperCase()}
                                   </span>
                                   <div className="flex-1" />
+                                  {canManageEvent && g.status === "live" && g.matchStartedAt != null && (
+                                    <span className="display text-[9.5px] font-extrabold text-ember animate-pulse">⏱ {countdown(g.matchStartedAt, g.duration)}</span>
+                                  )}
+                                  {canManageEvent && g.status !== "closed" && (
+                                    <>
+                                      <input type="number" min={1} max={30} value={g.duration} onChange={(e) => s.setGroupDuration(managed.id, g.id, +e.target.value)} className="w-10 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[9px] outline-none" aria-label={t("org_duration")} />
+                                      <span className="text-[8px] text-white/35">{t("c_min")}</span>
+                                    </>
+                                  )}
                                   {canManageEvent && g.status === "open" && (
                                     <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
                                   )}
                                   {canManageEvent && g.status === "live" && (
                                     <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 transition-colors cursor-pointer">{t("org_close_group")}</button>
+                                  )}
+                                  {canManageEvent && g.status === "closed" && (
+                                    <button onClick={() => s.reopenGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_reopen")}</button>
                                   )}
                                   {canManageEvent && total > 1 && g.status !== "closed" && (
                                     <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
@@ -438,6 +460,15 @@ export default function OrganizerBoard() {
                                           <div className="h-full rounded-full bg-mint transition-all duration-700" style={{ width: `${(v / total) * 100}%` }} />
                                         </div>
                                         <span className="display text-[9.5px] font-bold text-white/40 w-6 text-right">{v}</span>
+                                        {canManageEvent && g.status !== "open" && (
+                                          <button
+                                            onClick={() => s.setGroupWinner(managed.id, g.id, pid)}
+                                            title={t("org_pick_group_winner")}
+                                            className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${won ? "bg-gold/20 text-gold border border-gold/50" : "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember"}`}
+                                          >
+                                            ✓
+                                          </button>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -466,7 +497,14 @@ export default function OrganizerBoard() {
                                 const isCurrent = managed.currentMatchId === m.id;
                                 return (
                                   <div key={m.id} className={`rounded-xl border p-2 transition-all ${isCurrent ? "border-gold/60 bg-gold/8" : "border-white/9 bg-white/3"}`}>
-                                    {isCurrent && <p className="text-[8.5px] font-extrabold tracking-widest text-gold mb-1 flex items-center gap-1"><Radio size={8} className="animate-pulse" /> {t("org_current").toUpperCase()}</p>}
+                                    {isCurrent && (
+                                        <p className="text-[8.5px] font-extrabold tracking-widest text-gold mb-1 flex items-center gap-1">
+                                          <Radio size={8} className="animate-pulse" /> {t("org_current").toUpperCase()}
+                                          {managed.matchStartedAt != null && (
+                                            <span className="ml-auto display text-ember animate-pulse">⏱ {countdown(managed.matchStartedAt, m.duration)}</span>
+                                          )}
+                                        </p>
+                                      )}
                                     {m.closed && !m.winner && (
                                       <p className="text-[8.5px] font-extrabold tracking-widest text-ember mb-1 flex items-center gap-1 animate-pulse">👑 {t("org_decide_winner").toUpperCase()}</p>
                                     )}
@@ -476,14 +514,28 @@ export default function OrganizerBoard() {
                                       const won = m.winner === side;
                                       return (
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
-                                          <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
-                                          <span className="display text-[10px] font-bold text-white/40">{v}</span>
+                                          {canManageEvent && !m.winner ? (
+                                            <select
+                                              value={pid ?? ""}
+                                              onChange={(e) => s.setBracketPlayer(managed.id, m.id, side, e.target.value)}
+                                              className="flex-1 w-full min-w-0 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none cursor-pointer"
+                                              aria-label={t("org_pick_player")}
+                                            >
+                                              <option value="" className="bg-[#0d0d1c]">{t("org_player_ph")}</option>
+                                              {managed.participants.map((p) => (
+                                                <option key={p} value={p} className="bg-[#0d0d1c]">{userNameById(p)}</option>
+                                              ))}
+                                            </select>
+                                          ) : (
+                                            <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
+                                          )}
+                                          <span className="display text-[10px] font-bold text-white/40 shrink-0">{v}</span>
                                           {canManageEvent && pid && (
                                             <button
                                               onClick={() => s.pickWinner(managed.id, m.id, side)}
                                               aria-label={t(m.winner ? "org_override_winner" : "org_pick_winner")}
                                               title={t(m.winner ? "org_override_winner" : "org_pick_winner")}
-                                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${won ? "bg-gold/20 text-gold border border-gold/50" : m.winner ? "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember" : "bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30"}`}
+                                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${won ? "bg-gold/20 text-gold border border-gold/50" : m.winner ? "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember" : "bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30"}`}
                                             >
                                               ✓
                                             </button>
