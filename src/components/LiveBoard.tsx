@@ -15,10 +15,10 @@ const reveal = {
 
 export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
   const t = useT();
-  const { users, feed, challenges, streak, totalAura, events, lang, enterArena, setTab } = useApp();
+  const { presence, feed, challenges, streak, totalAura, events, lang, enterArena, setTab } = useApp();
 
   const [nextOpen, setNextOpen] = useState(false);
-  const online = users.filter((u) => u.online);
+  const online = presence.filter((u) => u.online);
   const liveEvents = events.filter((e) => e.status === "live");
   const nextEvents = events
     .filter((e) => e.status === "upcoming" && e.dateISO)
@@ -26,7 +26,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
     .slice(0, 3);
   const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled").map((e) => e.country))];
   const doneCount = challenges.filter((c) => c.done).length;
-  const top5 = [...users].sort((a, b) => b.aura - a.aura).slice(0, 5);
+  const top5 = [...presence].sort((a, b) => b.aura - a.aura).slice(0, 5);
   const medal = ["#FFD700", "#c9d4e3", "#cd8b4a", "#9B30FF", "#00BFFF"];
   const mins = (ts: number) => Math.max(0, Math.floor((Date.now() - ts) / 60000));
   const feedIcon = { farm: Zap, vote: Vote, join: Users, badge: Trophy, win: Crown };
@@ -219,7 +219,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
         <motion.section {...reveal} className="panel p-5">
           <SectionHead hue={200} icon={<Users size={16} />} title={t("live_active_users")} sub={t("live_active_users_sub")} />
           <div className="space-y-3">
-            {[...users].sort((a, b) => b.aura - a.aura).slice(0, 7).map((u, i) => {
+            {[...presence].sort((a, b) => b.aura - a.aura).slice(0, 7).map((u, i) => {
               const c = countryById(u.country);
               return (
                 <div key={u.id} className="flex items-center gap-3 group">

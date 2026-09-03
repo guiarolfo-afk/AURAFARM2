@@ -58,6 +58,68 @@ export const effectiveVoterId = (): string | null => {
   }
 };
 
+/* ============ PRESENCIA EN VIVO (Supabase Realtime) ============
+   Cada navegador/cliente se identifica con un `slug` único y secreto
+   persistido en localStorage. Con ese slug hace UPSERT en la tabla
+   `presence` (propia fila), y los demás ven la presencia por Realtime.
+   El slug NO se expone en la UI: solo el dueño lo conoce, así que con el
+   anon key nadie puede pisar la fila de otro. */
+const PRESENCE_META_KEY = "aurafarm_presence_slug";
+const PRESENCE_TTL_MS = 35000; // una fila se considera offline tras 35s sin last_seen
+const PRESENCE_HEARTBEAT_MS = 8000;
+let presenceSlug: string | null = null;
+let presenceChannel: any = null;
+let presenceTimer: any = null;
+
+function getPresenceSlug(): string {
+  if (presenceSlug) return presenceSlug;
+  try {
+    let s = localStorage.getItem(PRESENCE_META_KEY);
+    if (!s) {
+      s = "af_" + (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem(PRESENCE_META_KEY, s);
+    }
+    presenceSlug = s;
+  } catch {
+    presenceSlug = "af_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+  return presenceSlug!;
+}
+
+/* Convierte una fila de `presence` en un FarmUser para los cuadros en vivo. */
+function presenceRowToUser(row: any): FarmUser {
+  const aura = Number(row.aura ?? 0);
+  return {
+    id: row.profile_id ?? row.slug,
+    name: row.name ?? "Usuario",
+    country: row.country ?? "mx",
+    hue: Number(row.hue ?? 200),
+    online: true,
+    aura,
+    auraByVotes: 0,
+    trophies: 0,
+    level: levelFromAura(aura),
+    role: "participant" as const,
+  };
+}
+
+/* Asegura que el usuario local con sesión aparezca como online en la lista. */
+function buildPresenceList(list: FarmUser[], me: Profile, pid: string, myId: string | null): FarmUser[] {
+  const myProfile: FarmUser = {
+    id: pid,
+    name: me.name || "Usuario",
+    country: me.country ?? "mx",
+    hue: 46,
+    online: true,
+    aura: me.aura ?? 0,
+    auraByVotes: 0,
+    trophies: 0,
+    level: levelFromAura(me.aura ?? 0),
+    role: "participant" as const,
+  };
+  return [myProfile, ...list.filter((u) => u.id !== pid)];
+}
+
 /* Persist a vote to Supabase. Logged-in users write to `votes`; anonymous
    users write to `public_votes` (anonymous id, no FK). context uses the
    same scheme ("general" | "battle_<match>" | "g_<group>"). */
@@ -240,7 +302,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
   supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null;
-  users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
+  users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[]; presence: FarmUser[];
   challenges: Challenge[]; streak: number; lastStreakDate: string; challengeDay: string;
   profile: Profile; votesCast: number;
   dailyVotes: number; dailyVotesDate: string;
@@ -291,6 +353,9 @@ interface AppState {
   initSupabaseAuth: () => Promise<void>;
   refreshVotes: () => Promise<void>;
   subscribeVotes: () => () => void;
+  syncPresence: () => Promise<void>;
+  refreshPresence: () => Promise<void>;
+  subscribePresence: () => () => void;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
   loginAppUser: (email: string, password: string) => Promise<boolean>;
   registerAppUser: (email: string, password: string, name: string, country: string) => Promise<boolean>;
@@ -319,7 +384,7 @@ export const useApp = create<AppState>()(
   persist(
     (set, get) => ({
       lang: "es", tab: "live", activeEventId: "e1",
-            users: [], totalAura: 0, farmProg: {},
+            users: [], totalAura: 0, farmProg: {}, presence: [],
       feed: initialFeed,
 
       challenges: CHALLENGES, streak: 0, lastStreakDate: new Date().toDateString(), challengeDay: new Date().toDateString(),
@@ -445,6 +510,7 @@ export const useApp = create<AppState>()(
         if (s.supabaseProfileId) {
           supabase.from("profiles").update({ aura: finalAura }).eq("id", s.supabaseProfileId).then(() => {});
         }
+        get().syncPresence().catch(() => {});
         s.toast(translate(s.lang, "t_challenge", { n: ch.points }), "gold");
         if (levelUp) s.toast(`⭐ Nivel ${afterLevel} · ${titleFromLevel(afterLevel, s.lang)} · +500 bonus`, "gold");
         if (allDone) s.toast(translate(s.lang, "ch_all_done"), "gold");
@@ -986,9 +1052,11 @@ export const useApp = create<AppState>()(
         } catch (e) {
           console.error("Error cerrando sesión Supabase:", e);
         }
+        try { await supabase.from("presence").delete().eq("slug", getPresenceSlug()); } catch {}
+        if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
         localStorage.removeItem("aurafarm-store");
         set({
-          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false, isOAuth: false, userEmail: null,
+          supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false, authed: false, isOAuth: false, userEmail: null, presence: [],
           profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
         });
         get().toast(translate(get().lang, "t_session_closed") || "Sesión cerrada", "ok");
@@ -1107,6 +1175,9 @@ export const useApp = create<AppState>()(
         const provider = (user as any).app_metadata?.provider;
         const isOAuth = provider && provider !== "email";
         set({ supabaseUserId: userId, authed: true, isOAuth: !!isOAuth, userEmail: user.email ?? null });
+
+        get().subscribePresence();
+        await get().refreshPresence();
 
         await get().loadEventsFromSupabase();
         get().subscribeVotes();
@@ -1450,6 +1521,83 @@ export const useApp = create<AppState>()(
         };
       },
 
+      refreshPresence: async () => {
+        if (!supabase) return;
+        try {
+          const cutoff = new Date(Date.now() - PRESENCE_TTL_MS).toISOString();
+          const { data, error } = await supabase
+            .from("presence")
+            .select("*")
+            .gt("last_seen", cutoff);
+          if (error) {
+            console.error("Error cargando presencia:", error.message);
+            return;
+          }
+          const list = (data ?? []).map(presenceRowToUser);
+          // El usuario local con sesión siempre cuenta como online (reemplaza su fila).
+          const me = get().profile;
+          const pid = get().supabaseProfileId ?? getPresenceSlug();
+          const myId = get().supabaseProfileId ?? null;
+          const merged = list.some((u) => u.id === pid)
+            ? list
+            : buildPresenceList(list, me, pid, myId);
+          set({ presence: merged });
+        } catch (e) {
+          console.error("Error refreshPresence:", e);
+        }
+      },
+
+      syncPresence: async () => {
+        if (!supabase) return;
+        try {
+          const s = get();
+          const p = s.profile;
+          await supabase
+            .from("presence")
+            .upsert(
+              {
+                slug: getPresenceSlug(),
+                profile_id: s.supabaseProfileId ?? getPresenceSlug(),
+                name: p.name || "Usuario",
+                country: p.country ?? "mx",
+                hue: 46,
+                aura: p.aura ?? 0,
+                last_seen: new Date().toISOString(),
+              },
+              { onConflict: "slug", ignoreDuplicates: false }
+            );
+        } catch (e) {
+          console.error("Error syncPresence:", e);
+        }
+      },
+
+      subscribePresence: () => {
+        if (!supabase) return () => {};
+        if (presenceChannel) return () => {};
+        const refresh = () => get().refreshPresence();
+        presenceChannel = supabase
+          .channel("presence-realtime")
+          .on("postgres_changes", { schema: "public", table: "presence" } as any, refresh)
+          .subscribe();
+        // heartbeat: renueva mi last_seen y vuelve a empujar mi aura (sube en vivo)
+        if (presenceTimer) clearInterval(presenceTimer);
+        presenceTimer = setInterval(() => {
+          if (get().supabaseProfileId) {
+            get().syncPresence().catch(() => {});
+          }
+          get().refreshPresence().catch(() => {});
+        }, PRESENCE_HEARTBEAT_MS);
+        const onUnload = () => {
+          try { supabase.from("presence").delete().eq("slug", getPresenceSlug()).then(() => {}); } catch {}
+        };
+        window.addEventListener("beforeunload", onUnload);
+        return () => {
+          if (presenceChannel) { supabase.removeChannel(presenceChannel); presenceChannel = null; }
+          if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null; }
+          window.removeEventListener("beforeunload", onUnload);
+        };
+      },
+
       adminLogin: async (pass) => {
         const ADMIN_HASH = "8890449cb8b0bfc34284d3a9bb169327dbca24fa47df764f43a82cace05cf0ea";
         const enc = new TextEncoder().encode(pass.trim());
@@ -1486,7 +1634,6 @@ export const useApp = create<AppState>()(
         votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,
         myVotes: s.myVotes, battleVotes: s.battleVotes,
         myRatings: s.myRatings, myAttendance: s.myAttendance,
-        users: s.users, events: s.events, feed: s.feed, totalAura: s.totalAura, farmProg: s.farmProg,
       }),
     }
   )
