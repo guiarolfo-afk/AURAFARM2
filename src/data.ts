@@ -48,7 +48,7 @@ export interface FarmUser {
 
 export const AURA_COLORS = ["#FFD700", "#9B30FF", "#00BFFF", "#00FF7F", "#FF4444", "#FF69B4"];
 
-export interface BracketMatch { id: string; round: number; a: string | null; b: string | null; winner: "a" | "b" | null; votesA: number; votesB: number; duration: number }
+export interface BracketMatch { id: string; round: number; a: string | null; b: string | null; winner: "a" | "b" | null; votesA: number; votesB: number; duration: number; closed: boolean }
 
 export interface ChatMsg { id: number; user: string; hue: number; text: string; mine?: boolean; ts: number }
 
@@ -69,6 +69,7 @@ export interface EventItem {
   status: "live" | "upcoming" | "cancelled";
   features: string[]; banner: [string, string];
   votes: Record<string, number>; bracket: BracketMatch[]; currentMatchId: string | null;
+  matchStartedAt: number | null;
   groups: BattleGroup[];
   chat: ChatMsg[]; notes: string;
 }

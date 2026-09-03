@@ -5,7 +5,7 @@ import { Trophy, Ticket, Vote, Swords, Megaphone, Flame, TrendingUp, Globe2, Cro
 import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById, BADGES } from "../data";
-import { Avatar, AnimatedNumber, SectionHead, Chip, AuraBar } from "./ui";
+import { Avatar, AnimatedNumber, SectionHead, Chip, AuraBar, Stars } from "./ui";
 
 const BADGE_ICONS: Record<string, typeof Trophy> = {
   ticket: Ticket, vote: Vote, swords: Swords, megaphone: Megaphone,
@@ -14,7 +14,7 @@ const BADGE_ICONS: Record<string, typeof Trophy> = {
 
 export default function RankingsBoard() {
   const t = useT();
-  const { profile, users, lang, streak, votesCast, premium } = useApp();
+  const { profile, users, lang, streak, votesCast, premium, organizerScore, organizerScoreCount } = useApp();
   const [country, setCountry] = useState("all");
   const [sort, setSort] = useState<"total" | "votes" | "trophies">("total");
 
@@ -78,6 +78,31 @@ export default function RankingsBoard() {
               </div>
             ))}
           </div>
+
+          {profile.organized > 0 && (
+            <div className="relative mt-5 rounded-2xl p-4 border border-[#FFD700]/30 bg-gradient-to-br from-[#FFD700]/10 to-transparent overflow-hidden">
+              <div className="absolute -top-10 right-0 w-28 h-20 rounded-full bg-gold/20 blur-3xl pointer-events-none" />
+              <div className="relative flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl grid place-items-center bg-gold/15 border border-gold/40 shrink-0">
+                  <Megaphone size={20} className="text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="display text-[13px] font-extrabold text-gold flex items-center gap-1.5">🎖 {t("b4")}</p>
+                  <p className="text-[10.5px] text-white/50">{t("d4")} · {t("rk_events_org")}: <b className="text-white/80">{profile.organized}</b></p>
+                </div>
+                <div className="text-right shrink-0">
+                  {organizerScore ? (
+                    <>
+                      <Stars value={organizerScore} size={13} />
+                      <p className="text-[10px] text-white/40 font-semibold mt-0.5">{organizerScore.toFixed(1)} · {organizerScoreCount} {t("rk_ratings")}</p>
+                    </>
+                  ) : (
+                    <p className="text-[10px] text-white/40 font-semibold">—</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }} className="panel p-5">

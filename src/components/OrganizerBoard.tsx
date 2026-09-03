@@ -78,6 +78,7 @@ export default function OrganizerBoard() {
   const [guestName, setGuestName] = useState("");
   const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
+  const [delAsk, setDelAsk] = useState(false);
   const [edit, setEdit] = useState<{ name: string; date: string; time: string; notes: string } | null>(null);
 
   const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
@@ -98,7 +99,7 @@ export default function OrganizerBoard() {
       collaborators: [],
       maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
       status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
-      votes: {}, bracket: [], currentMatchId: null, groups: [], chat: [], notes: form.notes,
+      votes: {}, bracket: [], currentMatchId: null, matchStartedAt: null, groups: [], chat: [], notes: form.notes,
     };
     s.createEvent(ev);
     setForm({ ...form, name: "", desc: "", address: "", notes: "", date: "", loc: null });
@@ -363,6 +364,7 @@ export default function OrganizerBoard() {
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           <button onClick={() => setCancelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/35 text-ember bg-ember/8 hover:bg-ember/16 transition-colors cursor-pointer">{t("org_cancel_ev")}</button>
+                          <button onClick={() => setDelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/45 text-ember bg-ember/12 hover:bg-ember/22 transition-colors cursor-pointer">{t("org_delete_ev")}</button>
                         </>
                       )}
                     </div>
@@ -485,6 +487,9 @@ export default function OrganizerBoard() {
                                 return (
                                   <div key={m.id} className={`rounded-xl border p-2 transition-all ${isCurrent ? "border-gold/60 bg-gold/8" : "border-white/9 bg-white/3"}`}>
                                     {isCurrent && <p className="text-[8.5px] font-extrabold tracking-widest text-gold mb-1 flex items-center gap-1"><Radio size={8} className="animate-pulse" /> {t("org_current").toUpperCase()}</p>}
+                                    {m.closed && !m.winner && (
+                                      <p className="text-[8.5px] font-extrabold tracking-widest text-ember mb-1 flex items-center gap-1 animate-pulse">👑 {t("org_decide_winner").toUpperCase()}</p>
+                                    )}
                                     {(["a", "b"] as const).map((side) => {
                                       const pid = side === "a" ? m.a : m.b;
                                       const v = side === "a" ? m.votesA : m.votesB;
@@ -493,8 +498,15 @@ export default function OrganizerBoard() {
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
                                           <span className={`flex-1 text-[11px] font-semibold truncate ${won ? "text-mint" : "text-white/80"}`}>{won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}</span>
                                           <span className="display text-[10px] font-bold text-white/40">{v}</span>
-                                          {canManageEvent && isCurrent && !m.winner && pid && (
-                                            <button onClick={() => s.pickWinner(managed.id, m.id, side)} aria-label={t("org_pick_winner")} className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30 transition-colors cursor-pointer">✓</button>
+                                          {canManageEvent && pid && (
+                                            <button
+                                              onClick={() => s.pickWinner(managed.id, m.id, side)}
+                                              aria-label={t(m.winner ? "org_override_winner" : "org_pick_winner")}
+                                              title={t(m.winner ? "org_override_winner" : "org_pick_winner")}
+                                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${won ? "bg-gold/20 text-gold border border-gold/50" : m.winner ? "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember" : "bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30"}`}
+                                            >
+                                              ✓
+                                            </button>
                                           )}
                                         </div>
                                       );
@@ -505,8 +517,11 @@ export default function OrganizerBoard() {
                                       )}
                                       {canManageEvent && <span className="text-[9px] text-white/35">{t("c_min")}</span>}
                                       <div className="flex-1" />
+                                      {canManageEvent && isCurrent && !m.winner && (
+                                        <button onClick={() => s.endMatch(managed.id, m.id)} className="text-[9px] font-bold px-2 py-0.5 rounded bg-ember/12 text-ember border border-ember/45 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_end_battle")}</button>
+                                      )}
                                       {canManageEvent && !isCurrent && !m.winner && m.a && m.b && (
-                                        <button onClick={() => s.setCurrentMatch(managed.id, m.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                        <button onClick={() => s.startMatch(managed.id, m.id)} className="text-[9px] font-bold px-2 py-0.5 rounded bg-mint/15 text-mint border border-mint/45 hover:bg-mint/30 transition-colors cursor-pointer">▶ {t("org_start_battle")}</button>
                                       )}
                                       {canManageEvent && m.votesA + m.votesB > 0 && (
                                         <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
@@ -578,6 +593,21 @@ export default function OrganizerBoard() {
             <div className="flex gap-2">
               <button onClick={() => setCancelAsk(false)} className="flex-1 py-2.5 rounded-xl border border-white/12 text-[12px] font-bold text-white/60 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
               <button onClick={() => { s.cancelEvent(managed.id); setCancelAsk(false); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("ev_cancel")}</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ===== delete confirm ===== */}
+      <Modal open={delAsk} onClose={() => setDelAsk(false)}>
+        {managed && (
+          <div className="space-y-4 text-center">
+            <Trash2 size={30} className="mx-auto text-ember" />
+            <p className="text-[13px] text-white/80">{t("org_delete_confirm")}</p>
+            <p className="display text-sm font-extrabold">{managed.name}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDelAsk(false)} className="flex-1 py-2.5 rounded-xl border border-white/12 text-[12px] font-bold text-white/60 hover:bg-white/6 transition-colors cursor-pointer">{t("c_cancel")}</button>
+              <button onClick={() => { s.deleteEvent(managed.id); setDelAsk(false); setManageIdLocal(null); }} className="flex-1 py-2.5 rounded-xl bg-ember text-white display text-[12px] font-bold hover:brightness-110 transition-all cursor-pointer">{t("org_delete_ev")}</button>
             </div>
           </div>
         )}

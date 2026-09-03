@@ -18,6 +18,22 @@ export default function ArenaBoard() {
   const [battleOpen, setBattleOpen] = useState(false);
   const [pickedMatch, setPickedMatch] = useState<string | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const autoClosedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!currentMatch || !ev.matchStartedAt) return;
+    const remaining = currentMatch.duration * 60000 - (now - ev.matchStartedAt);
+    if (remaining <= 0 && !autoClosedRef.current.has(currentMatch.id)) {
+      autoClosedRef.current.add(currentMatch.id);
+      s.autoCloseMatch(ev.id, currentMatch.id);
+    }
+  }, [now]);
 
   useEffect(() => {
     chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -26,6 +42,15 @@ export default function ArenaBoard() {
   if (!ev) return null;
 
   const currentMatch = ev.bracket.find((m) => m.id === ev.currentMatchId) ?? null;
+  /* countdown: derived from when the organizer started the battle + its duration */
+  const isRunning = ev.currentMatchId && ev.matchStartedAt ? true : false;
+  const remainingMs = currentMatch && ev.matchStartedAt
+    ? currentMatch.duration * 60000 - (now - ev.matchStartedAt)
+    : 0;
+  const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+  const timeLeft = isRunning && remainingMs <= 0 ? 0 : remainingSec;
+  const mm = Math.floor(timeLeft / 60);
+  const ss = timeLeft % 60;
   /* battle finder: the participant can open any battle from the bracket */
   const viewMatch = ev.bracket.find((m) => m.id === pickedMatch) ?? currentMatch;
   const R = Math.max(...ev.bracket.map((m) => m.round + 1), 0);
@@ -354,12 +379,61 @@ export default function ArenaBoard() {
                       ? t("ar_current_battle")
                       : viewMatch.winner
                         ? `${t("ar_completed")} · 🏆 ${userNameById(viewMatch.winner === "a" ? viewMatch.a : viewMatch.b)}`
-                        : t("ar_scheduled")}
+                        : viewMatch.closed
+                          ? t("ar_voting_closed")
+                          : t("ar_scheduled")}
                   </p>
                   <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase">
                     {roundName(viewMatch.round)}
                   </span>
-                  {viewMatch.winner && <span className="text-[10px] font-bold text-white/35 ml-auto">{t("ar_rule3")}</span>}
+                  {isRunning && viewMatch.id === ev.currentMatchId && (
+                    <span
+                      className={`display text-[12px] font-extrabold px-2 py-0.5 rounded-lg border animate-pulse ${
+                        timeLeft <= 10 && timeLeft > 0
+                          ? "bg-ember/15 text-ember border-ember/50"
+                          : timeLeft === 0
+                            ? "bg-ember/20 text-ember border-ember/60"
+                            : "bg-gold/12 text-gold border-gold/40"
+                      }`}
+                    >
+                      ⏱ {String(mm).padStart(2, "0")}:{String(ss).padStart(2, "0")}
+                    </span>
+                  )}
+                  {viewMatch.winner && (
+                    <span className="flex items-center gap-2 ml-auto flex-wrap text-[10px] font-bold">
+                      {(() => {
+                        const publicPick =
+                          viewMatch.votesA + viewMatch.votesB === 0
+                            ? null
+                            : viewMatch.votesA >= viewMatch.votesB
+                              ? "a"
+                              : "b";
+                        const publicName = publicPick
+                          ? userNameById(publicPick === "a" ? viewMatch.a : viewMatch.b)
+                          : null;
+                        const totalVotes = viewMatch.votesA + viewMatch.votesB;
+                        const publicPct = publicPick ? pct(publicPick === "a" ? viewMatch.votesA : viewMatch.votesB) : 0;
+                        const officialSide = viewMatch.winner;
+                        const publicDiffers = publicPick !== null && publicPick !== officialSide;
+                        return (
+                          <span className="flex items-center gap-1.5">
+                            {publicName ? (
+                              <span className="px-2 py-0.5 rounded-full bg-azure/12 text-azure border border-azure/35">
+                                {t("ar_public_winner")}: {publicName} {publicPct}% <span className="text-azure/60">({totalVotes} 🗳️)</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-white/6 text-white/40 border border-white/10">{t("ar_no_public_votes")}</span>
+                            )}
+                            {publicDiffers && (
+                              <span className="px-2 py-0.5 rounded-full bg-gold/15 text-gold border border-gold/45">
+                                {t("ar_org_final")}: {userNameById(officialSide === "a" ? viewMatch.a : viewMatch.b)} ✓
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
+                    </span>
+                  )}
                 </div>
                 <div className="relative grid grid-cols-2 items-stretch gap-2 sm:gap-3">
                   <span className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-10 display text-sm sm:text-lg font-black px-2 py-1 rounded-lg bg-night border border-white/12 text-gold" style={{ textShadow: "0 0 14px #FFD700" }}>{t("c_vs")}</span>
@@ -369,7 +443,7 @@ export default function ArenaBoard() {
                     const v = side === "a" ? viewMatch.votesA : viewMatch.votesB;
                     const mine = matchVote === side;
                     const isWinner = viewMatch.winner === side;
-                    const closed = !!viewMatch.winner;
+                    const closed = !!viewMatch.winner || !!viewMatch.closed;
                     const col = isB ? ev.banner[1] : ev.banner[0];
                     const card = (
                       <button

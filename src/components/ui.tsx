@@ -139,19 +139,26 @@ export function Modal({ open, onClose, children, wide }: { open: boolean; onClos
   );
 }
 
-/* ---------- Stars ---------- */
+/* ---------- Stars (interactive: hover/slide to rate) ---------- */
 export function Stars({ value, onChange, size = 16 }: { value: number; onChange?: (n: number) => void; size?: number }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const shown = hover ?? value;
   return (
-    <div className="flex items-center gap-0.5">
+    <div
+      className="flex items-center gap-0.5"
+      onMouseLeave={() => setHover(null)}
+    >
       {[1, 2, 3, 4, 5].map((n) => (
         <button
           key={n}
           disabled={!onChange}
+          onMouseEnter={() => onChange && setHover(n)}
           onClick={() => onChange?.(n)}
           className={onChange ? "cursor-pointer transition-transform hover:scale-125" : "cursor-default"}
           aria-label={`${n} stars`}
+          style={{ color: shown >= n ? "#FFD700" : undefined }}
         >
-          <Star size={size} className={n <= Math.round(value) ? "text-gold" : "text-white/15"} fill={n <= Math.round(value) ? "#FFD700" : "none"} />
+          <Star size={size} className={shown >= n ? "text-gold" : "text-white/15"} fill={shown >= n ? "#FFD700" : "none"} />
         </button>
       ))}
     </div>

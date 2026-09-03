@@ -178,7 +178,7 @@ let toastSeq = 1;
 let feedSeq = 100;
 let chatSeq = 1000;
 
-const VOTES_PER_DAY = 5;
+const VOTES_PER_DAY = 100;
 const VOTES_TO_CLOSE_BATTLE = 5;
 export const VOTE_REWARD = 10;
 export const VOTES_PER_DAY_LABEL = VOTES_PER_DAY;
@@ -187,6 +187,17 @@ const syncDailyVotes = (st: { dailyVotes: number; dailyVotesDate: string }) => {
   const today = new Date().toDateString();
   if (st.dailyVotesDate !== today) return { dailyVotes: 0, dailyVotesDate: today };
   return { dailyVotes: st.dailyVotes, dailyVotesDate: st.dailyVotesDate };
+};
+
+/* Parse event date (YYYY-MM-DD) + time (HH:MM) into a timestamp. Returns
+   null when the event has no date yet (can't go live automatically). */
+export const eventStartTimestamp = (dateISO: string, time: string): number | null => {
+  if (!dateISO) return null;
+  const [y, m, d] = dateISO.split("-").map((x) => Number(x));
+  const [hh, mm] = (time || "00:00").split(":").map((x) => Number(x) || 0);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hh, mm, 0, 0);
+  if (isNaN(dt.getTime())) return null;
+  return dt.getTime();
 };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -210,7 +221,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
       bracket.push({
         id: `${eventId}m${++idx}`, round: r,
         a: r === 0 ? parts[i * 2] : null, b: r === 0 ? parts[i * 2 + 1] : null,
-        winner: null, votesA: 0, votesB: 0, duration: 10,
+        winner: null, votesA: 0, votesB: 0, duration: 10, closed: false,
       });
     }
   }
@@ -235,6 +246,7 @@ interface AppState {
   banners: Banner[];
   settings: { notifFarm: boolean; notifEvents: boolean; publicProfile: boolean; showCountry: boolean };
   adminUnlocked: boolean;
+  organizerScore: number | null; organizerScoreCount: number;
 
   t: (key: string, vars?: Record<string, string | number>) => string;
   setLang: (l: Lang) => void; setTab: (t: Tab) => void; enterArena: (eventId: string) => void;
@@ -247,10 +259,13 @@ interface AppState {
   sendChat: (eventId: string, text: string) => void;
   confirmAttendance: (eventId: string, role: "participant" | "spectator", name: string) => boolean;
   createEvent: (e: EventItem) => Promise<void>; updateEvent: (id: string, patch: Partial<EventItem>) => void;
-  cancelEvent: (id: string) => void;
+  cancelEvent: (id: string) => void; deleteEvent: (id: string) => Promise<void>;
   generateBracket: (eventId: string) => void;
   setMatchDuration: (eventId: string, matchId: string, duration: number) => void;
   setCurrentMatch: (eventId: string, matchId: string) => void;
+  startMatch: (eventId: string, matchId: string) => void;
+  endMatch: (eventId: string, matchId: string) => void;
+  autoCloseMatch: (eventId: string, matchId: string) => void;
   pickWinner: (eventId: string, matchId: string, side: "a" | "b") => void;
   voidMatchVotes: (eventId: string, matchId: string) => void; voidEventVotes: (eventId: string) => void;
   voidMyBattleVote: (eventId: string, matchId: string) => void;
@@ -261,6 +276,7 @@ interface AppState {
   undoGroupVote: (eventId: string, groupId: string) => void;
   voidGroupVotes: (eventId: string, groupId: string) => void;
   loadEventsFromSupabase: () => Promise<void>;
+  loadOrganizerScore: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
   refreshVotes: () => Promise<void>;
   subscribeVotes: () => () => void;
@@ -311,7 +327,7 @@ export const useApp = create<AppState>()(
       toasts: [], premium: false, organizer: null, orgUnlocked: false,
       banners: [],
       settings: { notifFarm: true, notifEvents: true, publicProfile: true, showCountry: true },
-      adminUnlocked: false,
+      adminUnlocked: false, organizerScore: null, organizerScoreCount: 0,
 
       t: (key, vars) => translate(get().lang, key, vars),
 
@@ -326,7 +342,38 @@ export const useApp = create<AppState>()(
       },
       dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-      tick: () => set((s) => ({ users: s.users, farmProg: s.farmProg, feed: s.feed, totalAura: s.totalAura })),
+      tick: () => {
+        const now = Date.now();
+        const autoClosed = new Set<string>();
+        get().events.forEach((ev) => {
+          if (!ev.currentMatchId || ev.matchStartedAt == null) return;
+          const m = ev.bracket.find((x) => x.id === ev.currentMatchId);
+          if (!m) return;
+          if (ev.matchStartedAt + m.duration * 60000 <= now) autoClosed.add(ev.id + "|" + m.id);
+        });
+        if (autoClosed.size > 0) {
+          autoClosed.forEach((key) => {
+            const [eventId, matchId] = key.split("|");
+            get().autoCloseMatch(eventId, matchId);
+          });
+        }
+        /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
+        const toGoLive: string[] = [];
+        get().events.forEach((ev) => {
+          if (ev.status !== "upcoming") return;
+          const ts = eventStartTimestamp(ev.dateISO, ev.time);
+          if (ts != null && ts <= now) toGoLive.push(ev.id);
+        });
+        if (toGoLive.length > 0) {
+          set((s) => ({
+            events: s.events.map((e) =>
+              toGoLive.includes(e.id) ? { ...e, status: "live" as const } : e
+            ),
+          }));
+          get().toast(translate(get().lang, "t_event_live"), "gold");
+        }
+        set((s) => ({ users: s.users, farmProg: s.farmProg, feed: s.feed, totalAura: s.totalAura }));
+      },
 
       toggleChallenge: (id) => {
         const s = get();
@@ -435,13 +482,45 @@ export const useApp = create<AppState>()(
         persistVote(eventId, "battle_" + matchId, pid, side === "a" ? 1 : 2);
       },
 
-      rateEvent: (eventId, stars) => {
+      rateEvent: async (eventId, stars) => {
         const s = get();
         set({ myRatings: { ...s.myRatings, [eventId]: stars } });
         const ev = s.events.find((e) => e.id === eventId);
-        if (ev) {
-          const newRating = Math.round(((ev.organizerRating + stars) / 2) * 10) / 10;
-          set({ events: get().events.map((e) => (e.id === eventId ? { ...e, organizerRating: newRating } : e)) });
+        if (!ev) return;
+        set({ events: get().events.map((e) => (e.id === eventId ? { ...e, organizerRating: stars } : e)) });
+
+        const organizerId = ev.organizerId;
+        const raterId = useApp.getState().supabaseProfileId ?? effectiveVoterId();
+        if (organizerId && raterId) {
+          try {
+            if (useApp.getState().supabaseProfileId) {
+              const { data: existing } = await supabase
+                .from("organizer_ratings")
+                .select("id")
+                .eq("organizer_id", organizerId)
+                .eq("event_id", eventId)
+                .eq("rater_id", raterId)
+                .maybeSingle();
+              if (existing) {
+                await supabase.from("organizer_ratings").update({ score: stars }).eq("id", existing.id);
+              } else {
+                await supabase.from("organizer_ratings").insert({ organizer_id: organizerId, event_id: eventId, score: stars, rater_id: raterId });
+              }
+            } else {
+              const { data: existing } = await supabase
+                .from("organizer_ratings")
+                .select("id")
+                .eq("organizer_id", organizerId)
+                .eq("event_id", eventId)
+                .eq("anon_id", raterId)
+                .maybeSingle();
+              if (existing) {
+                await supabase.from("organizer_ratings").update({ score: stars }).eq("id", existing.id);
+              } else {
+                await supabase.from("organizer_ratings").insert({ organizer_id: organizerId, event_id: eventId, score: stars, anon_id: raterId });
+              }
+            }
+          } catch (err) { console.error("Error guardando rating del organizador:", err); }
         }
         s.toast(translate(s.lang, "ar_thanks_rate"), "gold");
       },
@@ -528,6 +607,7 @@ export const useApp = create<AppState>()(
           events: [saved, ...s.events.filter((x) => x.id !== e.id)],
           profile: { ...s.profile, organized: s.profile.organized + 1 },
         });
+        get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_event_created"), "gold");
       },
       updateEvent: (id, patch) => {
@@ -537,6 +617,12 @@ export const useApp = create<AppState>()(
       cancelEvent: (id) => {
         set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, status: "cancelled" as const, currentMatchId: null } : e)) }));
         get().toast(translate(get().lang, "t_event_cancelled"), "warn");
+      },
+      deleteEvent: async (id) => {
+        const { error } = await supabase.from("events").delete().eq("id", id);
+        if (error) console.error("Error eliminando evento en Supabase:", error.message);
+        set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
+        get().toast(translate(get().lang, "t_event_deleted"), "warn");
       },
 
       generateBracket: (eventId) => {
@@ -700,6 +786,45 @@ export const useApp = create<AppState>()(
         get().toast(translate(get().lang, "t_current_set"), "gold");
       },
 
+      startMatch: (eventId, matchId) => {
+        set((s) => ({
+          events: s.events.map((e) =>
+            e.id === eventId
+              ? { ...e, currentMatchId: matchId, matchStartedAt: Date.now(), bracket: e.bracket.map((m) => (m.id === matchId ? { ...m, closed: false } : m)) }
+              : e
+          ),
+        }));
+        get().toast(translate(get().lang, "org_battle_start"), "gold");
+      },
+      endMatch: (eventId, matchId) => {
+        set((s) => ({
+          events: s.events.map((e) =>
+            e.id === eventId && e.currentMatchId === matchId
+              ? { ...e, currentMatchId: null, matchStartedAt: null, bracket: e.bracket.map((m) => (m.id === matchId ? { ...m, closed: true } : m)) }
+              : e
+          ),
+        }));
+        get().toast(translate(get().lang, "org_battle_end"), "ok");
+      },
+      autoCloseMatch: (eventId, matchId) => {
+        const s = get();
+        const ev = s.events.find((e) => e.id === eventId);
+        const m = ev?.bracket.find((x) => x.id === matchId);
+        if (!ev || !m || m.winner || ev.currentMatchId !== matchId) return;
+        /* El tiempo se agotó: solo cerramos la votación de esta batalla.
+           NO elegimos ganador automáticamente. La decisión final SIEMPRE
+           la toma el organizador (puede haber votos infimos en la app que
+           no reflejen al verdadero ganador ovacionado en la arena). */
+        set((st) => ({
+          events: st.events.map((e) =>
+            e.id === eventId && e.currentMatchId === matchId
+              ? { ...e, currentMatchId: null, matchStartedAt: null, bracket: e.bracket.map((m) => (m.id === matchId ? { ...m, closed: true } : m)) }
+              : e
+          ),
+        }));
+        s.toast(translate(s.lang, "org_battle_auto"), "ok");
+      },
+
       pickWinner: (eventId, matchId, side) => {
         const s = get();
         const ev = s.events.find((e) => e.id === eventId);
@@ -710,17 +835,22 @@ export const useApp = create<AppState>()(
         const roundMatches = ev.bracket.filter((x) => x.round === m.round);
         const myIndex = roundMatches.findIndex((x) => x.id === matchId);
         const nextRound = ev.bracket.filter((x) => x.round === m.round + 1);
-        let bracket = ev.bracket.map((x) => (x.id === matchId ? { ...x, winner: side } : x));
+        let bracket = ev.bracket.map((x) => (x.id === matchId ? { ...x, winner: side, closed: true } : x));
         if (nextRound.length > 0 && winnerId) {
           const target = nextRound[Math.floor(myIndex / 2)];
           const slot = myIndex % 2 === 0 ? "a" : "b";
-          bracket = bracket.map((x) => (x.id === target.id ? { ...x, [slot]: winnerId } : x));
+          const prevWinnerSlotId = m.winner === "a" ? m.a : m.winner === "b" ? m.b : null;
+          bracket = bracket.map((x) => {
+            if (x.id !== target.id) return x;
+            const cleared = x.winner ? { ...x, winner: null } : x;
+            return cleared[slot] === prevWinnerSlotId ? { ...cleared, [slot]: winnerId } : { ...cleared, [slot]: winnerId };
+          });
         }
         const winnerUser = s.users.find((u) => u.id === winnerId);
         const feed = winnerUser
           ? [feedItem("win", winnerUser.name, countryById(winnerUser.country).flag, undefined, ev.name), ...s.feed].slice(0, 9)
           : s.feed;
-        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket, currentMatchId: null } : e)), feed });
+        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, bracket, currentMatchId: null, matchStartedAt: null } : e)), feed });
         s.toast(translate(s.lang, "t_winner_set"), "gold");
       },
 
@@ -792,6 +922,7 @@ export const useApp = create<AppState>()(
         const { supabaseProfileId } = get();
         if (supabaseProfileId) await supabase.from("profiles").update({ name, role: "organizer" }).eq("id", supabaseProfileId);
         set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name }, userEmail: email });
+        get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_registered"), "gold");
         return true;
       },
@@ -803,6 +934,7 @@ export const useApp = create<AppState>()(
         if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
         await get().loadEventsFromSupabase();
+        get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;
       },
@@ -816,6 +948,7 @@ export const useApp = create<AppState>()(
           orgUnlocked: true,
           profile: { ...get().profile, name },
         });
+        get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;
       },
@@ -906,13 +1039,14 @@ export const useApp = create<AppState>()(
 
         if (existing) {
           set({ supabaseProfileId: existing.id, profile: { ...get().profile, name: existing.name, country: existing.country ?? get().profile.country } });
-          if (existing.role === "organizer" && !get().orgUnlocked) {
+            if (existing.role === "organizer" && !get().orgUnlocked) {
             set({
               organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
               orgUnlocked: true,
               profile: { ...get().profile, name: existing.name },
             });
           }
+          get().loadOrganizerScore();
           return;
         }
 
@@ -1167,6 +1301,7 @@ export const useApp = create<AppState>()(
             votes: { ...(votesByEvent[row.id] ?? {}), ...(prev?.votes ?? {}) },
             bracket: applyMatchVotes(prev?.bracket ?? [], matchVotesByEvent[row.id] ?? {}),
             currentMatchId: prev?.currentMatchId ?? null,
+            matchStartedAt: prev?.matchStartedAt ?? null,
             groups: applyGroupVotes(prev?.groups ?? [], groupVotesByEvent[row.id] ?? {}),
             chat: prev?.chat ?? [], notes: row.notes ?? "",
           };
@@ -1180,6 +1315,22 @@ export const useApp = create<AppState>()(
         const realUsers = get().users;
         const totalAura = realUsers.reduce((a, u) => a + (u.aura || 0), 0) + (get().profile.aura || 0);
         set({ events: mapped, totalAura });
+      },
+
+      loadOrganizerScore: async () => {
+        const pid = get().supabaseProfileId;
+        if (!pid || get().profile.organized <= 0) { set({ organizerScore: null, organizerScoreCount: 0 }); return; }
+        try {
+          const { data, error } = await supabase
+            .from("organizer_ratings")
+            .select("score")
+            .eq("organizer_id", pid);
+          if (error) { console.error("Error cargando rating de organizador:", error.message); return; }
+          const rows = data ?? [];
+          const count = rows.length;
+          const total = rows.reduce((a: number, r: any) => a + (r.score ?? 0), 0);
+          set({ organizerScore: count > 0 ? Math.round((total / count) * 10) / 10 : null, organizerScoreCount: count });
+        } catch (err) { console.error("Error cargando rating de organizador:", err); }
       },
 
       refreshVotes: async () => {
@@ -1242,6 +1393,7 @@ export const useApp = create<AppState>()(
         lang: s.lang, profile: s.profile, premium: s.premium, banners: s.banners,
         challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate,
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
+        organizerScore: s.organizerScore, organizerScoreCount: s.organizerScoreCount,
         votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,
         myVotes: s.myVotes, battleVotes: s.battleVotes,
         myRatings: s.myRatings, myAttendance: s.myAttendance,
