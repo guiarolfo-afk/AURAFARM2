@@ -510,7 +510,7 @@ export default function OrganizerBoard() {
                                     )}
                                     {(["a", "b"] as const).map((side) => {
                                       const pid = side === "a" ? m.a : m.b;
-                                      const v = side === "a" ? m.votesA : m.votesB;
+                                      const v = pid ? (managed.votes[pid] ?? 0) : 0;
                                       const won = m.winner === side;
                                       return (
                                         <div key={side} className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg mb-0.5 ${won ? "bg-mint/12" : ""}`}>
