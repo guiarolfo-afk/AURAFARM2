@@ -11,7 +11,6 @@ export type Tab = "live" | "events" | "org" | "arena" | "rank" | "set";
 export interface FeedItem { id: number; type: "farm" | "join" | "vote" | "badge" | "win"; user: string; flag: string; event?: string; n?: number; ts: number }
 export interface Toast { id: number; msg: string; kind: "ok" | "warn" | "gold" }
 export interface Banner { id: string; text: string; link: string; color: string; active: boolean }
-export interface Collaborator { name: string; email?: string; perm: "vote" | "edit" | "full" }
 
 export interface Profile {
   name: string; country: string; photo: string | null; contact: string;
@@ -21,7 +20,7 @@ export interface Profile {
   history: number[];
 }
 
-export interface OrganizerAccount { name: string; contact: string; country: string; refs: string; email: string; collaborators: Collaborator[] }
+export interface OrganizerAccount { name: string; contact: string; country: string; refs: string; email: string }
 
 export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(Math.max(0, aura) / 90)));
 
@@ -302,7 +301,6 @@ interface AppState {
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
   becomeOrganizer: (name: string, contact: string, refs: string) => Promise<boolean>;
-  inviteCollab: (eventId: string, c: Collaborator) => Promise<void>; removeCollab: (eventId: string, i: number) => Promise<void>; setCollabPerm: (eventId: string, i: number, p: Collaborator["perm"]) => Promise<void>;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
   adminLogin: (pass: string) => Promise<boolean>; adminExit: () => void;
@@ -1005,7 +1003,7 @@ export const useApp = create<AppState>()(
         if (error) { console.error(error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { supabaseProfileId } = get();
         if (supabaseProfileId) await supabase.from("profiles").update({ name, role: "organizer" }).eq("id", supabaseProfileId);
-        set({ organizer: { name, contact, country, refs, email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name }, userEmail: email });
+        set({ organizer: { name, contact, country, refs, email }, orgUnlocked: true, profile: { ...get().profile, name }, userEmail: email });
         get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_registered"), "gold");
         return true;
@@ -1016,7 +1014,7 @@ export const useApp = create<AppState>()(
         if (error || !data.user) { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { data: profile } = await supabase.from("profiles").select("id, name, role").eq("auth_id", data.user.id).maybeSingle();
         if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
-        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email, collaborators: [] }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
+        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
         await get().loadEventsFromSupabase();
         get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
@@ -1028,7 +1026,7 @@ export const useApp = create<AppState>()(
         const { error } = await supabase.from("profiles").update({ role: "organizer", name }).eq("id", s.supabaseProfileId);
         if (error) { console.error("Error becoming organizer:", error.message); s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         set({
-          organizer: { name, contact, country: s.profile.country, refs, email: s.userEmail ?? "", collaborators: [] },
+          organizer: { name, contact, country: s.profile.country, refs, email: s.userEmail ?? "" },
           orgUnlocked: true,
           profile: { ...get().profile, name },
         });
@@ -1036,56 +1034,6 @@ export const useApp = create<AppState>()(
         s.toast(translate(s.lang, "t_unlocked"), "gold");
         return true;
       },
-      inviteCollab: async (eventId, c) => {
-        const s = get();
-        const ev = s.events.find((e) => e.id === eventId);
-        if (!ev) return;
-        if (ev.collaborators.some((x) => (c.email && x.email === c.email) || (!c.email && x.name === c.name))) {
-          s.toast(translate(s.lang, "t_collab_dup"), "warn");
-          return;
-        }
-        const updated = [...ev.collaborators, c];
-        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: updated } : e)) });
-        if (!s.supabaseProfileId) { s.toast(translate(s.lang, "t_collab_added")); return; }
-        try {
-          await supabase.from("event_collaborators").insert({
-            event_id: eventId, collaborator_email: c.email ?? "", perm: c.perm, name: c.name, owner_id: s.supabaseProfileId,
-          });
-        } catch (e) { console.error("Error guardando colaborador:", e); }
-        s.toast(translate(s.lang, "t_collab_added"));
-      },
-      removeCollab: async (eventId, i) => {
-        const s = get();
-        const ev = s.events.find((e) => e.id === eventId);
-        if (!ev) return;
-        const removed = ev.collaborators[i];
-        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: e.collaborators.filter((_, x) => x !== i) } : e)) });
-        if (removed?.email) {
-          try {
-            await supabase.from("event_collaborators")
-              .delete()
-              .eq("event_id", eventId)
-              .eq("collaborator_email", removed.email);
-          } catch (e) { console.error("Error borrando colaborador:", e); }
-        }
-        s.toast(translate(s.lang, "t_collab_removed"), "warn");
-      },
-      setCollabPerm: async (eventId, i, p) => {
-        const s = get();
-        const ev = s.events.find((e) => e.id === eventId);
-        if (!ev) return;
-        const target = ev.collaborators[i];
-        set({ events: s.events.map((e) => (e.id === eventId ? { ...e, collaborators: e.collaborators.map((c, x) => (x === i ? { ...c, perm: p } : c)) } : e)) });
-        if (target?.email) {
-          try {
-            await supabase.from("event_collaborators")
-              .update({ perm: p })
-              .eq("event_id", eventId)
-              .eq("collaborator_email", target.email);
-          } catch (e) { console.error("Error actualizando permiso:", e); }
-        }
-      },
-
       setProfile: (p) => {
         set((s) => ({ profile: { ...s.profile, ...p } }));
         get().toast(translate(get().lang, "t_saved"));
@@ -1131,7 +1079,7 @@ export const useApp = create<AppState>()(
           }
             if (existing.role === "organizer" && !get().orgUnlocked) {
             set({
-              organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "", collaborators: [] },
+              organizer: { name: existing.name, contact: "", country: existing.country ?? "mx", refs: "", email: session?.user?.email ?? "" },
               orgUnlocked: true,
               profile: { ...get().profile, name: existing.name },
             });
@@ -1310,24 +1258,6 @@ export const useApp = create<AppState>()(
           return;
         }
 
-        let collabByEvent: Record<string, { name: string; email?: string; perm: string }[]> = {};
-        const mineProfileId = get().supabaseProfileId;
-        const myEmailNorm = (get().userEmail ?? "").trim().toLowerCase();
-        try {
-          const { data: collabRows, error: collabError } = await supabase.from("event_collaborators").select("*");
-          if (collabError) {
-            console.error("Error cargando colaboradores:", collabError.message);
-          } else {
-            collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
-              const ownerIsMe = mineProfileId && r.owner_id === mineProfileId;
-              const collabIsMe = myEmailNorm && (r.collaborator_email ?? "").trim().toLowerCase() === myEmailNorm;
-              if (!ownerIsMe && !collabIsMe) return acc;
-              (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
-              return acc;
-            }, {});
-          }
-        } catch (e) { console.error("Error cargando colaboradores:", e); }
-
         const { data: participantRows, error: partError } = await supabase
           .from("event_participants")
           .select("event_id, user_id, role");
@@ -1377,8 +1307,6 @@ export const useApp = create<AppState>()(
         const prevByEvent = new Map(get().events.map((e) => [e.id, e]));
         const mapped: EventItem[] = (data ?? []).map((row: any) => {
           const prev = prevByEvent.get(row.id);
-          let collabs = collabByEvent[row.id] ?? [];
-          if (collabs.length === 0 && prev && prev.collaborators.length > 0) collabs = prev.collaborators;
           return {
             id: row.id,
             name: row.name,
@@ -1386,7 +1314,6 @@ export const useApp = create<AppState>()(
             country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
             dateISO: row.date_iso, time: row.event_time ?? "", endTime: row.event_end_time ?? prev?.endTime ?? "",
             organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
-            collaborators: collabs,
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
 status: row.status,
           endState: (row.end_state as "timeUp" | "manual" | null) ?? undefined,

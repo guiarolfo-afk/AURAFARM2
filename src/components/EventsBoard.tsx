@@ -274,14 +274,6 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                   <ul className="space-y-1">
                     {detail.organizerRefs.map((r, i) => <li key={i} className="text-[11.5px] text-white/60 flex gap-1.5"><span className="text-gold">★</span>{r}</li>)}
                   </ul>
-                  {detail.collaborators.length > 0 && (
-                    <>
-                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/35 mt-3 mb-1.5">{t("ev_collabs")}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detail.collaborators.map((cb, i) => <span key={i} className="text-[10.5px] px-2 py-1 rounded-full bg-violet/10 border border-violet/25 text-white/70">{cb.name}</span>)}
-                      </div>
-                    </>
-                  )}
                 </div>
                 <div className="space-y-3">
                   <div className="panel p-4">

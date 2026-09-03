@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
-import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal } from "lucide-react";
+import { Lock, ShieldCheck, Swords, Trash2, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
-import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, ShareRow } from "./ui";
+import { Chip, Modal, SectionHead, Field, inputCls, btnGold, ShareRow } from "./ui";
 import LocationPicker, { type PickedPlace } from "./LocationPicker";
 
 const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
@@ -54,29 +54,12 @@ export default function OrganizerBoard() {
   const [form, setForm] = useState({ name: "", desc: "", date: "", time: "19:00", endTime: "21:00", loc: null as PickedPlace | null, address: "", maxAtt: 200, maxPart: 8, notes: "", features: ["t_stream", "t_prize"], banner: 0 });
   const [formErr, setFormErr] = useState("");
   const myEvents = useMemo(() => events.filter((e) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId)), [events, supabaseProfileId]);
-  const userEmailNorm = userEmail?.trim().toLowerCase() ?? "";
   const [manageIdLocal, setManageIdLocal] = useState<string | null>(null);
-  const collabEvents = useMemo(() => events.filter((e) => e.collaborators.some((c) => (c.email ?? "").trim().toLowerCase() === userEmailNorm)), [events, userEmailNorm]);
-  const isOwnerOf = (e: EventItem) => e.organizerId === "u1" || e.organizerId === "me" || (supabaseProfileId && e.organizerId === supabaseProfileId);
-  const myPermFor = (e: EventItem): "owner" | "full" | "edit" | "vote" | null => {
-    if (isOwnerOf(e)) return "owner";
-    const c = e.collaborators.find((x) => (x.email ?? "").trim().toLowerCase() === userEmailNorm);
-    if (!c) return null;
-    return (c.perm as "full" | "edit" | "vote") || null;
-  };
-  const allManageable = useMemo(() => {
-    const set = new Map<string, EventItem>();
-    myEvents.forEach((e) => set.set(e.id, e));
-    collabEvents.forEach((e) => set.set(e.id, e));
-    return Array.from(set.values());
-  }, [myEvents, collabEvents]);
-  const activeManageable = useMemo(() => allManageable.filter((e) => e.status !== "finished"), [allManageable]);
-  const finishedManageable = useMemo(() => allManageable.filter((e) => e.status === "finished"), [allManageable]);
-  const managed = activeManageable.find((e) => e.id === manageIdLocal) ?? activeManageable[0] ?? null;
-  const permOfManaged = managed ? myPermFor(managed) : null;
-  const canManageEvent = permOfManaged === "owner" || permOfManaged === "full" || permOfManaged === "edit";
+  const allManageable = useMemo(() => myEvents.filter((e) => e.status !== "finished"), [myEvents]);
+  const finishedManageable = useMemo(() => myEvents.filter((e) => e.status === "finished"), [myEvents]);
+  const managed = allManageable.find((e) => e.id === manageIdLocal) ?? allManageable[0] ?? null;
+  const canManageEvent = !!managed;
 
-  const [collab, setCollab] = useState({ name: "", nameDisplay: "", perm: "vote" as "vote" | "edit" | "full" });
   const [guestName, setGuestName] = useState("");
   const [manualPicks, setManualPicks] = useState<string[]>([]);
   const [cancelAsk, setCancelAsk] = useState(false);
@@ -99,7 +82,6 @@ export default function OrganizerBoard() {
       dateISO: form.date, time: form.time, endTime: form.endTime,
       organizer: organizer?.name ?? s.profile.name, organizerId: "me", organizerRating: 5,
       organizerRefs: organizer?.refs ? organizer.refs.split("·") : [t("c_free")],
-      collaborators: [],
       maxParticipants: form.maxPart, participants: [], attendees: 0, waitlist: [],
       status: "upcoming", features: form.features, banner: BANNER_COMBOS[form.banner],
       votes: {}, bracket: [], currentMatchId: null, matchStartedAt: null, groups: [], chat: [], notes: form.notes,
@@ -278,65 +260,15 @@ export default function OrganizerBoard() {
         )}
 
         <div className="space-y-4">
-          {/* ===== collaborators (per event, owner only) ===== */}
-          {managed && myPermFor(managed) === "owner" && (
-            <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-5">
-              <SectionHead hue={316} icon={<UserPlus size={16} />} title={t("org_collab_title")} />
-              <p className="text-[10.5px] text-white/40 mb-3">{managed.name} · {t("org_invite")}</p>
-              <div className="space-y-2 mb-3">
-                {managed.collaborators.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/3 border border-white/7">
-                    <Avatar name={c.name} hue={(i * 90 + 200) % 360} size={30} />
-                    <div className="flex-1 min-w-0">
-                      <span className="block text-[12.5px] font-semibold truncate">{c.name}</span>
-                      {c.email && <span className="block text-[10px] text-white/40 truncate">{c.email}</span>}
-                    </div>
-                    <select value={c.perm} onChange={(e) => s.setCollabPerm(managed.id, i, e.target.value as "vote" | "edit" | "full")} className="text-[10.5px] font-bold px-2 py-1 rounded-lg bg-violet/10 border border-violet/30 text-white/75 outline-none cursor-pointer" aria-label={t("org_perm")}>
-                      <option value="vote" className="bg-[#0d0d1c]">🗳️ vote</option>
-                      <option value="edit" className="bg-[#0d0d1c]">✏️ edit</option>
-                      <option value="full" className="bg-[#0d0d1c]">👑 full</option>
-                    </select>
-                    <button onClick={() => s.removeCollab(managed.id, i)} aria-label={t("org_remove")} className="text-white/30 hover:text-ember transition-colors cursor-pointer"><Trash2 size={14} /></button>
-                  </div>
-                ))}
-                {managed.collaborators.length === 0 && <p className="text-[11.5px] text-white/35">—</p>}
-              </div>
-              <div className="grid sm:grid-cols-2 gap-2">
-                <div>
-                  <input className={inputCls} placeholder="Email del colaborador" value={collab.name} onChange={(e) => setCollab({ ...collab, name: e.target.value })} />
-                  <input className={inputCls + " mt-2"} placeholder="Nombre (opcional)" value={collab.nameDisplay ?? ""} onChange={(e) => setCollab({ ...collab, nameDisplay: e.target.value })} />
-                </div>
-                <div className="flex gap-2">
-                  <select value={collab.perm} onChange={(e) => setCollab({ ...collab, perm: e.target.value as typeof collab.perm })} className="px-2 rounded-xl bg-white/5 border border-white/10 text-[11px] outline-none cursor-pointer">
-                    <option value="vote" className="bg-[#0d0d1c]">vote</option>
-                    <option value="edit" className="bg-[#0d0d1c]">edit</option>
-                    <option value="full" className="bg-[#0d0d1c]">full</option>
-                  </select>
-                  <button
-                    onClick={() => {
-                      const email = collab.name.trim();
-                      if (!email) return;
-                      s.inviteCollab(managed.id, { name: collab.nameDisplay?.trim() || email, email, perm: collab.perm });
-                      setCollab({ name: "", nameDisplay: "", perm: "vote" });
-                    }}
-                    className="px-3.5 rounded-xl bg-violet text-white display text-[11px] font-bold hover:brightness-110 transition-all cursor-pointer"
-                  >
-                    {t("org_invite")}
-                  </button>
-                </div>
-              </div>
-            </motion.section>
-          )}
-
           {/* ===== manage events ===== */}
           <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-5">
             <SectionHead hue={0} icon={<Swords size={16} />} title={t("org_my_events")} sub={t("org_control")} />
-            {activeManageable.length === 0 ? (
+            {allManageable.length === 0 ? (
               <p className="text-[12px] text-white/40">{t("org_no_events")}</p>
             ) : (
               <>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
-                  {activeManageable.map((e) => (
+                  {allManageable.map((e) => (
                     <Chip key={e.id} active={managed?.id === e.id} onClick={() => setManageIdLocal(e.id)} hue={0}>{e.name}</Chip>
                   ))}
                 </div>
@@ -362,7 +294,7 @@ export default function OrganizerBoard() {
                           <Clock size={12} /> {t("org_time_up")}
                         </button>
                       )}
-                      {managed.status !== "finished" && managed.status !== "cancelled" && permOfManaged === "owner" && (
+                      {managed.status !== "finished" && managed.status !== "cancelled" && canManageEvent && (
                         <>
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, address: managed.address, features: managed.features, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           {managed.endState !== "timeUp" && (
@@ -372,7 +304,7 @@ export default function OrganizerBoard() {
                         </>
                       )}
                       {/* DELETE pinned top-right, separated from finish */}
-                      {permOfManaged === "owner" && (
+                      {canManageEvent && (
                         <button
                           onClick={() => setDelAsk(true)}
                           className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/50 text-ember bg-ember/10 hover:bg-ember/25 transition-colors cursor-pointer"

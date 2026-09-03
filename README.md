@@ -17,7 +17,7 @@ npm run build     # producción (dist/)
 |---|---|
 | **En Vivo** | Contador de aura de la red (animado), usuarios farmeando en tiempo real, competencias por país, botón VOTAR AHORA, retos diarios con racha, top global y feed de actividad |
 | **Eventos** | Filtros por región/estado, tarjetas de evento, modal con mapa (OpenStreetMap/Leaflet), organizador + referencias, compartir (WhatsApp/X/Facebook/Instagram/Telegram), confirmación de asistencia (participante con validación de cupo + lista de espera / espectador ilimitado) |
-| **Organizar** | Acceso por PIN (demo: `1234`) o registro, colaboradores con permisos, creación de eventos, bracket (octavos→final) con duración, batalla en disputa, selección de ganador, anulación de votos, modificar/anular evento |
+| **Organizar** | Acceso por PIN (demo: `1234`) o registro, creación de eventos, bracket (octavos→final) con duración, batalla en disputa, selección de ganador, anulación de votos, modificar/anular evento |
 | **Arena** | Chat en tiempo real, calificación del organizador (1–5 ★), votación de batalla en disputa o abierta 1–10 (un voto por participante, anulable), ranking en vivo (aura + votos) |
 | **Ranking** | Perfil de aura, gráfico de evolución (Recharts), 8 insignias con condiciones reales, ranking global filtrable por país y ordenable por aura/votos/trofeos |
 | **Ajustes** | Perfil con foto (upload), idioma, notificaciones, privacidad, Premium (elimina el banner) |
