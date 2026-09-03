@@ -31,7 +31,6 @@ export const titleFromLevel = (level: number, lang: string) => {
   if (level >= 5) return "Plata";
   return "Bronce";
 };
-
 export const progressToNextLevel = (aura: number) => {
   const level = levelFromAura(aura);
   const lo = (level - 1) * (level - 1) * 90;
@@ -39,6 +38,141 @@ export const progressToNextLevel = (aura: number) => {
   const span = Math.max(1, hi - lo);
   return Math.min(100, Math.max(0, ((aura - lo) / span) * 100));
 };
+
+/* Voter identity: logged-in profile id, else a persisted anonymous id.
+   Logged-in votes go to `votes` (FK voter_id->profiles). Anonymous votes go
+   to `public_votes` (no FK) so the public can take part without an account. */
+const ANON_VOTER_KEY = "aurafarm_anon_voter_id";
+export const effectiveVoterId = (): string | null => {
+  const state = useApp.getState();
+  if (state.supabaseProfileId) return state.supabaseProfileId;
+  try {
+    let id = localStorage.getItem(ANON_VOTER_KEY);
+    if (!id) {
+      id = "anon-" + (typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+      localStorage.setItem(ANON_VOTER_KEY, id);
+    }
+    return id;
+  } catch {
+    return null;
+  }
+};
+
+/* Persist a vote to Supabase. Logged-in users write to `votes`; anonymous
+   users write to `public_votes` (anonymous id, no FK). context uses the
+   same scheme ("general" | "battle_<match>" | "g_<group>"). */
+export const persistVote = (
+  eventId: string,
+  context: string,
+  targetUserId: string | null,
+  score: number
+) => {
+  const state = useApp.getState();
+  if (state.supabaseProfileId && targetUserId) {
+    supabase
+      .from("votes")
+      .upsert(
+        { event_id: eventId, voter_id: state.supabaseProfileId, target_user_id: targetUserId, context, score },
+        { onConflict: "event_id,voter_id,target_user_id,context" }
+      )
+      .then(({ error }) => {
+        if (error) console.error("Error guardando voto en Supabase:", error.message);
+      });
+  } else {
+    const anonId = effectiveVoterId();
+    if (!anonId) return;
+    supabase
+      .from("public_votes")
+      .upsert(
+        { event_id: eventId, anon_id: anonId, target_user_id: targetUserId, context, score },
+        { onConflict: "event_id,anon_id,target_user_id,context" }
+      )
+      .then(({ error }) => {
+        if (error) console.error("Error guardando voto del público:", error.message);
+      });
+  }
+};
+
+interface VoteTallies {
+  votesByEvent: Record<string, Record<string, number>>;
+  matchVotesByEvent: Record<string, Record<string, { a: number; b: number }>>;
+  groupVotesByEvent: Record<string, Record<string, Record<string, number>>>;
+  myVotesFromDb: Record<string, Record<string, number>>;
+  myBattleVotesFromDb: Record<string, Record<string, string>>;
+}
+
+/* Fetch and aggregate votes from both `votes` (logged-in, FK to profiles) and
+   `public_votes` (anonymous public). Returns per-event tallies keyed by
+   target_user_id / match id / group id. */
+const fetchVoteTallies = async (eventIds: string[]): Promise<VoteTallies> => {
+  const tallies: VoteTallies = {
+    votesByEvent: {}, matchVotesByEvent: {}, groupVotesByEvent: {},
+    myVotesFromDb: {}, myBattleVotesFromDb: {},
+  };
+  if (eventIds.length === 0) return tallies;
+  const myPid = useApp.getState().supabaseProfileId;
+
+  const fold = (v: any) => {
+    const ev = tallies.votesByEvent[v.event_id] ??= {};
+    const ctx: string = v.context || "general";
+    if (ctx === "general") {
+      ev[v.target_user_id] = (ev[v.target_user_id] ?? 0) + (v.score ?? 0);
+    } else if (ctx.startsWith("battle_")) {
+      const mid = ctx.slice("battle_".length);
+      const rec = (tallies.matchVotesByEvent[v.event_id] ??= {})[mid] ??= { a: 0, b: 0 };
+      if (v.score === 1) rec.a++; else if (v.score === 2) rec.b++;
+      ev[v.target_user_id] = (ev[v.target_user_id] ?? 0) + 1;
+    } else if (ctx.startsWith("g_")) {
+      const gid = ctx.slice("g_".length);
+      const fighters = (tallies.groupVotesByEvent[v.event_id] ??= {})[gid] ??= {};
+      fighters[v.target_user_id] = (fighters[v.target_user_id] ?? 0) + 1;
+      ev[v.target_user_id] = (ev[v.target_user_id] ?? 0) + 1;
+    }
+    if (myPid && v.voter_id === myPid) {
+      if (ctx === "general") {
+        const rec = tallies.myVotesFromDb[v.event_id] ??= {};
+        rec[v.target_user_id] = v.score;
+      } else if (ctx.startsWith("battle_")) {
+        const mid = ctx.slice("battle_".length);
+        const rec = tallies.myBattleVotesFromDb[v.event_id] ??= {};
+        rec[mid] = v.score === 1 ? "a" : v.score === 2 ? "b" : rec[mid];
+      }
+    }
+  };
+
+  const { data: voteRows } = await supabase.from("votes").select("event_id, voter_id, target_user_id, context, score");
+  (voteRows ?? []).forEach(fold);
+
+  const { data: pubRows } = await supabase.from("public_votes").select("event_id, anon_id, target_user_id, context, score");
+  (pubRows ?? []).forEach((v: any) => {
+    // Anonymous votes only contribute tallies (anonymous "myVotes" are handled locally)
+    fold({ ...v, voter_id: v.anon_id });
+  });
+
+  return tallies;
+};
+
+/* Apply per-match vote tallies from Supabase onto a local bracket */
+export const applyMatchVotes = (
+  bracket: BracketMatch[],
+  tally: Record<string, { a: number; b: number }>
+): BracketMatch[] =>
+  bracket.map((m) => {
+    const t = tally[m.id];
+    if (!t) return m;
+    return { ...m, votesA: t.a, votesB: t.b };
+  });
+
+/* Apply per-fighter vote tallies from Supabase onto local groups */
+export const applyGroupVotes = (
+  groups: BattleGroup[],
+  tally: Record<string, Record<string, number>>
+): BattleGroup[] =>
+  groups.map((g) => {
+    const t = tally[g.id];
+    if (!t) return g;
+    return { ...g, votes: { ...t, ...g.votes } };
+  });
 
 let toastSeq = 1;
 let feedSeq = 100;
@@ -128,6 +262,8 @@ interface AppState {
   voidGroupVotes: (eventId: string, groupId: string) => void;
   loadEventsFromSupabase: () => Promise<void>;
   initSupabaseAuth: () => Promise<void>;
+  refreshVotes: () => Promise<void>;
+  subscribeVotes: () => () => void;
   addGuestParticipant: (eventId: string, name: string) => Promise<void>;
   loginAppUser: (email: string, password: string) => Promise<boolean>;
   registerAppUser: (email: string, password: string, name: string, country: string) => Promise<boolean>;
@@ -240,18 +376,7 @@ export const useApp = create<AppState>()(
         if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
         s.toast(prev ? translate(s.lang, "t_vote_updated") : translate(s.lang, "t_voted"));
 
-        const { supabaseProfileId } = get();
-        if (supabaseProfileId) {
-          supabase
-            .from("votes")
-            .upsert(
-              { event_id: eventId, voter_id: supabaseProfileId, target_user_id: userId, context: "general", score },
-              { onConflict: "event_id,voter_id,target_user_id,context" }
-            )
-            .then(({ error }) => {
-              if (error) console.error("Error guardando voto en Supabase:", error.message);
-            });
-        }
+        persistVote(eventId, "general", userId, score);
       },
 
       removeVote: (eventId, userId) => {
@@ -307,18 +432,7 @@ export const useApp = create<AppState>()(
           get().pickWinner(eventId, matchId, updatedBracket.votesA >= updatedBracket.votesB ? "a" : "b");
         }
 
-        const { supabaseProfileId } = get();
-        if (supabaseProfileId) {
-          supabase
-            .from("votes")
-            .upsert(
-              { event_id: eventId, voter_id: supabaseProfileId, target_user_id: pid, context: "battle_" + matchId, score: side === "a" ? 1 : 2 },
-              { onConflict: "event_id,voter_id,target_user_id,context" }
-            )
-            .then(({ error }) => {
-              if (error) console.error("Error guardando voto de batalla:", error.message);
-            });
-        }
+        persistVote(eventId, "battle_" + matchId, pid, side === "a" ? 1 : 2);
       },
 
       rateEvent: (eventId, stars) => {
@@ -540,6 +654,8 @@ export const useApp = create<AppState>()(
         });
         if (!prev && s.votesCast + 1 >= 3) get().toggleChallenge("ch2");
         s.toast(translate(s.lang, "t_battle_voted"), "gold");
+
+        persistVote(eventId, gKey, pid, 1);
       },
 
       undoGroupVote: (eventId, groupId) => {
@@ -780,6 +896,7 @@ export const useApp = create<AppState>()(
         set({ supabaseUserId: userId, authed: true, isOAuth: !!isOAuth, userEmail: user.email ?? null });
 
         await get().loadEventsFromSupabase();
+        get().subscribeVotes();
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -969,13 +1086,16 @@ export const useApp = create<AppState>()(
 
         let collabByEvent: Record<string, { name: string; email?: string; perm: string }[]> = {};
         const mineProfileId = get().supabaseProfileId;
+        const myEmailNorm = (get().userEmail ?? "").trim().toLowerCase();
         try {
           const { data: collabRows, error: collabError } = await supabase.from("event_collaborators").select("*");
           if (collabError) {
             console.error("Error cargando colaboradores:", collabError.message);
           } else {
             collabByEvent = (collabRows ?? []).reduce((acc: any, r: any) => {
-              if (mineProfileId && r.owner_id !== mineProfileId) return acc;
+              const ownerIsMe = mineProfileId && r.owner_id === mineProfileId;
+              const collabIsMe = myEmailNorm && (r.collaborator_email ?? "").trim().toLowerCase() === myEmailNorm;
+              if (!ownerIsMe && !collabIsMe) return acc;
               (acc[r.event_id] ??= []).push({ name: r.name || r.collaborator_email, email: r.collaborator_email, perm: r.perm || "edit" });
               return acc;
             }, {});
@@ -1018,6 +1138,16 @@ export const useApp = create<AppState>()(
           }
         }
 
+        // ---- Cargar votos de Supabase (votos reales del público, compartidos entre dispositivos) ----
+        const eventIds = (data ?? []).map((r: any) => r.id);
+        const {
+          votesByEvent,
+          matchVotesByEvent,
+          groupVotesByEvent,
+          myVotesFromDb,
+          myBattleVotesFromDb,
+        } = await fetchVoteTallies(eventIds);
+
         const prevByEvent = new Map(get().events.map((e) => [e.id, e]));
         const mapped: EventItem[] = (data ?? []).map((row: any) => {
           const prev = prevByEvent.get(row.id);
@@ -1034,14 +1164,50 @@ export const useApp = create<AppState>()(
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
             status: row.status,
             features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
-            votes: {}, bracket: [], currentMatchId: null,
-            groups: [],
-            chat: [], notes: row.notes ?? "",
+            votes: { ...(votesByEvent[row.id] ?? {}), ...(prev?.votes ?? {}) },
+            bracket: applyMatchVotes(prev?.bracket ?? [], matchVotesByEvent[row.id] ?? {}),
+            currentMatchId: prev?.currentMatchId ?? null,
+            groups: applyGroupVotes(prev?.groups ?? [], groupVotesByEvent[row.id] ?? {}),
+            chat: prev?.chat ?? [], notes: row.notes ?? "",
           };
         });
+        // Fusionar mis votos cargados de la BD con el estado persistido
+        const mergedMyVotes = { ...get().myVotes, ...myVotesFromDb };
+        const mergedBattle = { ...get().battleVotes, ...myBattleVotesFromDb };
+        if (Object.keys(myVotesFromDb).length > 0 || Object.keys(myBattleVotesFromDb).length > 0) {
+          set({ myVotes: mergedMyVotes, battleVotes: mergedBattle });
+        }
         const realUsers = get().users;
         const totalAura = realUsers.reduce((a, u) => a + (u.aura || 0), 0) + (get().profile.aura || 0);
         set({ events: mapped, totalAura });
+      },
+
+      refreshVotes: async () => {
+        const events = get().events;
+        const eventIds = events.map((e) => e.id);
+        if (eventIds.length === 0) return;
+        const { votesByEvent, matchVotesByEvent, groupVotesByEvent } = await fetchVoteTallies(eventIds);
+        set({
+          events: events.map((e) => ({
+            ...e,
+            votes: { ...(votesByEvent[e.id] ?? {}), ...e.votes },
+            bracket: applyMatchVotes(e.bracket, matchVotesByEvent[e.id] ?? {}),
+            groups: applyGroupVotes(e.groups, groupVotesByEvent[e.id] ?? {}),
+          })),
+        });
+      },
+
+      subscribeVotes: () => {
+        if (!supabase) return () => {};
+        const refresh = () => get().refreshVotes();
+        const channel = supabase
+          .channel("votes-realtime")
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "votes" }, refresh)
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "public_votes" }, refresh)
+          .subscribe();
+        return () => {
+          supabase.removeChannel(channel);
+        };
       },
 
       adminLogin: async (pass) => {

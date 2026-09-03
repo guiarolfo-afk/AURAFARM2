@@ -13,6 +13,29 @@ const OrganizerBoard = lazy(() => import("./components/OrganizerBoard"));
 const ArenaBoard = lazy(() => import("./components/ArenaBoard"));
 const RankingsBoard = lazy(() => import("./components/RankingsBoard"));
 const SettingsBoard = lazy(() => import("./components/SettingsBoard"));
+const PublicEventView = lazy(() => import("./components/PublicEventView"));
+const PublicProfileView = lazy(() => import("./components/PublicProfileView"));
+
+/* FASE 6.2/6.5 — public shared-link routes (work WITHOUT login):
+   #/e/:eventId  → live vote page
+   #/u/:profileId → public profile */
+function usePublicRoute() {
+  const [route, setRoute] = useState<{ eventId: string | null; profileId: string | null }>(() => {
+    const e = window.location.hash.match(/^#\/e\/([A-Za-z0-9-]+)/);
+    const u = window.location.hash.match(/^#\/u\/([A-Za-z0-9-]+)/);
+    return { eventId: e ? e[1] : null, profileId: u ? u[1] : null };
+  });
+  useEffect(() => {
+    const onHash = () => {
+      const e = window.location.hash.match(/^#\/e\/([A-Za-z0-9-]+)/);
+      const u = window.location.hash.match(/^#\/u\/([A-Za-z0-9-]+)/);
+      setRoute({ eventId: e ? e[1] : null, profileId: u ? u[1] : null });
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return route;
+}
 
 const PARTICLES = [
   { s: 130, c: "#9B30FF", x: "6%", y: "18%", d: "0s" },
@@ -36,6 +59,7 @@ export default function App() {
   const { setTab, setLang, enterArena } = useApp.getState();
   const [langOpen, setLangOpen] = useState(false);
   const [countryFilter, setCountryFilter] = useState("all");
+  const publicRoute = usePublicRoute();
 
   useEffect(() => {
     const id = setInterval(() => useApp.getState().tick(), 2200);
@@ -43,10 +67,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let disposed = false;
+    let unsub: (() => void) | null = null;
+    let iv: ReturnType<typeof setInterval> | null = null;
     (async () => {
       await useApp.getState().initSupabaseAuth();
       await useApp.getState().loadEventsFromSupabase();
+      if (disposed) return;
+      unsub = useApp.getState().subscribeVotes();
+      iv = setInterval(() => useApp.getState().refreshVotes(), 8000);
     })();
+    return () => {
+      disposed = true;
+      unsub?.();
+      if (iv) clearInterval(iv);
+    };
   }, []);
 
   const tabs: { id: Tab; icon: typeof Radio; hue: number; label: string }[] = [
@@ -65,6 +100,20 @@ export default function App() {
 
   const adBanner = !premium ? banners.find((b) => b.active) : undefined;
   const currentLang = LANGS.find((l) => l.code === lang)!;
+
+  /* Public shared routes: anyone can open and vote / view without an account */
+  if (publicRoute.eventId || publicRoute.profileId) {
+    return (
+      <>
+        <Toasts />
+        <Suspense fallback={<div className="min-h-screen grid place-items-center text-white/40 text-sm">Cargando…</div>}>
+          {publicRoute.eventId
+            ? <PublicEventView eventId={publicRoute.eventId} />
+            : <PublicProfileView profileId={publicRoute.profileId!} />}
+        </Suspense>
+      </>
+    );
+  }
 
   if (!authed) {
     return (

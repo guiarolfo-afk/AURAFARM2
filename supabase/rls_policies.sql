@@ -43,7 +43,7 @@ create policy "participants_select_public" on public.event_participants
 create policy "participants_insert_own" on public.event_participants
   for insert to anon, authenticated with check (true);
 
--- EVENT_COLLABORATORS (solo dueño)
+-- EVENT_COLLABORATORS (owner + colaborador por email)
 alter table public.event_collaborators add column if not exists owner_id uuid references public.profiles(id) on delete cascade;
 alter table public.event_collaborators enable row level security;
 
@@ -56,8 +56,10 @@ drop policy if exists "collabs_insert_owner"  on public.event_collaborators;
 drop policy if exists "collabs_update_owner"  on public.event_collaborators;
 drop policy if exists "collabs_delete_owner"  on public.event_collaborators;
 
+-- SELECT: el dueño ve su lista; el colaborador (por email) ve SU propia fila
 create policy "collabs_select_owner" on public.event_collaborators
-  for select to authenticated using (owner_id = auth.uid());
+  for select to authenticated
+  using (owner_id = auth.uid() or lower(coalesce(collaborator_email,'')) = lower(coalesce(auth.jwt()->>'email','')));
 create policy "collabs_insert_owner" on public.event_collaborators
   for insert to authenticated with check (owner_id = auth.uid());
 create policy "collabs_update_owner" on public.event_collaborators
@@ -77,3 +79,13 @@ create policy "votes_upsert_own" on public.votes
   for insert to anon, authenticated with check (true);
 create policy "votes_update_own" on public.votes
   for update to authenticated using (voter_id = auth.uid());
+
+-- PUBLIC_VOTES (votos anónimos del público — FASE 6.1)
+alter table public.public_votes enable row level security;
+drop policy if exists "public_votes_select" on public.public_votes;
+drop policy if exists "public_votes_insert" on public.public_votes;
+
+create policy "public_votes_select" on public.public_votes
+  for select to anon, authenticated using (true);
+create policy "public_votes_insert" on public.public_votes
+  for insert to anon, authenticated with check (true);

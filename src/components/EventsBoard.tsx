@@ -5,7 +5,7 @@ import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
-import { Avatar, Chip, Modal, SectionHead, Stars, ShareRow, LiveBadge, Field, inputCls, btnGold } from "./ui";
+import { Avatar, Chip, Modal, SectionHead, Stars, ShareRow, LiveBadge, Field, inputCls, btnGold, QRCode } from "./ui";
 import MiniMap from "./MiniMap";
 
 export default function EventsBoard({ initialCountry }: { initialCountry: string }) {
@@ -235,7 +235,10 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                       {detail.features.map((f) => <span key={f} className="text-[10.5px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#FFD70014", border: "1px solid #FFD70035", color: "#FFD700" }}>{t(f)}</span>)}
                     </div>
                     <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mt-3.5 mb-2">{t("ev_share")}</p>
-                    <ShareRow title={detail.name} />
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
+                      <QRCode url={`${window.location.origin}${window.location.pathname}#/e/${detail.id}`} size={130} label="Escanea para votar" />
+                      <ShareRow title={detail.name} url={`${window.location.origin}${window.location.pathname}#/e/${detail.id}`} />
+                    </div>
                   </div>
                 </div>
               </div>

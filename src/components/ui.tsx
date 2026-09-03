@@ -159,11 +159,12 @@ export function Stars({ value, onChange, size = 16 }: { value: number; onChange?
 }
 
 /* ---------- Share row (WhatsApp, X, Facebook, Instagram, Telegram) ---------- */
-export function ShareRow({ title, compact }: { title: string; compact?: boolean }) {
+export function ShareRow({ title, compact, url }: { title: string; compact?: boolean; url?: string }) {
   const toast = useApp((s) => s.toast);
   const toggleChallenge = useApp((s) => s.toggleChallenge);
-  const url = typeof window !== "undefined" ? window.location.href : "https://aurafarm.app";
-  const enc = encodeURIComponent(`${title} — ${url}`);
+  const base = typeof window !== "undefined" ? window.location.href : "https://aurafarm.app";
+  const theUrl = url ?? base;
+  const enc = encodeURIComponent(`${title} — ${theUrl}`);
   const share = (u: string, net: string) => {
     toggleChallenge("ch5");
     window.open(u, "_blank", "noopener,noreferrer");
@@ -179,13 +180,13 @@ export function ShareRow({ title, compact }: { title: string; compact?: boolean 
       <button aria-label="X" className={cls} style={mk("#e8e6f5")} onClick={() => share(`https://twitter.com/intent/tweet?text=${enc}`, "X")}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.7 3H21l-7.2 8.3L22.2 21h-6.6l-5.2-6.2L4.5 21H1.2l7.7-8.9L1.5 3h6.8l4.7 5.7L17.7 3Zm-1.2 16h1.8L7.1 4.9H5.2L16.5 19Z" /></svg>
       </button>
-      <button aria-label="Facebook" className={cls} style={mk("#1877F2")} onClick={() => share(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "Facebook")}>
+      <button aria-label="Facebook" className={cls} style={mk("#1877F2")} onClick={() => share(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(theUrl)}`, "Facebook")}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-2.9h-2.8V9.2c0-.8.3-1.4 1.4-1.4h1.5V5.2c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.7v2.3H8v2.9h2.5v7h3Z" /></svg>
       </button>
-      <button aria-label="Instagram" className={cls} style={mk("#FF69B4")} onClick={() => { toggleChallenge("ch5"); navigator.clipboard?.writeText(`${title} — ${url}`).catch(() => {}); toast("Instagram · link copiado 📋"); }}>
+      <button aria-label="Instagram" className={cls} style={mk("#FF69B4")} onClick={() => { toggleChallenge("ch5"); navigator.clipboard?.writeText(`${title} — ${theUrl}`).catch(() => {}); toast("Instagram · link copiado 📋"); }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" /></svg>
       </button>
-      <button aria-label="Telegram" className={cls} style={mk("#00BFFF")} onClick={() => share(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, "Telegram")}>
+      <button aria-label="Telegram" className={cls} style={mk("#00BFFF")} onClick={() => share(`https://t.me/share/url?url=${encodeURIComponent(theUrl)}&text=${encodeURIComponent(title)}`, "Telegram")}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 18.9 19c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.6L18.5 7c.4-.3-.1-.5-.6-.2L7.6 13.3l-4.4-1.4c-1-.3-1-1 .2-1.4l17.1-6.6c.8-.3 1.5.2 1.4.7Z" /></svg>
       </button>
     </div>
@@ -193,8 +194,7 @@ export function ShareRow({ title, compact }: { title: string; compact?: boolean 
 }
 
 /* ---------- Toggle switch ---------- */
-export function Toggle({ on, onChange, hue = 268 }: { on: boolean; onChange: () => void; hue?: number }) {
-  return (
+export function Toggle({ on, onChange, hue = 268 }: { on: boolean; onChange: () => void; hue?: number }) {  return (
     <button
       onClick={onChange}
       role="switch"
@@ -217,6 +217,32 @@ export function LiveBadge({ label }: { label: string }) {
       <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" />
       {label}
     </span>
+  );
+}
+
+/* ---------- QR code (scannable on the phone for the live vote page) ---------- */
+export function QRCode({ url, size = 150, label }: { url: string; size?: number; label?: string }) {
+  const [src, setSrc] = useState<string>("");
+  useEffect(() => {
+    let alive = true;
+    import("qrcode").then((m) =>
+      m.default.toDataURL(url, { width: size, margin: 1, color: { dark: "#0a0a14", light: "#ffffff" } })
+        .then((d) => { if (alive) setSrc(d); })
+        .catch(() => {})
+    );
+    return () => { alive = false; };
+  }, [url, size]);
+  return (
+    <div className="flex flex-col items-center gap-2">
+      {src ? (
+        <img src={src} width={size} height={size} alt="QR" className="rounded-lg border border-white/10" />
+      ) : (
+        <div className="rounded-lg border border-dashed border-white/20 grid place-items-center" style={{ width: size, height: size }}>
+          <span className="text-[10px] text-white/35">QR…</span>
+        </div>
+      )}
+      {label && <span className="text-[10px] text-white/40 text-center">{label}</span>}
+    </div>
   );
 }
 
