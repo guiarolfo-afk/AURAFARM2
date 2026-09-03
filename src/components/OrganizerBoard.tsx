@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
-import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus } from "lucide-react";
+import { Lock, KeyRound, ShieldCheck, Swords, Trash2, UserPlus, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2 } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
-import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold } from "./ui";
+import { Avatar, Chip, Modal, SectionHead, Field, inputCls, btnGold, ShareRow } from "./ui";
 import LocationPicker, { type PickedPlace } from "./LocationPicker";
 
 const FEATURE_TAGS = ["t_stream", "t_prize", "t_food", "t_music", "t_photo", "t_free_entry"];
@@ -377,6 +377,14 @@ export default function OrganizerBoard() {
                           <button onClick={() => setDelAsk(true)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/45 text-ember bg-ember/12 hover:bg-ember/22 transition-colors cursor-pointer">{t("org_delete_ev")}</button>
                         </>
                       )}
+                    </div>
+
+                    {/* share this event */}
+                    <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-white/8">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+                        <Share2 size={13} className="text-gold" /> {t("ev_share")}
+                      </span>
+                      <ShareRow compact title={managed.name} url={`${window.location.origin}${window.location.pathname}#/e/${managed.id}`} />
                     </div>
 
                     {/* group phase (3+ fighters per battle, before the bracket) */}

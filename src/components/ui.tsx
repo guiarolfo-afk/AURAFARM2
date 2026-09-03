@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Check } from "lucide-react";
 import { useApp } from "../store";
@@ -165,37 +165,66 @@ export function Stars({ value, onChange, size = 16 }: { value: number; onChange?
   );
 }
 
-/* ---------- Share row (WhatsApp, X, Facebook, Instagram, Telegram) ---------- */
+/* ---------- Share row (WhatsApp, X, Facebook, Instagram, Telegram, TikTok) ---------- */
 export function ShareRow({ title, compact, url }: { title: string; compact?: boolean; url?: string }) {
   const toast = useApp((s) => s.toast);
   const toggleChallenge = useApp((s) => s.toggleChallenge);
   const base = typeof window !== "undefined" ? window.location.href : "https://aurafarm.app";
   const theUrl = url ?? base;
   const enc = encodeURIComponent(`${title} — ${theUrl}`);
+  const text = `${title} — ${theUrl}`;
   const share = (u: string, net: string) => {
     toggleChallenge("ch5");
     window.open(u, "_blank", "noopener,noreferrer");
     toast(`${net} ↗`);
   };
-  const cls = `w-9 h-9 rounded-full grid place-items-center border transition-all duration-200 hover:scale-110 cursor-pointer ${compact ? "" : ""}`;
-  const mk = (bg: string) => ({ background: `${bg}1f`, borderColor: `${bg}55`, color: bg });
+  const copyOnly = (net: string) => {
+    toggleChallenge("ch5");
+    navigator.clipboard?.writeText(text).catch(() => {});
+    toast(`${net} · link copiado 📋`);
+  };
+  const sb = {
+    width: compact ? 32 : 38,
+    height: compact ? 32 : 38,
+    borderRadius: 9999,
+    display: "grid",
+    placeItems: "center",
+    color: "#fff",
+    transition: "transform .15s ease",
+    cursor: "pointer",
+    flexShrink: 0,
+  } as const;
+  const S = ({ href, bg, label, children, onClick }: { href: string; bg: string; label: string; children: ReactNode; onClick?: () => void }) => (
+    <button
+      aria-label={label}
+      className="grid place-items-center hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+      style={{ ...sb, background: bg, boxShadow: `0 4px 14px ${bg}55` }}
+      onClick={onClick ?? (() => share(href, label))}
+      title={label}
+    >
+      {children}
+    </button>
+  );
   return (
-    <div className="flex items-center gap-2">
-      <button aria-label="WhatsApp" className={cls} style={mk("#25D366")} onClick={() => share(`https://wa.me/?text=${enc}`, "WhatsApp")}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" /><path d="M8.8 9.2c.4 2.6 3.4 5.6 6 6l1.4-1.4-2-1.2-1 .7c-.9-.4-1.9-1.4-2.3-2.3l.7-1-1.2-2-1.6 1.2Z" fill="currentColor" stroke="none" /></svg>
-      </button>
-      <button aria-label="X" className={cls} style={mk("#e8e6f5")} onClick={() => share(`https://twitter.com/intent/tweet?text=${enc}`, "X")}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.7 3H21l-7.2 8.3L22.2 21h-6.6l-5.2-6.2L4.5 21H1.2l7.7-8.9L1.5 3h6.8l4.7 5.7L17.7 3Zm-1.2 16h1.8L7.1 4.9H5.2L16.5 19Z" /></svg>
-      </button>
-      <button aria-label="Facebook" className={cls} style={mk("#1877F2")} onClick={() => share(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(theUrl)}`, "Facebook")}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-2.9h-2.8V9.2c0-.8.3-1.4 1.4-1.4h1.5V5.2c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.7v2.3H8v2.9h2.5v7h3Z" /></svg>
-      </button>
-      <button aria-label="Instagram" className={cls} style={mk("#FF69B4")} onClick={() => { toggleChallenge("ch5"); navigator.clipboard?.writeText(`${title} — ${theUrl}`).catch(() => {}); toast("Instagram · link copiado 📋"); }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" /></svg>
-      </button>
-      <button aria-label="Telegram" className={cls} style={mk("#00BFFF")} onClick={() => share(`https://t.me/share/url?url=${encodeURIComponent(theUrl)}&text=${encodeURIComponent(title)}`, "Telegram")}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 18.9 19c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.6L18.5 7c.4-.3-.1-.5-.6-.2L7.6 13.3l-4.4-1.4c-1-.3-1-1 .2-1.4l17.1-6.6c.8-.3 1.5.2 1.4.7Z" /></svg>
-      </button>
+    <div className={`flex items-center ${compact ? "gap-2" : "gap-3"}`}>
+      <S href={`https://wa.me/?text=${enc}`} bg="#25D366" label="WhatsApp">
+        <svg width={compact ? 17 : 20} height={compact ? 17 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" /><path d="M8.8 9.2c.4 2.6 3.4 5.6 6 6l1.4-1.4-2-1.2-1 .7c-.9-.4-1.9-1.4-2.3-2.3l.7-1-1.2-2-1.6 1.2Z" fill="currentColor" stroke="none" /></svg>
+      </S>
+      <S href={`https://twitter.com/intent/tweet?text=${enc}`} bg="#000000" label="X">
+        <svg width={compact ? 15 : 18} height={compact ? 15 : 18} viewBox="0 0 24 24" fill="currentColor"><path d="M17.7 3H21l-7.2 8.3L22.2 21h-6.6l-5.2-6.2L4.5 21H1.2l7.7-8.9L1.5 3h6.8l4.7 5.7L17.7 3Zm-1.2 16h1.8L7.1 4.9H5.2L16.5 19Z" /></svg>
+      </S>
+      <S href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(theUrl)}`} bg="#1877F2" label="Facebook">
+        <svg width={compact ? 16 : 19} height={compact ? 16 : 19} viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7h2.4l.4-2.9h-2.8V9.2c0-.8.3-1.4 1.4-1.4h1.5V5.2c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.7v2.3H8v2.9h2.5v7h3Z" /></svg>
+      </S>
+      <S href="" bg="linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" label="Instagram" onClick={() => copyOnly("Instagram")}>
+        <svg width={compact ? 16 : 19} height={compact ? 16 : 19} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" /></svg>
+      </S>
+      <S href={`https://t.me/share/url?url=${encodeURIComponent(theUrl)}&text=${encodeURIComponent(title)}`} bg="#0088cc" label="Telegram">
+        <svg width={compact ? 16 : 19} height={compact ? 16 : 19} viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.6 18.9 19c-.2 1-.8 1.2-1.6.8l-4.5-3.3-2.2 2.1c-.2.2-.4.4-.9.4l.3-4.6L18.5 7c.4-.3-.1-.5-.6-.2L7.6 13.3l-4.4-1.4c-1-.3-1-1 .2-1.4l17.1-6.6c.8-.3 1.5.2 1.4.7Z" /></svg>
+      </S>
+      <S href="" bg="#000000" label="TikTok" onClick={() => copyOnly("TikTok")}>
+        <svg width={compact ? 16 : 19} height={compact ? 16 : 19} viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2 1.8 3.6 3.9 3.9v2.9c-1.5 0-2.8-.5-3.9-1.3v6.5c0 3.2-2.4 5.5-5.4 5.5C8.5 20.5 6 18.2 6 15.1c0-3.1 2.5-5.5 5.5-5.5.3 0 .7 0 .9.1v3c-.3-.1-.6-.2-.9-.2-1.4 0-2.5 1.2-2.5 2.6 0 1.4 1.1 2.5 2.5 2.5 1.5 0 2.6-1.1 2.6-2.7V3h3Z" /></svg>
+      </S>
     </div>
   );
 }

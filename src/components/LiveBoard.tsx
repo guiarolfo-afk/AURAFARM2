@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, ChevronDown, Vote, ArrowRight, Activity, Crown, MapPin, Check, Calendar } from "lucide-react";
+import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, ChevronDown, Vote, ArrowRight, Activity, Crown, MapPin, Check, Calendar, Share2 } from "lucide-react";
 import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
-import { Avatar, AuraBar, AnimatedNumber, SectionHead, LiveBadge } from "./ui";
+import { Avatar, AuraBar, AnimatedNumber, SectionHead, LiveBadge, ShareRow } from "./ui";
 
 const reveal = {
   initial: { opacity: 0, y: 22 },
@@ -345,6 +345,26 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
             <ChevronRight size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
           </div>
           <p className="text-[10.5px] text-white/40 sm:max-w-[220px] leading-snug shrink-0">{t("live_by_country_sub")}</p>
+        </div>
+      </motion.section>
+
+      {/* ===== Compartir la app / evento en vivo ===== */}
+      <motion.section {...reveal}>
+        <div className="panel p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/25 grid place-items-center">
+              <Share2 size={17} className="text-gold" />
+            </span>
+            <div>
+              <h3 className="display text-[13px] font-extrabold">{t("ev_share")}</h3>
+              <p className="text-[11.5px] text-white/45">{t("live_share_sub")}</p>
+            </div>
+          </div>
+          <ShareRow
+            compact
+            title={liveEvents[0]?.name ?? nextEvents[0]?.name ?? "AuraFARM"}
+            url={`${window.location.origin}${window.location.pathname}#/e/${(liveEvents[0] ?? nextEvents[0])?.id ?? ""}`}
+          />
         </div>
       </motion.section>
     </div>

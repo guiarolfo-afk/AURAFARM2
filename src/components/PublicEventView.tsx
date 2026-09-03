@@ -4,7 +4,7 @@ import { Crown, Share2, Copy, Link2, Swords, RefreshCw } from "lucide-react";
 import { useApp, userNameById, levelFromAura, VOTE_REWARD } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
-import { Avatar, AuraBar, LiveBadge, ShareRow, QRCode } from "./ui";
+import { Avatar, AuraBar, LiveBadge, ShareRow } from "./ui";
 
 /* FASE 6.2 — Vista pública de evento, accesible SIN login desde un enlace
    compartido (#/e/:id). El público ve el ranking en vivo y vota como anónimo
@@ -187,10 +187,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
             <h3 className="display text-[13px] font-extrabold">{t("ev_share")}</h3>
           </div>
           <p className="text-[11px] text-white/45 mb-3 break-all">{shareUrl}</p>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
-            <QRCode url={shareUrl} size={140} label="Escanéame para votar" />
-            <ShareRow title={ev.name} url={shareUrl} />
-          </div>
+          <ShareRow title={ev.name} url={shareUrl} />
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
 import type { EventItem } from "../data";
-import { Avatar, Chip, Modal, SectionHead, Stars, ShareRow, LiveBadge, Field, inputCls, btnGold, QRCode } from "./ui";
+import { Avatar, Chip, Modal, SectionHead, Stars, ShareRow, LiveBadge, Field, inputCls, btnGold } from "./ui";
 import MiniMap from "./MiniMap";
 
 export default function EventsBoard({ initialCountry }: { initialCountry: string }) {
@@ -241,17 +241,14 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                       {full && detail.waitlist.length > 0 && <span className="text-[11px] px-2 py-1 rounded-full bg-ember/10 border border-ember/30 text-ember">⏳ {detail.waitlist.length} {t("ev_waitlist").toLowerCase()}</span>}
                     </div>
                   </div>
-                  <div className="panel p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">{t("ev_features")}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {detail.features.map((f) => <span key={f} className="text-[10.5px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#FFD70014", border: "1px solid #FFD70035", color: "#FFD700" }}>{t(f)}</span>)}
-                    </div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mt-3.5 mb-2">{t("ev_share")}</p>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
-                      <QRCode url={`${window.location.origin}${window.location.pathname}#/e/${detail.id}`} size={130} label="Escanea para votar" />
+                    <div className="panel p-4">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">{t("ev_features")}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {detail.features.map((f) => <span key={f} className="text-[10.5px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#FFD70014", border: "1px solid #FFD70035", color: "#FFD700" }}>{t(f)}</span>)}
+                      </div>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mt-3.5 mb-2">{t("ev_share")}</p>
                       <ShareRow title={detail.name} url={`${window.location.origin}${window.location.pathname}#/e/${detail.id}`} />
                     </div>
-                  </div>
                 </div>
               </div>
 
