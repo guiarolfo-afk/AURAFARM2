@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, Vote, ArrowRight, Activity, Crown, MapPin, Check } from "lucide-react";
+import { Radio, Zap, Flame, Trophy, Users, Globe2, ChevronRight, ChevronDown, Vote, ArrowRight, Activity, Crown, MapPin, Check, Calendar } from "lucide-react";
 import { useApp, levelFromAura, titleFromLevel, progressToNextLevel } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -16,8 +17,13 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
   const t = useT();
   const { users, feed, challenges, streak, totalAura, events, lang, enterArena, toggleChallenge, setTab } = useApp();
 
+  const [nextOpen, setNextOpen] = useState(false);
   const online = users.filter((u) => u.online);
   const liveEvents = events.filter((e) => e.status === "live");
+  const nextEvents = events
+    .filter((e) => e.status === "upcoming" && e.dateISO)
+    .sort((a, b) => (a.dateISO + a.time).localeCompare(b.dateISO + b.time) || a.name.localeCompare(b.name))
+    .slice(0, 3);
   const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled").map((e) => e.country))];
   const doneCount = challenges.filter((c) => c.done).length;
   const top5 = [...users].sort((a, b) => b.aura - a.aura).slice(0, 5);
@@ -63,29 +69,113 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
           </div>
         </motion.div>
 
-        <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.08 }} className="panel p-6 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 conic-ring opacity-[0.05]" />
-          <div className="relative flex items-start justify-between">
-            <div>
-              <h3 className="display text-lg font-extrabold leading-tight">{t("live_vote_now_sub")}</h3>
-              <div className="flex items-center gap-2 mt-2 text-[11.5px] text-white/50">
-                <LiveBadge label={t("c_live")} />
-                <span>{liveEvents.length} {t("live_events_live")}</span>
+        <div className="flex flex-col gap-4">
+          <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.08 }} className="panel p-6 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute inset-0 conic-ring opacity-[0.05]" />
+            <div className="relative flex items-start justify-between">
+              <div>
+                <h3 className="display text-lg font-extrabold leading-tight">{t("live_vote_now_sub")}</h3>
+                <div className="flex items-center gap-2 mt-2 text-[11.5px] text-white/50">
+                  <LiveBadge label={t("c_live")} />
+                  <span>{liveEvents.length} {t("live_events_live")}</span>
+                </div>
+              </div>
+              <div className="w-12 h-12 rounded-full conic-ring grid place-items-center floaty shrink-0">
+                <div className="w-10 h-10 rounded-full bg-[#0d0d1c] grid place-items-center">
+                  <Vote size={18} className="text-gold" />
+                </div>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-full conic-ring grid place-items-center floaty shrink-0">
-              <div className="w-10 h-10 rounded-full bg-[#0d0d1c] grid place-items-center">
-                <Vote size={18} className="text-gold" />
-              </div>
+            <button
+              onClick={() => enterArena(liveEvents[0]?.id ?? events[0].id)}
+              className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
+            </button>
+          </motion.div>
+
+          {/* ===== Next 3 events + event dropdown ===== */}
+          <motion.div {...reveal} transition={{ ...reveal.transition, delay: 0.12 }} className="panel p-5">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className="display text-[13px] font-extrabold uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                <Calendar size={14} className="text-gold" /> {t("live_next_events")}
+              </h3>
+              <span className="text-[9.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full bg-azure/10 text-azure border border-azure/30">
+                {nextEvents.length}/3
+              </span>
             </div>
-          </div>
-          <button
-            onClick={() => enterArena(liveEvents[0]?.id ?? events[0].id)}
-            className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
-          >
-            {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
-          </button>
-        </motion.div>
+            {events.filter((e) => e.status !== "cancelled").length > 0 && (
+              <div className="relative mb-3">
+                <button
+                  onClick={() => setNextOpen((o) => !o)}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/8 transition-colors cursor-pointer"
+                  aria-expanded={nextOpen}
+                >
+                  <Globe2 size={13} className="text-azure shrink-0" />
+                  <span className="flex-1 text-left text-[11.5px] font-bold text-white/80 truncate">{t("live_by_country")}</span>
+                  <span className="text-[9.5px] font-extrabold text-white/35 shrink-0">{events.filter((e) => e.status !== "cancelled").length}</span>
+                  <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${nextOpen ? "rotate-180" : ""}`} />
+                </button>
+                {nextOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setNextOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 right-0 mt-2 max-h-64 overflow-y-auto panel !rounded-xl p-1.5 z-40 shadow-2xl"
+                    >
+                      {events.filter((e) => e.status !== "cancelled").map((e) => (
+                        <button
+                          key={e.id}
+                          onClick={() => { enterArena(e.id); setNextOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors cursor-pointer hover:bg-white/6"
+                        >
+                          {e.status === "live" ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse shrink-0" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-azure/60 shrink-0" />
+                          )}
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-[12px] font-bold truncate">{e.name}</span>
+                            <span className="block text-[9.5px] text-white/40">{countryById(e.country).flag} {e.participants.length} ⚔️</span>
+                          </span>
+                          <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : "bg-azure/10 text-azure border border-azure/30"}`}>
+                            {e.status === "live" ? t("c_live") : t("c_upcoming")}
+                          </span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </div>
+            )}
+            {nextEvents.length > 0 ? (
+              <div className="space-y-1.5">
+                {nextEvents.map((e) => (
+                  <button
+                    key={e.id}
+                    onClick={() => enterArena(e.id)}
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/3 border border-white/7 hover:bg-white/7 hover:border-white/10 transition-colors cursor-pointer text-left"
+                  >
+                    <span className="w-6 h-6 rounded-lg bg-white/6 grid place-items-center shrink-0">
+                      <Calendar size={13} className="text-azure" />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[12px] font-bold truncate">{e.name}</span>
+                      <span className="block text-[9.5px] text-white/40">
+                        {countryById(e.country).flag} {e.dateISO} · {e.time || "19:00"} h
+                      </span>
+                    </span>
+                    <ArrowRight size={12} className="text-white/30 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-white/40">{t("live_no_next")}</p>
+            )}
+          </motion.div>
+        </div>
       </div>
 
       {/* ===== Users farming right now ===== */}
