@@ -1,8 +1,11 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "io.github.guiarolfo_afk.twa",
-        "sha256_cert_fingerprints": ["E5:60:7E:4C:E4:49:9C:A7:0C:FD:BE:6D:16:03:7C:31:93:D0:76:71:D4:91:84:EE:8A:C9:1D:4D:04:14:CF:B2"]
-      }
-    }]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.guiarolfo_afk.twa",
+      "sha256_cert_fingerprints":
+        ["3A:39:AB:1E:DA:26:97:9A:6A:CA:2C:A6:AE:7B:3A:A6:30:F9:AD:92:A7:02:ED:AE:BE:41:08:28:A4:E5:3A:A4"]
+    }
+  }
+]
