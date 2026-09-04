@@ -3,11 +3,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isNetlify = process.env.NETLIFY === 'true'
+const base = isNetlify ? '/' : '/AURAFARM2/'
+
 export default defineConfig({
-  base: '/AURAFARM2/',
+  base,
   root: 'src',
   build: {
-    outDir: '../docs',
+    outDir: isNetlify ? '../dist' : '../docs',
     emptyOutDir: true,
   },
   plugins: [
@@ -22,8 +25,8 @@ export default defineConfig({
         theme_color: '#8B5CF6',
         background_color: '#1F2937',
         display: 'standalone',
-        start_url: '/AURAFARM2/',
-        scope: '/AURAFARM2/',
+        start_url: base,
+        scope: base,
         orientation: 'portrait',
         categories: ['entertainment', 'social'],
         icons: [
