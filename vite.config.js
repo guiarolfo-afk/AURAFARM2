@@ -3,14 +3,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const isNetlify = process.env.NETLIFY === 'true'
-const base = isNetlify ? '/' : '/AURAFARM2/'
+const isRoot = process.env.DEPLOY_ROOT === 'true' || process.env.NETLIFY === 'true'
+const base = isRoot ? '/' : '/AURAFARM2/'
 
 export default defineConfig({
   base,
   root: 'src',
   build: {
-    outDir: isNetlify ? '../dist' : '../docs',
+    outDir: isRoot ? '../dist' : '../docs',
     emptyOutDir: true,
   },
   plugins: [
