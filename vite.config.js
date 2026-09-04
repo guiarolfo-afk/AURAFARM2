@@ -16,14 +16,16 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'AuraFARM',
+        name: 'AuraFARM Competitions',
         short_name: 'AuraFARM',
         description: 'Organiza y participa en competencias de farmeo de aura',
-        theme_color: '#06060e',
-        background_color: '#06060e',
+        theme_color: '#8B5CF6',
+        background_color: '#1F2937',
         display: 'standalone',
         start_url: '/AURAFARM2/',
         scope: '/AURAFARM2/',
+        orientation: 'portrait',
+        categories: ['entertainment', 'social'],
         icons: [
           {
             src: 'icons/icon-192.png',

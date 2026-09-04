@@ -79,7 +79,7 @@ export default function PublicProfileView({ profileId }: { profileId: string }) 
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="display text-xl font-extrabold truncate">{p.name}</h1>
                 {isOrg && (
-                  <span className="flex items-center gap-1 text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-violet/15 text-violet border border-violet/40">
+                  <span className="flex items-center gap-1 text-[10.5px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-violet/15 text-violet border border-violet/40">
                     <ShieldCheck size={10} /> {t("nav_org")}
                   </span>
                 )}
@@ -123,7 +123,7 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
     <div className="p-3 rounded-xl bg-white/3 border border-white/7 text-center">
       <div className="flex justify-center mb-1.5">{icon}</div>
       <AnimatedNumber value={value} className="display text-lg font-extrabold text-white" />
-      <p className="text-[9px] font-bold uppercase tracking-wider text-white/35 mt-0.5">{label}</p>
+      <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/35 mt-0.5">{label}</p>
     </div>
   );
 }

@@ -75,7 +75,7 @@ export default function RankingsBoard() {
             ].map((x, i) => (
               <div key={i} className="rounded-xl bg-white/4 border border-white/8 p-3 text-center">
                 <AnimatedNumber value={x.n} className="display text-base font-extrabold" />
-                <p className="text-[9.5px] text-white/45 font-bold uppercase tracking-wide mt-0.5" style={{ color: `${x.c}bb` }}>{x.label}</p>
+                <p className="text-[10.5px] text-white/45 font-bold uppercase tracking-wide mt-0.5" style={{ color: `${x.c}bb` }}>{x.label}</p>
               </div>
             ))}
           </div>
@@ -154,9 +154,9 @@ export default function RankingsBoard() {
                 <div className="relative w-12 h-12 mx-auto rounded-2xl grid place-items-center" style={{ background: `hsl(${b.hue} 90% 60% / ${on ? ".16" : ".06"})`, border: `1px solid hsl(${b.hue} 90% 60% / ${on ? ".45" : ".15"})` }}>
                   {on ? <I size={20} className={`text-white`} /> : <Lock size={16} className="text-white/30" />}
                 </div>
-                <p className="relative display text-[11.5px] font-bold mt-2.5" style={{ color: on ? `hsl(${b.hue} 90% 70%)` : "rgba(255,255,255,.45)" }}>{t(b.id)}</p>
-                <p className="relative text-[10px] text-white/40 mt-0.5 leading-snug">{t(`d${b.id.slice(1)}`)}</p>
-                {!on && <p className="relative text-[9px] font-extrabold uppercase tracking-widest text-white/25 mt-1.5">{t("rk_locked")}</p>}
+                <p className="relative display text-[12px] font-bold mt-2.5" style={{ color: on ? `hsl(${b.hue} 90% 70%)` : "rgba(255,255,255,.45)" }}>{t(b.id)}</p>
+                <p className="relative text-[11px] text-white/40 mt-0.5 leading-snug">{t(`d${b.id.slice(1)}`)}</p>
+                {!on && <p className="relative text-[10.5px] font-extrabold uppercase tracking-widest text-white/25 mt-1.5">{t("rk_locked")}</p>}
               </motion.div>
             );
           })}
@@ -167,8 +167,8 @@ export default function RankingsBoard() {
       <motion.section initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
         <SectionHead hue={200} icon={<Globe2 size={16} />} title={t("rk_global_title")} />
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-white/35">{t("rk_filter_country")}:</span>
-          <select value={country} onChange={(e) => setCountry(e.target.value)} className="px-3 py-1.5 rounded-full text-[12px] font-semibold bg-white/5 border border-white/10 outline-none cursor-pointer" aria-label={t("rk_filter_country")}>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-white/35">{t("rk_filter_country")}:</span>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className="px-3 py-2 rounded-full text-[12px] font-semibold bg-white/5 border border-white/10 outline-none cursor-pointer" aria-label={t("rk_filter_country")}>
             <option value="all" className="bg-[#0d0d1c]">🌍 {t("c_all")}</option>
             {COUNTRIES.map((c) => <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>)}
           </select>
@@ -180,7 +180,7 @@ export default function RankingsBoard() {
         </div>
 
         <div className="panel overflow-hidden">
-          <div className="grid grid-cols-[24px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 px-2.5 sm:px-4 py-2.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-white/30 border-b border-white/8">
+          <div className="grid grid-cols-[28px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 px-2.5 sm:px-4 py-2.5 text-[10px] sm:text-[10px] font-extrabold uppercase tracking-wider text-white/30 border-b border-white/8">
             <span>#</span><span>{t("st_name")}</span><span className="text-right">{t("rk_sort_total")}</span><span className="text-right hidden sm:block">{t("rk_sort_votes")}</span><span className="text-right">🏆</span>
           </div>
           <div className="max-h-[420px] overflow-y-auto">
@@ -192,21 +192,21 @@ export default function RankingsBoard() {
                   key={u.id}
                   layout
                   transition={{ type: "spring", damping: 28, stiffness: 260 }}
-                  className={`grid grid-cols-[24px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 items-center px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-white/5 last:border-0 transition-colors ${me ? "bg-gold/8" : "hover:bg-white/3"}`}
+                  className={`grid grid-cols-[28px_1fr_58px_36px] sm:grid-cols-[44px_1.5fr_110px_90px_80px] gap-x-1.5 sm:gap-x-2 items-center px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-white/5 last:border-0 transition-colors ${me ? "bg-gold/8" : "hover:bg-white/3"}`}
                 >
-                  <span className="display text-[12px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>
+                  <span className="display text-[13px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>
                     {i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}
                   </span>
                   <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
                     <Avatar name={u.name} hue={u.hue} size={28} src={me ? profile.photo : null} premium={me && premium} />
                     <div className="min-w-0">
-                      <p className="text-[11.5px] sm:text-[12.5px] font-bold truncate">{u.name} {me && <span className="text-[9.5px] text-gold font-extrabold">· {t("c_you")}</span>}</p>
-                      <p className="text-[9px] sm:text-[10px] text-white/40 truncate">{c.flag} {c.name[lang]} · {t("c_level")} {levelFromAura(u.aura)}</p>
+                      <p className="text-[12px] sm:text-[12.5px] font-bold truncate">{u.name} {me && <span className="text-[10.5px] text-gold font-extrabold">· {t("c_you")}</span>}</p>
+                      <p className="text-[10.5px] sm:text-[10.5px] text-white/40 truncate">{c.flag} {c.name[lang]} · {t("c_level")} {levelFromAura(u.aura)}</p>
                     </div>
                   </div>
-                  <AnimatedNumber value={u.aura} className="display text-[10px] sm:text-[11.5px] font-bold text-right text-gold" />
+                  <AnimatedNumber value={u.aura} className="display text-[11px] sm:text-[11.5px] font-bold text-right text-gold" />
                   <AnimatedNumber value={u.auraByVotes} className="display text-[11px] font-bold text-right text-azure hidden sm:block" />
-                  <span className="display text-[10px] sm:text-[11.5px] font-bold text-right text-white/80">{u.trophies}</span>
+                  <span className="display text-[11px] sm:text-[11.5px] font-bold text-right text-white/80">{u.trophies}</span>
                 </motion.div>
               );
             })}

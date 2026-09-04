@@ -416,28 +416,28 @@ export default function OrganizerBoard() {
                                   </span>
                                   <div className="flex-1" />
                                   {canManageEvent && g.status === "live" && g.matchStartedAt != null && (
-                                    <span className="display text-[9.5px] font-extrabold text-ember animate-pulse">⏱ {countdown(g.matchStartedAt, g.duration)}</span>
+                                    <span className="display text-[10.5px] font-extrabold text-ember animate-pulse">⏱ {countdown(g.matchStartedAt, g.duration)}</span>
                                   )}
                                   {canManageEvent && g.status !== "closed" && (
                                     <>
-                                      <input type="number" min={1} max={30} value={g.duration} onChange={(e) => s.setGroupDuration(managed.id, g.id, +e.target.value)} className="w-10 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[9px] outline-none" aria-label={t("org_duration")} />
-                                      <span className="text-[8px] text-white/35">{t("c_min")}</span>
+                                      <input type="number" min={1} max={30} value={g.duration} onChange={(e) => s.setGroupDuration(managed.id, g.id, +e.target.value)} className="w-10 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[11px] outline-none" aria-label={t("org_duration")} />
+                                      <span className="text-[10.5px] text-white/35">{t("c_min")}</span>
                                     </>
                                   )}
                                   {canManageEvent && g.status === "open" && (
-                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_set_current")}</button>
+                                    <button onClick={() => s.setGroupLive(managed.id, g.id)} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_set_current")}</button>
                                   )}
                                   {canManageEvent && g.status === "live" && (
-                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_close_group")}</button>
+                                    <button onClick={() => s.closeGroup(managed.id, g.id)} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-mint/12 text-mint border border-mint/35 hover:bg-mint/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_close_group")}</button>
                                   )}
                                   {canManageEvent && g.status === "closed" && (
-                                    <button onClick={() => s.reopenGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_reopen")}</button>
+                                    <button onClick={() => s.reopenGroup(managed.id, g.id)} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-ember/12 text-ember border border-ember/35 hover:bg-ember/25 active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_reopen")}</button>
                                   )}
                                   {canManageEvent && total > 1 && g.status !== "closed" && (
-                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                    <button onClick={() => s.voidGroupVotes(managed.id, g.id)} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                   )}
                                   {canManageEvent && g.status === "open" && (
-                                    <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">✕</button>
+                                    <button onClick={() => s.removeGroup(managed.id, g.id)} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/45 hover:text-ember active:bg-gold active:text-[#171200] active:border-gold transition-colors cursor-pointer">✕</button>
                                   )}
                                 </div>
                                 <div className="space-y-1">
@@ -452,12 +452,12 @@ export default function OrganizerBoard() {
                                         <div className="w-16 h-1.5 rounded-full bg-white/7 overflow-hidden">
                                           <div className="h-full rounded-full bg-mint transition-all duration-700" style={{ width: `${(v / total) * 100}%` }} />
                                         </div>
-                                        <span className="display text-[9.5px] font-bold text-white/40 w-6 text-right">{v}</span>
+                                        <span className="display text-[10.5px] font-bold text-white/40 w-6 text-right">{v}</span>
                                         {canManageEvent && g.status !== "open" && (
                                           <button
                                             onClick={() => s.setGroupWinner(managed.id, g.id, pid)}
                                             title={t("org_pick_group_winner")}
-                                            className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${won ? "bg-gold/20 text-gold border border-gold/50" : "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember"}`}
+                                            className={`text-[10.5px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer ${won ? "bg-gold/20 text-gold border border-gold/50" : "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember"}`}
                                           >
                                             ✓
                                           </button>
@@ -537,7 +537,7 @@ export default function OrganizerBoard() {
                                               onClick={() => s.pickWinner(managed.id, m.id, side)}
                                               aria-label={t(m.winner ? "org_override_winner" : "org_pick_winner")}
                                               title={t(m.winner ? "org_override_winner" : "org_pick_winner")}
-                                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${won ? "bg-gold/20 text-gold border border-gold/50" : m.winner ? "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember" : "bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30"}`}
+                                              className={`text-[10.5px] font-extrabold px-1.5 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${won ? "bg-gold/20 text-gold border border-gold/50" : m.winner ? "bg-white/6 text-white/45 border border-white/15 hover:bg-ember/20 hover:text-ember" : "bg-mint/15 text-mint border border-mint/40 hover:bg-mint/30"}`}
                                             >
                                               ✓
                                             </button>
@@ -549,16 +549,16 @@ export default function OrganizerBoard() {
                                       {canManageEvent && (
                                         <input type="number" min={3} max={30} value={m.duration} onChange={(e) => s.setMatchDuration(managed.id, m.id, +e.target.value)} className="w-11 px-1 py-0.5 rounded bg-white/6 border border-white/10 text-[10px] outline-none" aria-label={t("org_duration")} />
                                       )}
-                                      {canManageEvent && <span className="text-[9px] text-white/35">{t("c_min")}</span>}
+                                      {canManageEvent && <span className="text-[10.5px] text-white/35">{t("c_min")}</span>}
                                       <div className="flex-1" />
                                       {canManageEvent && isCurrent && !m.winner && (
-                                        <button onClick={() => s.endMatch(managed.id, m.id)} className="text-[9px] font-bold px-2 py-0.5 rounded bg-ember/12 text-ember border border-ember/45 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_end_battle")}</button>
+                                        <button onClick={() => s.endMatch(managed.id, m.id)} className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-ember/12 text-ember border border-ember/45 hover:bg-ember/25 transition-colors cursor-pointer">{t("org_end_battle")}</button>
                                       )}
                                       {canManageEvent && !isCurrent && !m.winner && m.a && m.b && (
-                                        <button onClick={() => s.startMatch(managed.id, m.id)} className="text-[9px] font-bold px-2 py-0.5 rounded bg-mint/15 text-mint border border-mint/45 hover:bg-mint/30 transition-colors cursor-pointer">▶ {t("org_start_battle")}</button>
+                                        <button onClick={() => s.startMatch(managed.id, m.id)} className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-mint/15 text-mint border border-mint/45 hover:bg-mint/30 transition-colors cursor-pointer">▶ {t("org_start_battle")}</button>
                                       )}
                                       {canManageEvent && m.votesA + m.votesB > 0 && (
-                                        <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
+                                        <button onClick={() => s.voidMatchVotes(managed.id, m.id)} aria-label={t("org_void_votes")} className="text-[10.5px] font-bold px-1.5 py-0.5 rounded bg-white/6 text-white/50 hover:text-ember transition-colors cursor-pointer">{t("org_void_votes")}</button>
                                       )}
                                     </div>
                                   </div>

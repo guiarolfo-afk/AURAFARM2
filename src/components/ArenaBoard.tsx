@@ -92,7 +92,7 @@ export default function ArenaBoard() {
         <div className="relative w-fit max-w-full">
           <button
             onClick={() => setEvOpen((o) => !o)}
-            className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/9 transition-colors cursor-pointer max-w-full"
+            className="flex items-center gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-xl bg-white/5 border border-white/10 hover:bg-white/9 transition-colors cursor-pointer max-w-full active:scale-[0.98]"
             aria-expanded={evOpen}
           >
             {ev.status === "live" && <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse shrink-0" />}
@@ -124,7 +124,7 @@ export default function ArenaBoard() {
                       <span className="block text-[12.5px] font-bold truncate">{e.name}</span>
                       <span className="block text-[10px] text-white/40">{countryById(e.country).flag} {e.attendees} 👥 · {Object.keys(e.votes).length > 0 ? `${e.participants.length} ⚔️` : `${e.participants.length} ${t("ev_participants").toLowerCase()}`}</span>
                     </span>
-                    <span className={`text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : e.status === "finished" ? "bg-white/10 text-white/50 border border-white/15" : "bg-azure/10 text-azure border border-azure/30"}`}>
+                    <span className={`text-[10.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full shrink-0 ${e.status === "live" ? "bg-ember/15 text-ember border border-ember/40" : e.status === "finished" ? "bg-white/10 text-white/50 border border-white/15" : "bg-azure/10 text-azure border border-azure/30"}`}>
                       {e.status === "live" ? t("c_live") : e.status === "finished" ? t("ev_finished") : t("c_upcoming")}
                     </span>
                     {e.id === ev.id && <span className="text-ember font-extrabold text-[12px] shrink-0">✓</span>}
@@ -200,7 +200,7 @@ export default function ArenaBoard() {
           <motion.div key="vote" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
             <div className="panel p-4 flex flex-wrap items-start gap-3">
               <ListChecks size={16} className="text-gold mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-[220px] grid sm:grid-cols-3 gap-2 text-[11px] text-white/55">
+              <div className="flex-1 min-w-[220px] grid sm:grid-cols-3 gap-2 text-[12px] text-white/55">
                 <p><b className="text-white/80">1.</b> {t("ar_rule1")}</p>
                 <p><b className="text-white/80">2.</b> {t("ar_rule2")}</p>
                 <p><b className="text-white/80">3.</b> {t("ar_rule3")}</p>
@@ -226,13 +226,13 @@ export default function ArenaBoard() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="display text-[11px] font-extrabold text-white/85">{t("org_group")} {g.name}</span>
                           {g.status === "live" ? (
-                            <span className="flex items-center gap-1.5 text-[9px] font-extrabold tracking-wider text-ember bg-ember/15 border border-ember/40 px-1.5 py-0.5 rounded-full">
+                            <span className="flex items-center gap-1.5 text-[10.5px] font-extrabold tracking-wider text-ember bg-ember/15 border border-ember/40 px-1.5 py-0.5 rounded-full">
                               <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" /> {t("org_current").toUpperCase()}
                             </span>
                           ) : g.status === "closed" ? (
-                            <span className="text-[9px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1.5 py-0.5 rounded-full">{t("ar_completed").toUpperCase()}</span>
+                            <span className="text-[10.5px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1.5 py-0.5 rounded-full">{t("ar_completed").toUpperCase()}</span>
                           ) : (
-                            <span className="text-[9px] font-extrabold tracking-wider text-white/40 bg-white/6 border border-white/12 px-1.5 py-0.5 rounded-full">{t("ar_scheduled").toUpperCase()}</span>
+                            <span className="text-[10.5px] font-extrabold tracking-wider text-white/40 bg-white/6 border border-white/12 px-1.5 py-0.5 rounded-full">{t("ar_scheduled").toUpperCase()}</span>
                           )}
                           <span className="ml-auto display text-[10px] font-bold text-white/35">
                             {g.status === "live" && g.matchStartedAt != null ? (
@@ -253,7 +253,7 @@ export default function ArenaBoard() {
                                 <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={26} />
                                 <span className={`flex-1 min-w-0 text-left text-[11.5px] font-bold truncate ${won ? "text-mint" : ""}`}>
                                   {won && <Crown size={10} className="inline mr-1 text-gold" />}{userNameById(pid)}
-                                  {won && <span className="ml-1.5 text-[8.5px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1 py-px rounded-full align-middle">{t("ar_group_winner").toUpperCase()}</span>}
+                                  {won && <span className="ml-1.5 text-[10px] font-extrabold tracking-wider text-mint bg-mint/12 border border-mint/35 px-1 py-px rounded-full align-middle">{t("ar_group_winner").toUpperCase()}</span>}
                                 </span>
                                 <div className="w-16 sm:w-20 h-1.5 rounded-full bg-white/8 overflow-hidden shrink-0">
                                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pctV}%`, background: mine || won ? "#FFD700" : ev.banner[0], boxShadow: mine || won ? "0 0 8px #FFD70066" : undefined }} />
@@ -290,7 +290,7 @@ export default function ArenaBoard() {
             {ev.bracket.length > 0 && (
               <div className="panel p-4 relative z-30">
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <p className="text-[10.5px] font-extrabold uppercase tracking-[0.15em] text-white/40 flex items-center gap-1.5 shrink-0">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-white/40 flex items-center gap-1.5 shrink-0">
                     <Trophy size={12} className="text-gold" /> {t("ar_tournament")}
                   </p>
                   <div className="relative flex-1 min-w-[178px]">
@@ -302,7 +302,7 @@ export default function ArenaBoard() {
                       <Swords size={14} className="text-gold shrink-0" />
                       {viewMatch ? (
                         <span className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase shrink-0">
+                          <span className="text-[10.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase shrink-0">
                             {roundName(viewMatch.round)}
                           </span>
                           <span className="display text-[12px] font-bold truncate">
@@ -312,7 +312,7 @@ export default function ArenaBoard() {
                       ) : (
                         <span className="display text-[12px] font-bold text-white/55">{t("ar_find_battle")}</span>
                       )}
-                      <span className="ml-auto text-[9.5px] font-extrabold text-white/30 shrink-0">{ev.bracket.length}</span>
+                      <span className="ml-auto text-[10.5px] font-extrabold text-white/30 shrink-0">{ev.bracket.length}</span>
                       <ChevronDown size={13} className={`text-white/40 transition-transform shrink-0 ${battleOpen ? "rotate-180" : ""}`} />
                     </button>
 
@@ -330,7 +330,7 @@ export default function ArenaBoard() {
                             if (ms.length === 0) return null;
                             return (
                               <div key={r} className="px-1.5 pt-2">
-                                <p className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-white/30 px-1.5 mb-1">{roundName(r)}</p>
+                                <p className="text-[10.5px] font-extrabold uppercase tracking-[0.18em] text-white/30 px-1.5 mb-1">{roundName(r)}</p>
                                 {ms.map((m) => {
                                   const st = m.winner ? "done" : m.id === ev.currentMatchId ? "live" : "sched";
                                   const sel = viewMatch?.id === m.id;
@@ -356,7 +356,7 @@ export default function ArenaBoard() {
                                         {userNameById(m.a)} <span className="text-white/30 font-normal">vs</span> {userNameById(m.b)}
                                       </span>
                                       {voted && <span className="text-[10px] font-extrabold text-gold shrink-0">✓</span>}
-                                      <span className="text-[9px] text-white/35 shrink-0">
+                                      <span className="text-[10.5px] text-white/35 shrink-0">
                                         {st === "done" ? t("ar_completed") : st === "live" ? t("org_current") : m.votesA + m.votesB > 0 ? `${m.votesA + m.votesB} 🗳️` : t("ar_scheduled")}
                                       </span>
                                     </button>
@@ -394,7 +394,7 @@ export default function ArenaBoard() {
                           ? t("ar_voting_closed")
                           : t("ar_scheduled")}
                   </p>
-                  <span className="text-[9px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase">
+                  <span className="text-[10.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded bg-violet/15 text-violet border border-violet/30 uppercase">
                     {roundName(viewMatch.round)}
                   </span>
                   {isRunning && viewMatch.id === ev.currentMatchId && (
@@ -464,7 +464,7 @@ export default function ArenaBoard() {
                         className={`w-full p-2.5 sm:p-4 rounded-2xl border transition-all text-left ${closed ? (isWinner ? "border-mint/50 bg-mint/8" : "border-white/8 bg-white/3 opacity-60") : mine ? "border-gold/70 bg-gold/10 cursor-pointer active:scale-95" : "border-white/10 bg-white/4 hover:bg-white/8 cursor-pointer active:scale-95"}`}
                       >
                         {isWinner && (
-                          <p className="display text-[9px] font-extrabold tracking-widest text-mint mb-1.5 flex items-center gap-1">
+                          <p className="display text-[10.5px] font-extrabold tracking-widest text-mint mb-1.5 flex items-center gap-1">
                             <Crown size={10} /> {t("ar_completed").toUpperCase()}
                           </p>
                         )}
@@ -489,7 +489,7 @@ export default function ArenaBoard() {
                 {matchVote && (
                   <div className="flex items-center justify-between mt-4 text-[11.5px] text-white/50">
                     <span>{t("ar_rule2")}</span>
-                    <button onClick={() => s.voidMyBattleVote(ev.id, viewMatch.id)} className="font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                    <button onClick={() => s.voidMyBattleVote(ev.id, viewMatch.id)} className="font-bold text-[12px] text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
                   </div>
                 )}
               </div>
@@ -497,7 +497,7 @@ export default function ArenaBoard() {
 
               {/* ===== votación por competidor: siempre disponible hasta finalizar el evento ===== */}
               <div className="panel p-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
+                <p className="text-[12px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
                 {ev.status === "finished" ? (
                   <>
                     <p className="text-[12px] text-white/60 mb-4 flex items-center gap-1.5"><Lock size={13} className="text-gold" /> {t("ar_voting_finalized")}</p>
@@ -516,8 +516,8 @@ export default function ArenaBoard() {
                   </>
                 ) : (
                   <>
-                    <p className="text-[12px] font-bold text-white/70 mb-1">{t("ar_open_vote")}</p>
-                    <p className="text-[11px] text-white/45 mb-4"><span className="text-gold font-bold">⚡ {VOTES_PER_DAY_LABEL - dailyVotes}/{VOTES_PER_DAY_LABEL}</span> votos hoy · +{VOTE_REWARD} aura por voto</p>
+                    <p className="text-[13px] font-bold text-white/70 mb-1">{t("ar_open_vote")}</p>
+                    <p className="text-[12px] text-white/45 mb-4"><span className="text-gold font-bold">⚡ {VOTES_PER_DAY_LABEL - dailyVotes}/{VOTES_PER_DAY_LABEL}</span> votos hoy · +{VOTE_REWARD} aura por voto</p>
                     <div className="space-y-3">
                       {ev.participants.map((pid) => {
                         const my = myVotes[ev.id]?.[pid];
@@ -526,21 +526,21 @@ export default function ArenaBoard() {
                           <div key={pid} className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/7">
                             <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={36} />
                             <div className="flex-1 min-w-[140px]">
-                              <p className="text-[12.5px] font-bold">{userNameById(pid)}</p>
-                              <p className="text-[10.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
-                              <p className="text-[9.5px] text-white/35 mt-0.5">🗳️ <span className="text-gold font-bold">{ev.votes[pid] ?? 0}</span> votos</p>
+                              <p className="text-[13px] font-bold">{userNameById(pid)}</p>
+                              <p className="text-[11.5px] text-white/40">{t("ar_score_for")} {userNameById(pid)}</p>
+                              <p className="text-[11px] text-white/35 mt-0.5">🗳️ <span className="text-gold font-bold">{ev.votes[pid] ?? 0}</span> votos</p>
                             </div>
                             {my ? (
                               <div className="flex items-center gap-2.5">
                                 <span className="display text-lg font-extrabold text-gold">{my}<span className="text-[10px] text-white/40">/10</span></span>
                                 <span className="text-[10px] font-bold text-mint bg-mint/10 border border-mint/30 px-2 py-0.5 rounded-full">{t("ar_voted")}</span>
-                                <button onClick={() => s.removeVote(ev.id, pid)} className="text-[10.5px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
+                                <button onClick={() => s.removeVote(ev.id, pid)} className="text-[12px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
                                 <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-20 sm:w-28 shrink min-w-0" aria-label={t("ar_score_for")} />
                                 <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
-                                <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-1.5 rounded-lg display text-[10.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
+                                <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-2 min-h-[40px] rounded-lg display text-[11.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
                                   {t("ar_cast_vote")}
                                 </button>
                               </div>
@@ -564,23 +564,23 @@ export default function ArenaBoard() {
               <span className="relative w-1.5 h-1.5 rounded-full bg-mint live-ping text-mint" />
             </div>
             <p className="text-[11px] text-white/45 mb-4">{t("ar_rank_sub")}</p>
-            <div className="grid grid-cols-[24px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 text-[10px] font-extrabold uppercase tracking-wider text-white/30 pb-2 border-b border-white/8">
+            <div className="grid grid-cols-[28px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 text-[10px] font-extrabold uppercase tracking-wider text-white/30 pb-2 border-b border-white/8">
               <span>#</span><span></span><span className="text-right">{t("ar_aura_col")}</span><span className="text-right">{t("ar_votes_col")}</span><span className="text-right">{t("ar_total_col")}</span>
             </div>
             <div className="mt-2 space-y-1.5">
               {ranking.map((r, i) => (
-                <motion.div key={r.pid} layout transition={{ type: "spring", damping: 26, stiffness: 240 }} className={`grid grid-cols-[24px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 items-center p-2 rounded-xl ${i === 0 ? "bg-gold/8 border border-gold/25" : "bg-white/2"}`}>
-                  <span className="display text-[12px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>{i + 1}</span>
+                <motion.div key={r.pid} layout transition={{ type: "spring", damping: 26, stiffness: 240 }} className={`grid grid-cols-[28px_1fr_64px_52px_64px] sm:grid-cols-[28px_1.4fr_90px_70px_80px] gap-x-2 items-center p-2 rounded-xl ${i === 0 ? "bg-gold/8 border border-gold/25" : "bg-white/2"}`}>
+                  <span className="display text-[13px] font-extrabold" style={{ color: i === 0 ? "#FFD700" : i === 1 ? "#c9d4e3" : i === 2 ? "#cd8b4a" : "rgba(255,255,255,.35)" }}>{i + 1}</span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Avatar name={r.name} hue={r.hue} size={30} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-bold truncate">{r.name} {r.pid === "me" && <span className="text-[9px] text-gold">({t("c_you")})</span>}</p>
+                      <p className="text-[12.5px] font-bold truncate">{r.name} {r.pid === "me" && <span className="text-[10.5px] text-gold">({t("c_you")})</span>}</p>
                       <AuraBar value={(r.total / maxTotal) * 100} color={i === 0 ? "#FFD700" : undefined} className="mt-1 !h-1.5" />
                     </div>
                   </div>
-                  <AnimatedNumber value={r.aura} className="display text-[11px] font-bold text-right text-white/75" />
-                  <AnimatedNumber value={r.votes} className="display text-[11px] font-bold text-right text-azure" />
-                  <AnimatedNumber value={r.total} className="display text-[12px] font-extrabold text-right text-gold" />
+                  <AnimatedNumber value={r.aura} className="display text-[11.5px] font-bold text-right text-white/75" />
+                  <AnimatedNumber value={r.votes} className="display text-[11.5px] font-bold text-right text-azure" />
+                  <AnimatedNumber value={r.total} className="display text-[12.5px] font-extrabold text-right text-gold" />
                 </motion.div>
               ))}
             </div>
@@ -589,7 +589,7 @@ export default function ArenaBoard() {
         )}
       </AnimatePresence>
 
-      <p className="text-center text-[10.5px] text-white/25">{t("c_level")} {levelFromAura(profile.aura)} · {titleFromLevel(levelFromAura(profile.aura), lang)} · {profile.aura.toLocaleString()} {t("c_aura")} · {lang.toUpperCase()}</p>
+            <p className="text-center text-[11px] text-white/25">{t("c_level")} {levelFromAura(profile.aura)} · {titleFromLevel(levelFromAura(profile.aura), lang)} · {profile.aura.toLocaleString()} {t("c_aura")} · {lang.toUpperCase()}</p>
     </div>
   );
 }

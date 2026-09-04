@@ -99,7 +99,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
               <h3 className="display text-[13px] font-extrabold uppercase tracking-wider text-white/70 flex items-center gap-1.5">
                 <Calendar size={14} className="text-gold" /> {t("live_next_events")}
               </h3>
-              <span className="text-[9.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full bg-azure/10 text-azure border border-azure/30">
+              <span className="text-[10.5px] font-extrabold tracking-wider px-1.5 py-0.5 rounded-full bg-azure/10 text-azure border border-azure/30">
                 {nextEvents.length}/3
               </span>
             </div>
@@ -117,7 +117,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                     >
                       <Calendar size={12} className="text-azure shrink-0" />
                       <span className="flex-1 min-w-0 text-[11.5px] font-semibold truncate">{e.name}</span>
-                      <span className="text-[9px] text-white/40 shrink-0">{countryById(e.country).flag} {e.dateISO} · {e.time || "19:00"}</span>
+                      <span className="text-[10.5px] text-white/40 shrink-0">{countryById(e.country).flag} {e.dateISO} · {e.time || "19:00"}</span>
                       <ArrowRight size={11} className="text-white/30 shrink-0" />
                     </button>
                   ))}
@@ -137,7 +137,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-[12px] font-bold truncate">{e.name}</span>
-                      <span className="block text-[9.5px] text-white/40">
+                      <span className="block text-[10.5px] text-white/40">
                         {countryById(e.country).flag} {e.dateISO} · {e.time || "19:00"} h
                       </span>
                     </span>

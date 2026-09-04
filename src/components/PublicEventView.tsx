@@ -127,7 +127,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
 
         {/* live leaderboard (full) */}
         <div className="panel p-4 mb-4">
-          <div className="grid grid-cols-[20px_1fr_46px_50px] text-[9.5px] font-extrabold uppercase tracking-wider text-white/30 pb-2 border-b border-white/8 mb-2">
+          <div className="grid grid-cols-[20px_1fr_46px_50px] text-[10.5px] font-extrabold uppercase tracking-wider text-white/30 pb-2 border-b border-white/8 mb-2">
             <span>#</span><span /> <span className="text-right">votos</span><span className="text-right">aura</span>
           </div>
           {ranking.map((r, i) => (
@@ -163,7 +163,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
                   <Avatar name={r.name} hue={r.hue} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-bold truncate">{r.name}</p>
-                    <p className="text-[9.5px] text-white/40">🗳️ <span className="text-gold font-bold">{r.votes}</span> votos · {maxVotes > 0 ? Math.round((r.votes / maxVotes) * 100) : 0}%</p>
+                    <p className="text-[10.5px] text-white/40">🗳️ <span className="text-gold font-bold">{r.votes}</span> votos · {maxVotes > 0 ? Math.round((r.votes / maxVotes) * 100) : 0}%</p>
                   </div>
                   {my ? (
                     <span className="display text-[10.5px] font-extrabold text-mint bg-mint/10 border border-mint/30 px-2 py-0.5 rounded-full">{t("ar_voted")} ✓</span>

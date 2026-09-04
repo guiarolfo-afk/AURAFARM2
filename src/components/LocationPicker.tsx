@@ -199,7 +199,7 @@ export default function LocationPicker({ value, onChange, lang }: { value: Picke
                   <span className="block text-[12.5px] font-bold text-white/85 leading-tight">{r.name || r.display_name.split(",")[0]}</span>
                   <span className="block text-[10.5px] text-white/40 truncate">{r.display_name}</span>
                 </span>
-                <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet/14 border border-violet/30 text-violet mt-0.5">
+                <span className="shrink-0 text-[10.5px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-violet/14 border border-violet/30 text-violet mt-0.5">
                   {typeBadge(r)}
                 </span>
               </button>

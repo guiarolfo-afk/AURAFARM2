@@ -89,7 +89,7 @@ export function Chip({ active, onClick, children, hue = 268 }: { active: boolean
   return (
     <button
       onClick={onClick}
-      className="px-3.5 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer"
+      className="px-3.5 py-2 min-h-[40px] rounded-full text-[12px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95"
       style={
         active
           ? { background: `hsl(${hue} 90% 60%)`, color: "#0a0a14", boxShadow: `0 0 18px hsl(${hue} 90% 60% / .4)` }
@@ -127,7 +127,7 @@ export function Modal({ open, onClose, children, wide }: { open: boolean; onClos
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute top-3.5 right-3.5 z-10 w-8 h-8 rounded-full grid place-items-center bg-white/6 hover:bg-white/14 text-white/60 hover:text-white transition-colors cursor-pointer"
+              className="absolute top-3.5 right-3.5 z-10 w-10 h-10 rounded-full grid place-items-center bg-white/6 hover:bg-white/14 active:bg-white/20 text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -184,8 +184,10 @@ export function ShareRow({ title, compact, url }: { title: string; compact?: boo
     toast(`${net} · link copiado 📋`);
   };
   const sb = {
-    width: compact ? 32 : 38,
-    height: compact ? 32 : 38,
+    width: compact ? 36 : 40,
+    height: compact ? 36 : 40,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 9999,
     display: "grid",
     placeItems: "center",
@@ -317,14 +319,14 @@ export function Toasts() {
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{label}</span>
+      <span className="block text-[12px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{label}</span>
       {children}
     </label>
   );
 }
 
 export const inputCls =
-  "w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[13.5px] text-white placeholder-white/25 outline-none focus:border-violet/60 focus:bg-white/8 transition-colors";
+  "w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[16px] text-white placeholder-white/25 outline-none focus:border-violet/60 focus:bg-white/8 transition-colors";
 
 export const btnGold =
-  "inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl display text-[12px] font-bold tracking-wide bg-gold text-[#171200] transition-all duration-200 hover:brightness-110 hover:scale-[1.02] active:scale-95 cursor-pointer";
+  "inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] rounded-xl display text-[13px] font-bold tracking-wide bg-gold text-[#171200] transition-all duration-200 hover:brightness-110 active:scale-95 cursor-pointer";

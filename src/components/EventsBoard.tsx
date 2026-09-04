@@ -95,14 +95,14 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
           </div>
           <div className="grid grid-cols-2 gap-2 mt-3">
             <div className="rounded-xl bg-white/4 border border-white/7 px-2.5 py-2">
-              <p className="text-[9.5px] uppercase tracking-wider text-white/40 font-bold flex items-center gap-1"><Swords size={10} /> {t("ev_participants")}</p>
+              <p className="text-[10.5px] uppercase tracking-wider text-white/40 font-bold flex items-center gap-1"><Swords size={10} /> {t("ev_participants")}</p>
               <p className={`display text-[13px] font-bold mt-0.5 ${full ? "text-ember" : "text-mint"}`}>
-                {e.participants.length}/{e.maxParticipants} {full && <span className="text-[9px]">· {t("ev_full")}</span>}
+                {e.participants.length}/{e.maxParticipants} {full && <span className="text-[10.5px]">· {t("ev_full")}</span>}
               </p>
             </div>
             <div className="rounded-xl bg-white/4 border border-white/7 px-2.5 py-2">
-              <p className="text-[9.5px] uppercase tracking-wider text-white/40 font-bold flex items-center gap-1"><Users size={10} /> {t("ev_attendees")}</p>
-              <p className="display text-[13px] font-bold mt-0.5 text-azure">{e.attendees} <span className="text-[9px] text-white/40">+{e.waitlist.length} ⏳</span></p>
+              <p className="text-[10.5px] uppercase tracking-wider text-white/40 font-bold flex items-center gap-1"><Users size={10} /> {t("ev_attendees")}</p>
+              <p className="display text-[13px] font-bold mt-0.5 text-azure">{e.attendees} <span className="text-[10.5px] text-white/40">+{e.waitlist.length} ⏳</span></p>
             </div>
           </div>
           <div className="flex gap-2 mt-4 pt-1">

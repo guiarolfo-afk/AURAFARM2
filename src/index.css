@@ -83,8 +83,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 22px rgba(255, 215, 0, 0.32), 0 0 60px rgba(155, 48, 255, 0.16); }
-  50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.55), 0 0 90px rgba(155, 48, 255, 0.3); }
+  0%, 100% { filter: drop-shadow(0 0 16px rgba(255, 215, 0, 0.35)) drop-shadow(0 0 40px rgba(155, 48, 255, 0.18)); }
+  50% { filter: drop-shadow(0 0 28px rgba(255, 215, 0, 0.6)) drop-shadow(0 0 60px rgba(155, 48, 255, 0.35)); }
 }
 .pulse-glow { animation: pulse-glow 2.6s ease-in-out infinite; }
 
@@ -132,10 +132,15 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 34px -20px rgba(0, 0, 0, 0.9);
 }
 .panel-hover { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
-.panel-hover:hover {
-  transform: translateY(-3px);
-  border-color: rgba(255, 215, 0, 0.3);
-  box-shadow: 0 18px 44px -16px rgba(155, 48, 255, 0.3), 0 0 22px -6px rgba(255, 215, 0, 0.14);
+@media (hover: hover) {
+  .panel-hover:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 18px 44px -16px rgba(155, 48, 255, 0.3), 0 0 22px -6px rgba(255, 215, 0, 0.14);
+  }
+}
+.panel-hover:active {
+  transform: scale(0.98);
 }
 
 .display { font-family: var(--font-display); }
@@ -198,5 +203,43 @@ input[type="range"] { accent-color: #ffd700; }
   border: 5px solid transparent;
   border-top: 8px solid #ffd700;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+/* ---------- mobile responsive fixes ---------- */
+@media (max-width: 640px) {
+  /* ensure all interactive elements have min touch target */
+  button, a, select, input[type="range"] {
+    touch-action: manipulation;
+  }
+
+  /* prevent text smaller than 10px anywhere */
+  * {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* make ranking tables scroll horizontally if needed */
+  .panel.overflow-hidden {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ensure modals fit on small screens */
+  .max-h-\[92vh\] {
+    max-height: 85vh;
+  }
+
+  /* enlarge stars touch targets */
+  .stars-row button {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}
+
+/* ---------- ensure 16px min on all inputs to prevent iOS zoom ---------- */
+input, select, textarea {
+  font-size: 16px !important;
+}
+input[type="range"] {
+  font-size: inherit;
 }
 

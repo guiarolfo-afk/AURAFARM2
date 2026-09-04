@@ -55,6 +55,7 @@ export default function App() {
   const premium = useApp((s) => s.premium);
   const banners = useApp((s) => s.banners);
   const activeEventId = useApp((s) => s.activeEventId);
+  const events = useApp((s) => s.events);
   const authed = useApp((s) => s.authed);
   const guestMode = useApp((s) => s.guestMode);
   const { setTab, setLang, enterArena } = useApp.getState();
@@ -270,13 +271,13 @@ export default function App() {
             <div className="max-w-7xl mx-auto">
               <button
                 onClick={() => window.open(adBanner.link, "_blank", "noopener,noreferrer")}
-                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-t-none lg:rounded-xl border border-white/10 cursor-pointer group overflow-hidden relative"
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[48px] rounded-t-none lg:rounded-xl border border-white/10 cursor-pointer group overflow-hidden relative"
                 style={{ background: `linear-gradient(100deg, ${adBanner.color}22, #0d0d1cdd 55%, ${adBanner.color}18)`, borderColor: `${adBanner.color}40` }}
               >
-                <span className="text-[8.5px] font-extrabold tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/50">AD</span>
+                <span className="text-[11px] font-extrabold tracking-widest px-1.5 py-0.5 rounded bg-white/10 text-white/50">AD</span>
                 <Megaphone size={14} style={{ color: adBanner.color }} className="shrink-0" />
-                <span className="flex-1 text-left text-[12px] font-semibold text-white/85 truncate group-hover:text-white transition-colors">{adBanner.text}</span>
-                <span className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-gold shrink-0">
+                <span className="flex-1 text-left text-[13px] font-semibold text-white/85 truncate group-hover:text-white transition-colors">{adBanner.text}</span>
+                <span className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-gold shrink-0">
                   <Crown size={11} /> Premium ✦
                 </span>
               </button>
@@ -291,12 +292,12 @@ export default function App() {
           {tabs.map((x) => {
             const active = tab === x.id;
             return (
-              <button key={x.id} onClick={() => setTab(x.id)} className="relative flex flex-col items-center gap-1 py-2.5 cursor-pointer" aria-label={x.label}>
+              <button key={x.id} onClick={() => setTab(x.id)} className="relative flex flex-col items-center gap-1 py-2.5 min-h-[48px] cursor-pointer active:scale-95 transition-transform" aria-label={x.label}>
                 {active && (
                   <motion.span layoutId="navglow" className="absolute top-0 w-8 h-[3px] rounded-full" style={{ background: `hsl(${x.hue} 90% 60%)`, boxShadow: `0 0 12px hsl(${x.hue} 90% 60%)` }} />
                 )}
-                <x.icon size={18} style={{ color: active ? `hsl(${x.hue} 90% 62%)` : "rgba(255,255,255,.35)", transition: "color .2s" }} />
-                <span className="w-full px-0.5 text-center text-[8px] sm:text-[8.5px] font-bold leading-none truncate" style={{ color: active ? `hsl(${x.hue} 90% 68%)` : "rgba(255,255,255,.35)" }}>{x.label}</span>
+                <x.icon size={20} style={{ color: active ? `hsl(${x.hue} 90% 62%)` : "rgba(255,255,255,.55)", transition: "color .2s" }} />
+                <span className="w-full px-0.5 text-center text-[10px] sm:text-[10.5px] font-bold leading-none truncate" style={{ color: active ? `hsl(${x.hue} 90% 68%)` : "rgba(255,255,255,.55)" }}>{x.label}</span>
               </button>
             );
           })}
@@ -306,13 +307,13 @@ export default function App() {
       {/* quick vote float (mobile, outside arena) */}
       {tab !== "arena" && (
         <button
-          onClick={() => enterArena("e1")}
+          onClick={() => enterArena(events.length > 0 ? (events.find((e) => e.status === "live")?.id ?? events[0].id) : "e1")}
           aria-label={t("live_vote_now")}
           className="lg:hidden fixed bottom-20 right-4 z-40 rounded-full conic-ring grid place-items-center pulse-glow cursor-pointer active:scale-90 transition-transform"
-          style={{ width: 52, height: 52 }}
+          style={{ width: 56, height: 56 }}
         >
-          <span className="w-[44px] h-[44px] rounded-full bg-night grid place-items-center">
-            <Swords size={18} className="text-gold" />
+          <span className="w-[48px] h-[48px] rounded-full bg-night grid place-items-center">
+            <Swords size={20} className="text-gold" />
           </span>
         </button>
       )}

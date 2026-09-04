@@ -67,7 +67,7 @@ export default function SettingsBoard() {
             <div key={i} className="panel p-4 text-center">
               <x.icon size={15} style={{ color: x.c }} className="mx-auto" />
               {x.anim ? <AnimatedNumber value={x.n} className="display text-[15px] font-extrabold mt-1" /> : <p className="display text-lg font-extrabold mt-1" style={{ color: x.c }}>{x.n}</p>}
-              <p className="text-[9.5px] text-white/45 font-bold uppercase tracking-wider mt-0.5">{x.label}</p>
+              <p className="text-[10.5px] text-white/45 font-bold uppercase tracking-wider mt-0.5">{x.label}</p>
             </div>
           ))}
         </div>
@@ -227,7 +227,7 @@ export default function SettingsBoard() {
                   <span className="text-xl">{l.flag}</span>
                   <span>
                     <span className={`block text-[12.5px] font-bold ${lang === l.code ? "text-gold" : ""}`}>{l.label}</span>
-                    <span className="block text-[9.5px] uppercase tracking-widest text-white/35 font-bold">{l.code}</span>
+                    <span className="block text-[10.5px] uppercase tracking-widest text-white/35 font-bold">{l.code}</span>
                   </span>
                   {lang === l.code && <span className="ml-auto text-gold font-extrabold">✓</span>}
                 </button>
@@ -240,8 +240,8 @@ export default function SettingsBoard() {
             <div>
               <p className="text-[12.5px] font-bold mb-2.5 flex items-center gap-2"><Bell size={14} className="text-azure" /> {t("st_notifs")}</p>
               <div className="space-y-2.5">
-                <div className="flex items-center justify-between"><span className="text-[12px] text-white/70">{t("st_notif_farm")}</span><Toggle on={settings.notifFarm} onChange={() => s.toggleSetting("notifFarm")} hue={200} /></div>
-                <div className="flex items-center justify-between"><span className="text-[12px] text-white/70">{t("st_notif_events")}</span><Toggle on={settings.notifEvents} onChange={() => s.toggleSetting("notifEvents")} hue={200} /></div>
+                <div className="flex items-center justify-between"><span className="text-[12.5px] text-white/70">{t("st_notif_farm")}</span><Toggle on={settings.notifFarm} onChange={() => s.toggleSetting("notifFarm")} hue={200} /></div>
+                <div className="flex items-center justify-between"><span className="text-[12.5px] text-white/70">{t("st_notif_events")}</span><Toggle on={settings.notifEvents} onChange={() => s.toggleSetting("notifEvents")} hue={200} /></div>
               </div>
             </div>
             <div className="border-t border-white/7 pt-4">
@@ -299,7 +299,7 @@ export default function SettingsBoard() {
               <p className="text-[12px] font-bold text-white/55">{t("st_admin")}</p>
               <p className="text-[10px] text-white/30">{t("st_admin_sub")}</p>
             </div>
-            <button onClick={() => { setAdminAsk(true); setPass(""); }} aria-label={t("st_admin")} className="w-8 h-8 rounded-lg grid place-items-center bg-white/4 border border-white/8 text-white/35 hover:text-ember hover:border-ember/40 transition-colors cursor-pointer">
+            <button onClick={() => { setAdminAsk(true); setPass(""); }} aria-label={t("st_admin")} className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-lg grid place-items-center bg-white/4 border border-white/8 text-white/35 hover:text-ember hover:border-ember/40 transition-colors cursor-pointer">
               <KeyRound size={13} />
             </button>
           </motion.section>

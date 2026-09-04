@@ -142,7 +142,10 @@ const fetchVoteTallies = async (eventIds: string[]): Promise<VoteTallies> => {
   const { data: voteRows } = await supabase.from("votes").select("event_id, voter_id, target_user_id, context, score");
   (voteRows ?? []).forEach(fold);
 
-  const { data: pubRows } = await supabase.from("public_votes").select("event_id, anon_id, target_user_id, context, score");
+  const { data: pubRows, error: pubErr } = await supabase.from("public_votes").select("event_id, anon_id, target_user_id, context, score");
+  if (pubErr) {
+    console.warn("public_votes no accesible (verificar RLS):", pubErr.message);
+  }
   (pubRows ?? []).forEach((v: any) => {
     // Anonymous votes only contribute tallies (anonymous "myVotes" are handled locally)
     fold({ ...v, voter_id: v.anon_id });
@@ -239,6 +242,7 @@ const makeBracket = (eventId: string, source: (string | null)[]): BracketMatch[]
 interface AppState {
   lang: Lang; tab: Tab; activeEventId: string;
   supabaseUserId: string | null; supabaseProfileId: string | null; authBusy: boolean; authed: boolean; isOAuth: boolean; userEmail: string | null; guestMode: boolean;
+  _votesChannel: any;
   users: FarmUser[]; totalAura: number; farmProg: Record<string, number>; feed: FeedItem[];
   challenges: Challenge[]; streak: number; lastStreakDate: string; challengeDay: string;
   profile: Profile; votesCast: number;
@@ -337,6 +341,7 @@ export const useApp = create<AppState>()(
         history: [],
       },
       supabaseUserId: null, supabaseProfileId: null, authBusy: false, authed: false, isOAuth: false, userEmail: null, guestMode: false,
+      _votesChannel: null,
       votesCast: 0, dailyVotes: 0, dailyVotesDate: new Date().toDateString(), myVotes: {}, battleVotes: {}, myRatings: {}, myAttendance: {},
       events: [], deletedEventIds: [], finishedEventIds: [],
 
@@ -1121,7 +1126,6 @@ export const useApp = create<AppState>()(
         set({ supabaseUserId: userId, authed: true, isOAuth: !!isOAuth, userEmail: user.email ?? null });
 
         await get().loadEventsFromSupabase();
-        get().subscribeVotes();
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -1431,16 +1435,23 @@ status: finishedEventIds.includes(row.id) ? "finished" : row.status,
         });
       },
 
-      subscribeVotes: () => {
+        subscribeVotes: () => {
         if (!supabase) return () => {};
+        const existing = get()._votesChannel;
+        if (existing) {
+          supabase.removeChannel(existing);
+          set({ _votesChannel: null });
+        }
         const refresh = () => get().refreshVotes();
         const channel = supabase
           .channel("votes-realtime")
           .on("postgres_changes", { event: "INSERT", schema: "public", table: "votes" }, refresh)
           .on("postgres_changes", { event: "INSERT", schema: "public", table: "public_votes" }, refresh)
           .subscribe();
+        set({ _votesChannel: channel });
         return () => {
           supabase.removeChannel(channel);
+          set({ _votesChannel: null });
         };
       },
 
