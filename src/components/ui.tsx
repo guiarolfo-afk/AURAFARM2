@@ -208,7 +208,7 @@ export function ShareRow({ title, compact, url }: { title: string; compact?: boo
     </button>
   );
   return (
-    <div className={`flex items-center ${compact ? "gap-2" : "gap-3"}`}>
+    <div className={`flex flex-wrap items-center ${compact ? "gap-2" : "gap-3"}`}>
       <S href={`https://wa.me/?text=${enc}`} bg="#25D366" label="WhatsApp">
         <svg width={compact ? 17 : 20} height={compact ? 17 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" /><path d="M8.8 9.2c.4 2.6 3.4 5.6 6 6l1.4-1.4-2-1.2-1 .7c-.9-.4-1.9-1.4-2.3-2.3l.7-1-1.2-2-1.6 1.2Z" fill="currentColor" stroke="none" /></svg>
       </S>

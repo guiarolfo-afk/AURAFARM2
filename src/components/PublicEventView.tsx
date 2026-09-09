@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Share2, Copy, Link2, Swords, RefreshCw } from "lucide-react";
+import { Crown, Share2, Copy, Link2, Swords, RefreshCw, Lock, MapPin, Calendar } from "lucide-react";
 import { useApp, userNameById, levelFromAura, VOTE_REWARD } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -28,8 +28,10 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
-  const hueOf = (pid: string | null) => (pid && pid !== "me" ? users.find((u) => u.id === pid)?.hue ?? 46 : 46);
-  const auraOf = (pid: string | null) => (pid === "me" ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
+  const hueOf = (pid: string | null) => (pid && pid !== "me" ? (pid === s.supabaseProfileId ? 46 : users.find((u) => u.id === pid)?.hue ?? 46) : 46);
+  const auraOf = (pid: string | null) => (pid === "me" || pid === s.supabaseProfileId ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
+  const fmtDate = (iso: string) =>
+    iso ? new Date(iso + "T12:00:00").toLocaleDateString(s.lang === "en" ? "en-US" : s.lang, { weekday: "short", day: "numeric", month: "short" }) : "";
 
   if (!ev) {
     return (
@@ -68,9 +70,14 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
 
   const nativeShare = async () => {
     s.toggleChallenge("ch5");
+    const details = [
+      ev.address || [ev.city, countryById(ev.country).name[s.lang]].filter(Boolean).join(", "),
+      ev.participants.length > 0 ? `${ev.participants.length} ${t("ev_participants").toLowerCase()}` : "",
+      ev.organizer ? `${t("ev_organizer")}: ${ev.organizer}` : "",
+    ].filter(Boolean).join(" · ");
     if (navigator.share) {
       try {
-        await navigator.share({ title: ev.name, text: `${ev.name} — ¡vota en vivo!`, url: shareUrl });
+        await navigator.share({ title: ev.name, text: `${ev.name} — ${details}`, url: shareUrl });
       } catch { /* cancelado */ }
     } else {
       copyLink();
@@ -86,7 +93,7 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="display text-[17px] font-extrabold truncate">{ev.name}</h1>
-              <LiveBadge label={t("c_live")} />
+              {ev.status === "live" ? <LiveBadge label={t("c_live")} /> : <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-azure/12 text-azure border border-azure/35 uppercase">{ev.status === "finished" ? t("ev_finished") : t("c_upcoming")}</span>}
             </div>
             <p className="text-[11px] text-white/45 mt-0.5 mb-1">{countryById(ev.country).flag} {ev.city ?? ev.country} · {ev.participants.length} ⚔️</p>
             <div className="flex items-center gap-2">
@@ -99,6 +106,47 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
             </div>
           </div>
         </header>
+
+        {/* event info — dirección, inscritos, organizador, características */}
+        <div className="panel p-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-start gap-2.5">
+              <MapPin size={15} className="text-gold shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-white/35 font-bold">{t("ev_where")}</p>
+                <p className="text-[12px] text-white/85 leading-snug">{ev.address || [ev.city, countryById(ev.country).name[s.lang]].filter(Boolean).join(", ") || "—"}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Calendar size={15} className="text-gold shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-white/35 font-bold">{t("ev_when")}</p>
+                <p className="text-[12px] text-white/85">{fmtDate(ev.dateISO)}{ev.time ? ` · ${ev.time}${ev.endTime ? " – " + ev.endTime : ""} h` : ""}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Swords size={15} className="text-gold shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-white/35 font-bold">{t("ev_participants")}</p>
+                <p className="text-[12px] text-white/85">{ev.participants.length} / {ev.maxParticipants} · {ev.attendees} {t("ev_attendees").toLowerCase()}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <Crown size={15} className="text-gold shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-white/35 font-bold">{t("ev_organizer")}</p>
+                <p className="text-[12px] text-white/85">{ev.organizer || "—"}</p>
+              </div>
+            </div>
+          </div>
+          {ev.features.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/8 flex flex-wrap gap-1.5">
+              {ev.features.map((f) => (
+                <span key={f} className="text-[10.5px] px-2 py-1 rounded-full bg-gold/10 border border-gold/25 text-gold font-bold">{t(f)}</span>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* winners podium */}
         <div className="panel p-4 mb-4">
@@ -153,6 +201,10 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
             <Swords size={15} className="text-gold" />
             <h3 className="display text-[13px] font-extrabold">Vota en vivo</h3>
           </div>
+          {ev.status !== "live" ? (
+            <p className="text-[12px] text-white/50 mt-2 flex items-center gap-1.5"><Lock size={13} className="text-ember" /> {t("ar_vote_locked")}</p>
+          ) : (
+            <>
           <p className="text-[10.5px] text-white/45 mb-1">+{VOTE_REWARD} aura · {t("ar_open_sub")}</p>
           <p className="text-[11px] text-gold font-bold">{dailyVotes} votos hoy</p>
           <div className="mt-3 space-y-2">
@@ -178,6 +230,8 @@ export default function PublicEventView({ eventId }: { eventId: string }) {
               );
             })}
           </div>
+            </>
+          )}
         </div>
 
         {/* share panel */}

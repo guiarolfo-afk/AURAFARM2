@@ -2,13 +2,23 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
 
 const isRoot = process.env.DEPLOY_ROOT === 'true' || process.env.NETLIFY === 'true'
 const base = isRoot ? '/' : '/AURAFARM2/'
 
+/* marcadores de versión para el indicador "Acerca de" en Ajustes */
+let commitHash = 'dev'
+try { commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim() } catch { /* sin git */ }
+
 export default defineConfig({
   base,
+  define: {
+    __APP_COMMIT__: JSON.stringify(commitHash),
+    __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   root: 'src',
+  envDir: '..',
   build: {
     outDir: isRoot ? '../dist' : '../docs',
     emptyOutDir: true,
@@ -31,17 +41,17 @@ export default defineConfig({
         categories: ['entertainment', 'social'],
         icons: [
           {
-            src: 'icons/icon-192.png',
+            src: 'icons/v2/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: 'icons/icon-512.png',
+            src: 'icons/v2/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: 'icons/icon-maskable-512.png',
+            src: 'icons/v2/icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

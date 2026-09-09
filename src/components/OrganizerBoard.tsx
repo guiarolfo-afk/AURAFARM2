@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
-import { Lock, ShieldCheck, Swords, Trash2, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal } from "lucide-react";
+import { Lock, ShieldCheck, Swords, Trash2, Save, Radio, AlertTriangle, Users, Vote, Trophy, Crown, Zap, Plus, Share2, Clock, Medal, Play } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -216,9 +216,9 @@ export default function OrganizerBoard() {
           { icon: Swords, n: totalPart, label: t("org_part_count"), c: "#FF4444" },
           { icon: Vote, n: totalVotes, label: t("org_vote_count"), c: "#FFD700" },
         ].map((x, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="panel p-4 text-center">
+          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} className="panel p-3 sm:p-4 text-center">
             <x.icon size={16} style={{ color: x.c }} className="mx-auto" />
-            <p className="display text-lg font-extrabold mt-1" style={{ color: x.c }}>{x.n.toLocaleString()}</p>
+            <p className="display text-base sm:text-lg font-extrabold mt-1" style={{ color: x.c }}>{x.n.toLocaleString()}</p>
             <p className="text-[10px] text-white/45 font-semibold uppercase tracking-wider">{x.label}</p>
           </motion.div>
         ))}
@@ -311,6 +311,11 @@ export default function OrganizerBoard() {
                       )}
                       {managed.status !== "finished" && managed.status !== "cancelled" && canManageEvent && (
                         <>
+                          {managed.status === "upcoming" && (
+                            <button onClick={() => s.startEvent(managed.id)} className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-ember/50 bg-ember/15 text-ember hover:bg-ember/25 transition-colors cursor-pointer animate-pulse">
+                              <Play size={12} /> {t("org_start_event")}
+                            </button>
+                          )}
                           <button onClick={() => setEdit({ name: managed.name, date: managed.dateISO, time: managed.time, endTime: managed.endTime, address: managed.address, features: managed.features, notes: managed.notes })} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-white/12 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">{t("org_modify")}</button>
                           {managed.endState !== "timeUp" && (
                             <button onClick={() => s.finishEvent(managed.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-mint/35 text-mint bg-mint/8 hover:bg-mint/16 transition-colors cursor-pointer">{t("org_finish_ev")}</button>

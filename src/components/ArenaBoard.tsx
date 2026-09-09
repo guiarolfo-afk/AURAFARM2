@@ -61,8 +61,8 @@ export default function ArenaBoard() {
   const R = Math.max(...ev.bracket.map((m) => m.round + 1), 0);
   const roundKeys = ["org_r16", "org_qf", "org_sf", "org_final"];
   const roundName = (r: number) => t(roundKeys.slice(4 - R)[r] ?? "org_final");
-  const hueOf = (pid: string | null) => (pid && pid !== "me" ? users.find((u) => u.id === pid)?.hue ?? 46 : 46);
-  const auraOf = (pid: string | null) => (pid === "me" ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
+  const hueOf = (pid: string | null) => (pid && pid !== "me" ? (pid === useApp.getState().supabaseProfileId ? 46 : users.find((u) => u.id === pid)?.hue ?? 46) : 46);
+  const auraOf = (pid: string | null) => (pid === "me" || pid === useApp.getState().supabaseProfileId ? profile.aura : pid ? users.find((u) => u.id === pid)?.aura ?? 0 : 0);
 
   const ranking = ev.participants
     .map((pid) => {
@@ -495,7 +495,7 @@ export default function ArenaBoard() {
               </div>
             )}
 
-              {/* ===== votación por competidor: siempre disponible hasta finalizar el evento ===== */}
+              {/* ===== votación por competidor: solo disponible cuando el evento está EN VIVO ===== */}
               <div className="panel p-5">
                 <p className="text-[12px] font-bold uppercase tracking-[0.15em] text-azure mb-1">{t("ar_no_battle")}</p>
                 {ev.status === "finished" ? (
@@ -513,6 +513,21 @@ export default function ArenaBoard() {
                         </div>
                       ))}
                     </div>
+                  </>
+                ) : ev.status !== "live" ? (
+                  <>
+                    <p className="text-[12.5px] text-white/55"><span className="text-white/30 mr-1.5">🔒</span>{t("ar_vote_locked")}</p>
+                    {ev.participants.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {ev.participants.map((pid) => (
+                          <div key={pid} className="flex items-center gap-2 p-2 rounded-lg bg-white/3 border border-white/7 opacity-70">
+                            <Avatar name={userNameById(pid)} hue={hueOf(pid)} size={28} />
+                            <span className="flex-1 min-w-0 text-[12px] font-bold truncate">{userNameById(pid)}</span>
+                            <span className="text-[10.5px] text-white/35 font-semibold">🗳️ {ev.votes[pid] ?? 0}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -537,10 +552,12 @@ export default function ArenaBoard() {
                                 <button onClick={() => s.removeVote(ev.id, pid)} className="text-[12px] font-bold text-ember hover:underline cursor-pointer">{t("ar_undo_vote")}</button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
-                                <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="w-20 sm:w-28 shrink min-w-0" aria-label={t("ar_score_for")} />
-                                <span className="display text-sm font-extrabold w-6 text-center" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
-                                <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-2 min-h-[40px] rounded-lg display text-[11.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 flex-1 min-w-0 sm:flex-none">
+                                <button onClick={() => setSliders({ ...sliders, [pid]: Math.max(1, val - 1) })} className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 grid place-items-center rounded-lg bg-white/6 border border-white/12 text-white/75 hover:bg-white/12 active:scale-95 transition-all cursor-pointer" aria-label="-1">−</button>
+                                <input type="range" min={1} max={10} value={val} onChange={(e) => setSliders({ ...sliders, [pid]: +e.target.value })} className="flex-1 min-w-[110px] max-w-none sm:flex-none sm:w-28" aria-label={t("ar_score_for")} />
+                                <span className="display text-sm font-extrabold w-7 text-center shrink-0" style={{ color: `hsl(${val * 12} 90% 60%)` }}>{val}</span>
+                                <button onClick={() => setSliders({ ...sliders, [pid]: Math.min(10, val + 1) })} className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 grid place-items-center rounded-lg bg-white/6 border border-white/12 text-white/75 hover:bg-white/12 active:scale-95 transition-all cursor-pointer" aria-label="+1">+</button>
+                                <button onClick={() => s.voteCompetitor(ev.id, pid, val)} className="px-3 py-2 min-h-[40px] rounded-lg display text-[11.5px] font-bold bg-gold text-[#171200] hover:brightness-110 active:scale-95 transition-all cursor-pointer shrink-0">
                                   {t("ar_cast_vote")}
                                 </button>
                               </div>

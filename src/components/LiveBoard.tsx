@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown } from "lucide-react";
+import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown, Search, X } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
 import { AnimatedNumber, SectionHead, LiveBadge, ShareRow } from "./ui";
+import LiveMap from "./LiveMap";
 
 const reveal = {
   initial: { opacity: 0, y: 22 },
@@ -15,6 +17,7 @@ const reveal = {
 export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
   const t = useT();
   const { totalAura, events, lang, enterArena, setTab } = useApp();
+  const [q, setQ] = useState("");
 
   const liveEvents = events.filter((e) => e.status === "live");
   const upcoming = events
@@ -34,6 +37,21 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
     .filter((e) => e.status === "finished" && e.dateISO === todayStr)
     .sort((a, b) => (b.winnerAura || 0) - (a.winnerAura || 0));
   const byCountry = [...new Set(events.filter((e) => e.status !== "cancelled" && e.status !== "finished").map((e) => e.country))];
+  const activeEvents = events.filter((e) => e.status !== "cancelled" && e.status !== "finished");
+  const searchResults = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (query.length < 2) return [];
+    return activeEvents
+      .filter((e) => {
+        const c = countryById(e.country);
+        const names = Object.values(c.name).map((n) => n.toLowerCase());
+        const city = (e.city || "").toLowerCase();
+        const name = e.name.toLowerCase();
+        const address = (e.address || "").toLowerCase();
+        return names.some((n) => n.includes(query)) || city.includes(query) || name.includes(query) || address.includes(query);
+      })
+      .sort((a, b) => (b.status === "live" ? 1 : 0) - (a.status === "live" ? 1 : 0));
+  }, [activeEvents, q]);
 
   return (
     <div className="space-y-8">
@@ -184,39 +202,87 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
         </motion.section>
       )}
 
-      {/* ===== Active competitions by country ===== */}
+      {/* ===== Active competitions by country / search ===== */}
       <motion.section {...reveal}>
         <SectionHead hue={316} icon={<MapPin size={16} />} title={t("live_by_country")} sub={t("live_by_country_sub")} />
-        <div className="panel p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative flex-1 min-w-0">
-            <Globe2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose pointer-events-none" />
-            <select
-              value=""
-              onChange={(e) => e.target.value && onBrowseCountry(e.target.value)}
-              className="w-full appearance-none pl-10 pr-9 py-3 rounded-xl bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-rose/50 transition-colors cursor-pointer"
-              aria-label={t("live_by_country")}
-            >
-              <option value="" disabled className="bg-[#0d0d1c]">
-                {t("live_by_country")} — {byCountry.length} {t("live_countries").toLowerCase()}
-              </option>
-              {byCountry.map((cid) => {
-                const c = countryById(cid);
-                const evs = events.filter((e) => e.country === cid && e.status !== "cancelled" && e.status !== "finished");
-                const live = evs.filter((e) => e.status === "live").length;
-                return (
-                  <option key={cid} value={cid} className="bg-[#0d0d1c]">
-                    {c.flag} {c.name[lang]} — {evs.length} {t("nav_events").toLowerCase()}{live > 0 ? ` · ${live} 🔴` : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <ChevronRight size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
+        <div className="panel p-4">
+          {/* buscador por país, ciudad o evento */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose pointer-events-none" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("live_search")}
+              type="search"
+              className="w-full pl-10 pr-10 py-3 rounded-xl bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-rose/50 transition-colors placeholder:text-white/35"
+              aria-label={t("live_search")}
+            />
+            {q && (
+              <button onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer" aria-label="Limpiar">
+                <X size={15} />
+              </button>
+            )}
           </div>
-          <p className="text-[10.5px] text-white/40 sm:max-w-[220px] leading-snug shrink-0">{t("live_by_country_sub")}</p>
+          {q.trim().length >= 2 ? (
+            searchResults.length > 0 ? (
+              <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {searchResults.map((e) => {
+                  const c = countryById(e.country);
+                  return (
+                    <button
+                      key={e.id}
+                      onClick={() => enterArena(e.id)}
+                      className="w-full flex items-center gap-2.5 p-2.5 rounded-xl bg-white/3 border border-white/7 hover:bg-white/7 hover:border-white/10 transition-colors cursor-pointer text-left"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-white/6 grid place-items-center shrink-0 text-sm">{c.flag}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-1.5">
+                          <span className="block text-[12px] font-bold truncate">{e.name}</span>
+                          {e.status === "live" && <LiveBadge label={t("c_live")} />}
+                        </span>
+                        <span className="block text-[10.5px] text-white/40 truncate">{c.name[lang]} · {(e.city || e.address || "—")}</span>
+                      </span>
+                      <ArrowRight size={12} className="text-white/30 shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[11.5px] text-white/40">{t("live_search_empty")} “{q.trim()}”</p>
+            )
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative flex-1 min-w-0">
+                <Globe2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose pointer-events-none" />
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && onBrowseCountry(e.target.value)}
+                  className="w-full appearance-none pl-10 pr-9 py-3 rounded-xl bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-rose/50 transition-colors cursor-pointer"
+                  aria-label={t("live_by_country")}
+                >
+                  <option value="" disabled className="bg-[#0d0d1c]">
+                    {t("live_by_country")} — {byCountry.length} {t("live_countries").toLowerCase()}
+                  </option>
+                  {byCountry.map((cid) => {
+                    const c = countryById(cid);
+                    const evs = events.filter((e) => e.country === cid && e.status !== "cancelled" && e.status !== "finished");
+                    const live = evs.filter((e) => e.status === "live").length;
+                    return (
+                      <option key={cid} value={cid} className="bg-[#0d0d1c]">
+                        {c.flag} {c.name[lang]} — {evs.length} {t("nav_events").toLowerCase()}{live > 0 ? ` · ${live} 🔴` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronRight size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
+              </div>
+              <p className="text-[10.5px] text-white/40 sm:max-w-[220px] leading-snug shrink-0">{t("live_by_country_sub")}</p>
+            </div>
+          )}
         </div>
       </motion.section>
 
-      {/* ===== Compartir la app / evento en vivo ===== */}
+      {/* ===== Compartir la app (enlace a la pantalla principal) ===== */}
       <motion.section {...reveal}>
         <div className="panel p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
@@ -230,9 +296,25 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
           </div>
           <ShareRow
             compact
-            title={liveEvents[0]?.name ?? nextEvents[0]?.name ?? "AuraFARM"}
-            url={`${window.location.origin}${window.location.pathname}#/e/${(liveEvents[0] ?? nextEvents[0])?.id ?? ""}`}
+            title={`AuraFARM — ${t("live_global")}`}
+            url={`${window.location.origin}${window.location.pathname}`}
           />
+        </div>
+      </motion.section>
+
+      {/* ===== Mapa con pin en cada evento activo ===== */}
+      <motion.section {...reveal}>
+        <SectionHead hue={152} icon={<MapPin size={16} />} title={t("live_map")} sub={t("live_map_sub")} />
+        <div className="panel p-3 sm:p-4">
+          <div className="flex flex-wrap items-center gap-2 mb-3 px-1">
+            <span className="flex items-center gap-1.5 text-[10.5px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-ember/12 text-ember border border-ember/35">
+              <span className="relative w-1.5 h-1.5 rounded-full bg-ember live-ping text-ember" /> {t("c_live").toUpperCase()} {liveEvents.length}
+            </span>
+            <span className="text-[10.5px] font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-azure/10 text-azure border border-azure/30">
+              {t("c_upcoming").toUpperCase()} {upcoming.length}
+            </span>
+          </div>
+          <LiveMap events={events.filter((e) => e.status !== "cancelled" && e.status !== "finished")} />
         </div>
       </motion.section>
     </div>

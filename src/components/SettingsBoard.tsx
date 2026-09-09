@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Bell, Lock, Crown, ShieldCheck, LogOut, Megaphone, Trash2, Save, Plus, Users, Database, Radio, Link2, KeyRound, Bug } from "lucide-react";
+import { Camera, Bell, Lock, Crown, ShieldCheck, LogOut, Megaphone, Trash2, Save, Plus, Users, Database, Radio, Link2, KeyRound, Bug, RefreshCw } from "lucide-react";
 import { useApp, levelFromAura, titleFromLevel } from "../store";
 import { useT, LANGS } from "../i18n";
 import { COUNTRIES, countryById } from "../data";
@@ -17,6 +17,26 @@ export default function SettingsBoard() {
   const [bannerDraft, setBannerDraft] = useState({ id: "", text: "", link: "", color: "#9B30FF", active: true });
   const [fb, setFb] = useState({ type: "error" as "error" | "suggestion" | "other", msg: "", contact: s.userEmail || "" });
   const [fbSent, setFbSent] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const checkUpdate = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch(location.origin + location.pathname, { cache: "no-store" });
+      const html = await res.text();
+      const live = (html.match(/assets\/index-[A-Za-z0-9_-]+\.js/) || [""])[0].split("/").pop();
+      const mineSrc = Array.from(document.scripts).find((sc) => sc.type === "module" && /\/assets\/index-[A-Za-z0-9_-]+\.js/.test(sc.src || ""));
+      const mine = mineSrc ? mineSrc.src.split("/").pop() : "dev";
+      if (!live || live === mine) s.toast(`AuraFARM actualizado ✓ commit ${__APP_COMMIT__}`, "ok");
+      else {
+        s.toast("Hay una versión más nueva — reinstala desde aurafarm-1e1.pages.dev", "warn");
+        if ("serviceWorker" in navigator) (await navigator.serviceWorker.getRegistrations()).forEach((r) => r.update());
+      }
+    } catch {
+      s.toast("No pude verificar en línea", "warn");
+    }
+    setChecking(false);
+  };
 
   const sendFeedback = () => {
     if (!fb.msg.trim()) return;
@@ -28,6 +48,10 @@ export default function SettingsBoard() {
     window.location.href = `mailto:shop.aurafarm@gmail.com?subject=${subject}&body=${body}`;
     setFbSent(true);
     setTimeout(() => setFbSent(false), 3000);
+  };
+
+  const requestDeletion = () => {
+    window.location.href = "/account-deletion.html";
   };
 
   const onPhoto = (f: File | undefined) => {
@@ -292,6 +316,21 @@ export default function SettingsBoard() {
             </button>
           </motion.section>
 
+          {/* delete account */}
+          <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="panel p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Trash2 size={16} className="text-rose" />
+              <p className="display text-[12.5px] font-extrabold">{t("st_delete_title")}</p>
+            </div>
+            <p className="text-[10.5px] text-white/40 mb-3">{t("st_delete_sub")}</p>
+            <button
+              onClick={requestDeletion}
+              className="w-full py-2.5 rounded-xl text-[11.5px] font-bold border border-rose/30 text-rose bg-rose/6 hover:bg-rose/12 transition-colors cursor-pointer"
+            >
+              {t("st_delete_btn")}
+            </button>
+          </motion.section>
+
           {/* hidden admin access */}
           <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="panel p-4 flex items-center gap-3">
             <ShieldCheck size={16} className="text-white/25" />
@@ -305,6 +344,24 @@ export default function SettingsBoard() {
           </motion.section>
 
           <p className="text-center text-[10px] text-white/20 font-semibold">{t("st_version")} · {countryById(profile.country).flag}</p>
+
+          {/* Acerca de / comprobar actualización */}
+          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }} className="panel p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/25 grid place-items-center shrink-0"><Radio size={16} className="text-gold" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="display text-[12.5px] font-extrabold">{t("st_version")}</p>
+                <p className="text-[10px] text-white/40 font-mono truncate">commit {__APP_COMMIT__} · {new Date(__APP_BUILD_TIME__).toLocaleString(lang === "en" ? "en-US" : lang, { dateStyle: "short", timeStyle: "short" })}</p>
+              </div>
+              <button
+                onClick={checkUpdate}
+                disabled={checking}
+                className="flex items-center gap-1.5 text-[10.5px] font-bold px-3 py-2 rounded-full border border-white/12 text-white/60 hover:text-white hover:border-white/30 bg-white/4 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw size={13} className={checking ? "animate-spin" : ""} /> {t("st_check_update")}
+              </button>
+            </div>
+          </motion.section>
         </div>
       </div>
 

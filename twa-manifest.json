@@ -1,0 +1,29 @@
+{
+  "packageId": "io.github.guiarolfo_afk.twa",
+  "host": "aurafarm-1e1.pages.dev",
+  "name": "AuraFARM Competitions",
+  "launcherName": "AuraFARM",
+  "display": "standalone",
+  "themeColor": "#8B5CF6",
+  "navigationColor": "#1F2937",
+  "backgroundColor": "#1F2937",
+  "statusBarColor": "#1F2937",
+  "startUrl": "https://aurafarm-1e1.pages.dev/",
+  "url": "https://aurafarm-1e1.pages.dev/",
+  "fullScopeUrl": "https://aurafarm-1e1.pages.dev/",
+  "webManifestUrl": "https://aurafarm-1e1.pages.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "splashScreenFadeOutDuration": 300,
+  "splashScreenBackgroundColor": "#1F2937",
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "2.1.0",
+  "appVersionCode": 3,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "features": {},
+  "enableSiteSettingsShortcut": false,
+  "minSdkVersion": 21
+}

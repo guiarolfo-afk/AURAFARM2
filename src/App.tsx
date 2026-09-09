@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Radio, MapPin, ShieldCheck, Swords, Trophy, Flame, ChevronDown, Megaphone, Crown, LogIn } from "lucide-react";
 import { useApp } from "./store";
 import type { Tab } from "./store";
+import { supabase } from "./supabaseClient";
 import { LANGS } from "./i18n";
 import { useT } from "./i18n";
 import { Avatar, Toasts } from "./components/ui";
@@ -78,16 +79,34 @@ export default function App() {
     let disposed = false;
     let unsub: (() => void) | null = null;
     let iv: ReturnType<typeof setInterval> | null = null;
+    let authSub: { unsubscribe: () => void } | null = null;
     (async () => {
       await useApp.getState().initSupabaseAuth();
       await useApp.getState().loadEventsFromSupabase();
       if (disposed) return;
       unsub = useApp.getState().subscribeVotes();
       iv = setInterval(() => useApp.getState().refreshVotes(), 8000);
+      /* Reaccionar a refresh/expiry de sesión para no desincronizar la UI */
+      authSub = supabase.auth.onAuthStateChange((_ev, session) => {
+        if (disposed) return;
+        const authed = !!session?.user && session.user.email != null;
+        if (_ev === "SIGNED_OUT") {
+          /* limpiar solo el estado local para evitar loops (supabase ya cerró la sesión) */
+          localStorage.removeItem("aurafarm-store");
+          useApp.setState({
+            supabaseUserId: null, supabaseProfileId: null, organizer: null, orgUnlocked: false,
+            authed: false, isOAuth: false, userEmail: null,
+            profile: { name: "Usuario", country: "", photo: null, contact: "", socials: { ig: "", x: "", tt: "" }, aura: 0, auraByVotes: 0, trophies: 0, attended: 0, participated: 0, organized: 0, history: [] },
+          });
+        } else if (_ev === "INITIAL_SESSION" || _ev === "SIGNED_IN" || _ev === "TOKEN_REFRESHED") {
+          if (authed) useApp.getState().initSupabaseAuth();
+        }
+      }).data.subscription;
     })();
     return () => {
       disposed = true;
       unsub?.();
+      authSub?.unsubscribe();
       if (iv) clearInterval(iv);
     };
   }, []);

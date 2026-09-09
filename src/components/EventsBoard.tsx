@@ -18,12 +18,27 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
   const { enterArena, confirmAttendance, setTab } = useApp.getState();
   const [status, setStatus] = useState<"all" | "live" | "upcoming">("all");
   const [country, setCountry] = useState(initialCountry);
+  const [province, setProvince] = useState("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [role, setRole] = useState<"participant" | "spectator" | null>(null);
   const [formName, setFormName] = useState(profile.name);
   const [formContact, setFormContact] = useState(profile.contact);
   const [err, setErr] = useState("");
+
+  const detail = events.find((e) => e.id === detailId) ?? null;
+  const confirming = events.find((e) => e.id === confirmId) ?? null;
+
+  /* Estado/provincia derivado de la etiqueta de ubicación (nominatim: "Ciudad, Provincia") */
+  const provinceOf = (e: EventItem) => {
+    const parts = (e.city || "").split(",").map((p: string) => p.trim()).filter(Boolean);
+    if (parts.length > 1) return parts[parts.length - 1];
+    return parts[0] || "";
+  };
+  const provinces = useMemo(() => {
+    const inCountry = events.filter((e) => e.country === country && e.status !== "cancelled" && e.status !== "finished");
+    return [...new Set(inCountry.map(provinceOf).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [events, country]);
 
   const filtered = useMemo(
     () =>
@@ -32,13 +47,11 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
           e.status !== "cancelled" &&
           e.status !== "finished" &&
           (status === "all" || (status === "live" ? e.status === "live" : e.status === "upcoming")) &&
-          (country === "all" || e.country === country)
+          (country === "all" || e.country === country) &&
+          (province === "all" || provinceOf(e) === province)
       ),
-    [events, status, country]
+    [events, status, country, province]
   );
-
-  const detail = events.find((e) => e.id === detailId) ?? null;
-  const confirming = events.find((e) => e.id === confirmId) ?? null;
 
   const fmtDate = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString(lang === "en" ? "en-US" : lang, { weekday: "short", day: "numeric", month: "short" });
@@ -140,13 +153,13 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Chip active={status === "all"} onClick={() => setStatus("all")} hue={268}>{t("c_all")}</Chip>
-        <Chip active={status === "live"} onClick={() => setStatus("live")} hue={0}>{t("c_live")}</Chip>
-        <Chip active={status === "upcoming"} onClick={() => setStatus("upcoming")} hue={200}>{t("c_upcoming")} · 14 {t("c_days")}</Chip>
+        <Chip active={status === "all"} onClick={() => { setStatus("all"); setProvince("all"); }} hue={268}>{t("c_all")}</Chip>
+        <Chip active={status === "live"} onClick={() => { setStatus("live"); setProvince("all"); }} hue={0}>{t("c_live")}</Chip>
+        <Chip active={status === "upcoming"} onClick={() => { setStatus("upcoming"); setProvince("all"); }} hue={200}>{t("c_upcoming")} · 14 {t("c_days")}</Chip>
         <span className="w-px h-5 bg-white/10 mx-1 hidden sm:block" />
         <select
           value={country}
-          onChange={(e) => setCountry(e.target.value)}
+          onChange={(e) => { setCountry(e.target.value); setProvince("all"); }}
           className="px-3 py-1.5 rounded-full text-[12px] font-semibold bg-white/5 border border-white/10 text-white/80 outline-none cursor-pointer"
           aria-label={t("ev_filter_region")}
         >
@@ -155,6 +168,19 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
             <option key={c.id} value={c.id} className="bg-[#0d0d1c]">{c.flag} {c.name[lang]}</option>
           ))}
         </select>
+        {country !== "all" && provinces.length > 1 && (
+          <select
+            value={province}
+            onChange={(e) => setProvince(e.target.value)}
+            className="px-3 py-1.5 rounded-full text-[12px] font-semibold bg-white/5 border border-white/10 text-white/80 outline-none cursor-pointer"
+            aria-label={t("ev_filter_province")}
+          >
+            <option value="all" className="bg-[#0d0d1c]">🗺️ {t("ev_filter_province")}</option>
+            {provinces.map((p) => (
+              <option key={p} value={p} className="bg-[#0d0d1c]">📍 {p}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -171,7 +197,7 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
       {/* ===== finished events (separate box, results) ===== */}
       {(() => {
         const finished = events
-          .filter((e) => e.status === "finished" && (country === "all" || e.country === country))
+          .filter((e) => e.status === "finished" && (country === "all" || e.country === country) && (province === "all" || provinceOf(e) === province))
           .sort((a, b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
         if (finished.length === 0) return null;
         return (

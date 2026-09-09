@@ -24,6 +24,23 @@ export interface OrganizerAccount { name: string; contact: string; country: stri
 
 export const levelFromAura = (aura: number) => Math.max(1, Math.floor(Math.sqrt(Math.max(0, aura) / 90)));
 
+/* ¿El evento ya pasó su fecha/hora de fin? (sirve para no mostrar eventos
+   viejos como "en vivo" con votación abierta, incluso tras reinstalar). */
+export function isEventPast(dateISO: string, time: string, endTime: string, now = new Date()): boolean {
+  if (!dateISO) return false;
+  const [y, m, d] = dateISO.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  let hh = 23, mm = 59;
+  const usedTime = endTime || time;
+  if (usedTime) {
+    const [h, mi] = usedTime.split(":").map(Number);
+    if (!isNaN(h) && !isNaN(mi)) { hh = h; mm = mi; }
+  }
+  const end = new Date(y, m - 1, d, hh, mm);
+  if (!endTime && time) end.setHours(end.getHours() + 3); /* sin fin explícito: +3h */
+  return end.getTime() < now.getTime();
+}
+
 export const titleFromLevel = (level: number, lang: string) => {
   if (level >= 16) return lang === "en" ? "Master" : lang === "fr" ? "Maître" : lang === "pt" ? "Mestre" : "Maestro";
   if (level >= 10) return "Oro";
@@ -281,6 +298,7 @@ interface AppState {
   setMatchDuration: (eventId: string, matchId: string, duration: number) => void;
   setCurrentMatch: (eventId: string, matchId: string) => void;
   startMatch: (eventId: string, matchId: string) => void;
+  startEvent: (eventId: string) => void;
   endMatch: (eventId: string, matchId: string) => void;
   autoCloseMatch: (eventId: string, matchId: string) => void;
   pickWinner: (eventId: string, matchId: string, side: "a" | "b") => void;
@@ -370,6 +388,18 @@ export const useApp = create<AppState>()(
 
       tick: () => {
         const now = Date.now();
+        /* eventos cuya fecha/hora ya pasó: se cierran solos (sin votación abierta) */
+        get().events.forEach((ev) => {
+          if ((ev.status === "live" || ev.status === "upcoming") && isEventPast(ev.dateISO, ev.time, ev.endTime, new Date(now))) {
+            set((s) => ({
+              events: s.events.map((e) => (e.id === ev.id ? { ...e, status: "finished" as const, endState: undefined } : e)),
+              finishedEventIds: s.finishedEventIds.includes(ev.id) ? s.finishedEventIds : [...s.finishedEventIds, ev.id],
+            }));
+            supabase.from("events").update({ status: "finished", end_state: null }).eq("id", ev.id).then(({ error }) => {
+              if (error) console.error("Error cerrando evento vencido:", error.message);
+            });
+          }
+        });
         const autoClosed = new Set<string>();
         get().events.forEach((ev) => {
           if (!ev.currentMatchId || ev.matchStartedAt == null) return;
@@ -404,40 +434,18 @@ export const useApp = create<AppState>()(
         /* ---- Retos automáticos por condición (se marcan solos, sin clics) ---- */
         if (get().profile.aura >= 500) get().toggleChallenge("ch4");
         if (get().streak >= 1) get().toggleChallenge("ch6");
-        /* ---- Pase automático a EN VIVO: cuando llega la fecha/hora del evento ---- */
-        const toGoLive: string[] = [];
-        const toTimeUp: string[] = [];
+        /* ---- Cierre automático: cuando llega la hora de fin del evento se finaliza solo
+           (salvo que el organizador haya elegido "Más tiempo": entonces se cierra al día
+           siguiente). Los eventos SOLO pasan a EN VIVO cuando el organizador los inicia. ---- */
+        const d = new Date();
+        const todayYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const toAutoFinish: string[] = [];
         get().events.forEach((ev) => {
-          if (ev.status === "live") {
-            const endTs = eventEndTimestamp(ev.dateISO, ev.time, ev.endTime);
-            if (endTs != null && endTs <= now && ev.endState !== "manual") toTimeUp.push(ev.id);
-          } else if (ev.status === "upcoming") {
-            const ts = eventStartTimestamp(ev.dateISO, ev.time);
-            if (ts != null && ts <= now) toGoLive.push(ev.id);
-          }
+          const endTs = eventEndTimestamp(ev.dateISO, ev.time, ev.endTime);
+          if (ev.status === "live" && endTs != null && endTs <= now && (ev.endState !== "manual" || ev.dateISO < todayYMD)) toAutoFinish.push(ev.id);
         });
-        /* Cuando el tiempo del evento se agota, NO se finaliza automáticamente:
-           se marca "timeUp" para que el organizador decida (Finalizar o Extender). */
-        if (toTimeUp.length > 0) {
-          set((st) => ({
-            events: st.events.map((e) =>
-              toTimeUp.includes(e.id) && e.status === "live"
-                ? { ...e, endState: "timeUp" as const }
-                : e
-            ),
-          }));
-          toTimeUp.forEach((eid) => {
-            supabase.from("events").update({ end_state: "timeUp" }).eq("id", eid).then(() => {});
-          });
-        }
-        if (toGoLive.length > 0) {
-          set((s) => ({
-            events: s.events.map((e) =>
-              toGoLive.includes(e.id) ? { ...e, status: "live" as const } : e
-            ),
-          }));
-          get().toast(translate(get().lang, "t_event_live"), "gold");
-        }
+        /* ---- Eventos que ya pasaron de día y no se finalizaron: se cierran solos ---- */
+        toAutoFinish.forEach((eid) => get().finishEvent(eid));
         set((s) => ({ users: s.users, farmProg: s.farmProg, feed: s.feed, totalAura: s.totalAura }));
       },
 
@@ -608,6 +616,7 @@ export const useApp = create<AppState>()(
 
       confirmAttendance: (eventId, role, name) => {
         const s = get();
+        const supabaseProfileId = s.supabaseProfileId;
         const ev = s.events.find((e) => e.id === eventId);
         if (!ev) return false;
         if (role === "participant") {
@@ -617,14 +626,13 @@ export const useApp = create<AppState>()(
             return false;
           }
           set({
-            events: s.events.map((e) => (e.id === eventId ? { ...e, participants: [...e.participants, "me"] } : e)),
+            events: s.events.map((e) => (e.id === eventId ? { ...e, participants: [...e.participants, supabaseProfileId || "me"] } : e)),
             myAttendance: { ...s.myAttendance, [eventId]: "participant" },
             profile: { ...s.profile, participated: s.profile.participated + 1 },
           });
           get().toggleChallenge("ch3");
           s.toast(translate(s.lang, "t_conf_part"), "gold");
 
-          const { supabaseProfileId } = get();
           if (supabaseProfileId) {
             supabase
               .from("event_participants")
@@ -663,7 +671,7 @@ export const useApp = create<AppState>()(
           lat: e.lat ?? 0, lng: e.lng ?? 0, address: e.address ?? "",
           date_iso: e.dateISO, event_time: e.time ?? "", event_end_time: e.endTime ?? "",
           organizer_id: ownerId ?? null, max_participants: e.maxParticipants ?? 32,
-          status: e.status, notes: e.notes ?? "",
+          status: e.status, notes: e.notes ?? "", features: e.features ?? [],
         };
         let saved: EventItem = base;
         try {
@@ -943,6 +951,17 @@ export const useApp = create<AppState>()(
         }));
         get().toast(translate(get().lang, "org_battle_start"), "gold");
       },
+      startEvent: (eventId) => {
+        const ev = get().events.find((e) => e.id === eventId);
+        if (!ev) return;
+        set((s) => ({ events: s.events.map((e) => (e.id === eventId ? { ...e, status: "live" as const, endState: undefined } : e)) }));
+        supabase
+          .from("events")
+          .update({ status: "live", end_state: null })
+          .eq("id", eventId)
+          .then(({ error }) => { if (error) console.error("Error iniciando evento:", error.message); });
+        get().toast(translate(get().lang, "t_event_live"), "gold");
+      },
       endMatch: (eventId, matchId) => {
         set((s) => ({
           events: s.events.map((e) =>
@@ -1113,6 +1132,11 @@ export const useApp = create<AppState>()(
         const { data: { session } } = await supabase.auth.getSession();
         const user = session?.user ?? null;
 
+        /* Limpiar tokens OAuth del hash de la URL (Supabase no los limpia automáticamente) */
+        if (window.location.hash && window.location.hash.includes("access_token")) {
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        }
+
         const isAnon = (user as any)?.is_anonymous === true || user?.email == null;
         if (!user || isAnon) {
           if (isAnon) await supabase.auth.signOut().catch(() => {});
@@ -1124,8 +1148,6 @@ export const useApp = create<AppState>()(
         const provider = (user as any).app_metadata?.provider;
         const isOAuth = provider && provider !== "email";
         set({ supabaseUserId: userId, authed: true, isOAuth: !!isOAuth, userEmail: user.email ?? null });
-
-        await get().loadEventsFromSupabase();
 
         const { data: existing } = await supabase
           .from("profiles")
@@ -1329,7 +1351,12 @@ export const useApp = create<AppState>()(
 
         const participantsByEvent: Record<string, string[]> = {};
         const attendeesByEvent: Record<string, number> = {};
+        const myId = get().supabaseProfileId;
+        const myAttendanceFromDb: Record<string, "participant" | "spectator"> = {};
         (participantRows ?? []).forEach((row: any) => {
+          if (row.user_id === myId) {
+            myAttendanceFromDb[row.event_id] = row.role === "spectator" ? "spectator" : "participant";
+          }
           if (row.role === "spectator") {
             attendeesByEvent[row.event_id] = (attendeesByEvent[row.event_id] ?? 0) + 1;
           } else {
@@ -1358,6 +1385,30 @@ export const useApp = create<AppState>()(
           }
         }
 
+        /* ---- Cargar perfiles de organizadores (nombre visible al compartir el evento) ---- */
+        const organizerIds = Array.from(new Set((data ?? []).map((r: any) => r.organizer_id).filter(Boolean) as string[]));
+        const organizerNameById: Record<string, string> = {};
+        if (organizerIds.length > 0) {
+          const { data: orgProfiles, error: orgError } = await supabase
+            .from("profiles")
+            .select("id, name, country, hue, aura, trophies")
+            .in("id", organizerIds);
+          if (orgError) {
+            console.error("Error cargando perfiles de organizadores:", orgError.message);
+          } else if (orgProfiles) {
+            const existingIds = new Set(get().users.map((u) => u.id));
+            const newOrgs: FarmUser[] = orgProfiles
+              .filter((p: any) => !existingIds.has(p.id))
+              .map((p: any) => ({
+                id: p.id, name: p.name, country: p.country, hue: p.hue ?? 200, online: true,
+                aura: p.aura ?? 0, auraByVotes: 0, trophies: p.trophies ?? 0,
+                level: levelFromAura(p.aura ?? 0), role: "organizer" as const,
+              }));
+            if (newOrgs.length > 0) set((s) => ({ users: [...s.users, ...newOrgs] }));
+            orgProfiles.forEach((p: any) => { organizerNameById[p.id] = p.name; });
+          }
+        }
+
         // ---- Cargar votos de Supabase (votos reales del público, compartidos entre dispositivos) ----
         const eventIds = (data ?? []).map((r: any) => r.id);
         const {
@@ -1371,6 +1422,11 @@ export const useApp = create<AppState>()(
         const prevByEvent = new Map(get().events.map((e) => [e.id, e]));
         const { deletedEventIds, finishedEventIds } = get();
         const visibleRows = (data ?? []).filter((row: any) => !deletedEventIds.includes(row.id));
+        /* eventos viejos (fecha pasada) ya no deben verse "en vivo" ni con votación abierta */
+        const now = new Date();
+        const pastIds = new Set(
+          visibleRows.filter((row: any) => isEventPast(row.date_iso ?? "", row.event_time ?? "", row.event_end_time ?? "", now)).map((row: any) => row.id)
+        );
         const mapped: EventItem[] = visibleRows.map((row: any) => {
           const prev = prevByEvent.get(row.id);
           return {
@@ -1379,12 +1435,13 @@ export const useApp = create<AppState>()(
             desc: { es: row.description ?? "", pt: row.description ?? "", fr: row.description ?? "", en: row.description ?? "" },
             country: row.country, city: row.city, lat: row.lat ?? 0, lng: row.lng ?? 0, address: row.address ?? "",
             dateISO: row.date_iso, time: row.event_time ?? "", endTime: row.event_end_time ?? prev?.endTime ?? "",
-            organizer: "", organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
+            organizer: organizerNameById[row.organizer_id] ?? prev?.organizer ?? "",
+            organizerId: row.organizer_id ?? "", organizerRating: 0, organizerRefs: [],
             maxParticipants: row.max_participants ?? 32, participants: participantsByEvent[row.id] ?? [], attendees: attendeesByEvent[row.id] ?? 0, waitlist: [],
-status: finishedEventIds.includes(row.id) ? "finished" : row.status,
+status: pastIds.has(row.id) ? "finished" : finishedEventIds.includes(row.id) ? "finished" : row.status,
           endState: (row.end_state as "timeUp" | "manual" | null) ?? undefined,
           winner: row.winner ?? prev?.winner ?? null, winnerAura: row.winner_aura ?? prev?.winnerAura ?? 0,
-            features: [], banner: ["#FFD700", "#9B30FF"] as [string, string],
+            features: row.features ?? prev?.features ?? [], banner: ["#FFD700", "#9B30FF"] as [string, string],
             votes: { ...(votesByEvent[row.id] ?? {}), ...(prev?.votes ?? {}) },
             bracket: applyMatchVotes(prev?.bracket ?? [], matchVotesByEvent[row.id] ?? {}),
             currentMatchId: prev?.currentMatchId ?? null,
@@ -1401,7 +1458,18 @@ status: finishedEventIds.includes(row.id) ? "finished" : row.status,
         }
         const realUsers = get().users;
         const totalAura = realUsers.reduce((a, u) => a + (u.aura || 0), 0) + (get().profile.aura || 0);
+        const mergedMyAttendance = { ...get().myAttendance, ...myAttendanceFromDb };
+        if (Object.keys(myAttendanceFromDb).length > 0) set({ myAttendance: mergedMyAttendance });
         set({ events: mapped, totalAura });
+        if (pastIds.size > 0) {
+          /* persiste en la BD para que tampoco vuelvan como "live" en otros dispositivos */
+          set((s) => ({ finishedEventIds: [...new Set([...s.finishedEventIds, ...pastIds])] }));
+          supabase
+            .from("events")
+            .update({ status: "finished" })
+            .in("id", [...pastIds])
+            .then(({ error }) => { if (error) console.error("Error auto-finalizando eventos pasados:", error.message); });
+        }
       },
 
       loadOrganizerScore: async () => {
@@ -1500,5 +1568,7 @@ status: finishedEventIds.includes(row.id) ? "finished" : row.status,
 export const userNameById = (id: string | null): string => {
   if (!id) return "TBD";
   if (id === "me") return "⭐ " + useApp.getState().profile.name;
-  return useApp.getState().users.find((u) => u.id === id)?.name ?? "TBD";
+  const state = useApp.getState();
+  if (id === state.supabaseProfileId) return "⭐ " + state.profile.name;
+  return state.users.find((u) => u.id === id)?.name ?? "TBD";
 };
