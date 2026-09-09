@@ -22,6 +22,21 @@ export default defineConfig({
   build: {
     outDir: isRoot ? '../dist' : '../docs',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('/d3-') || id.includes('/victory') || id.includes('/react-smooth')) return 'charts'
+            if (id.includes('leaflet')) return 'map'
+            if (id.includes('framer-motion')) return 'motion'
+            if (id.includes('@supabase')) return 'supabase'
+            if (id.includes('react') || id.includes('scheduler')) return 'react-vendor'
+            if (id.includes('zustand') || id.includes('lucide') || id.includes('qrcode')) return 'ui-libs'
+            return 'vendor'
+          }
+        },
+      },
+    },
   },
   plugins: [
     react(),
