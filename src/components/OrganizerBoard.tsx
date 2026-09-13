@@ -154,7 +154,7 @@ export default function OrganizerBoard() {
                     <button
                       onClick={() => s.socialLogin("google")}
                       disabled={s.authBusy}
-                      className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[13px] font-bold bg-white hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl text-[13px] font-bold text-white bg-[#4285F4] hover:bg-[#4285F4]/90 shadow-[0_6px_20px_-6px_rgba(66,133,244,0.65)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {s.authBusy ? (
                         <Loader size={15} className="animate-spin text-violet" />

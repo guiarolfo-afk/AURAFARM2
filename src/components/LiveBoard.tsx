@@ -109,6 +109,7 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
             >
               {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
             </button>
+            <p className="mt-2.5 text-center text-[10.5px] font-medium text-white/40 leading-relaxed">{t("live_vote_hint")}</p>
 
             <button
               onClick={() => setTab("org")}
