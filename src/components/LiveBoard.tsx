@@ -6,6 +6,7 @@ import { useT } from "../i18n";
 import { countryById } from "../data";
 import { AnimatedNumber, SectionHead, LiveBadge, ShareRow } from "./ui";
 import LiveMap from "./LiveMap";
+import TesterCTA from "./TesterCTA";
 
 const reveal = {
   initial: { opacity: 0, y: 22 },
@@ -55,6 +56,8 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
 
   return (
     <div className="space-y-8">
+      <TesterCTA compact />
+
       {/* ===== Signature opener: network aura counter + VOTE NOW ===== */}
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
         <motion.div {...reveal} className="panel p-6 sm:p-7 relative overflow-hidden">

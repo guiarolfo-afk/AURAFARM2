@@ -174,6 +174,15 @@ const es: Dict = {
   org_pick_custom: "Punto personalizado en el mapa",
   org_pick_powered: "Búsqueda global vía OpenStreetMap · Nominatim",
   geo_city: "Ciudad", geo_state: "Estado", geo_province: "Provincia", geo_country: "País",
+  tester_badge: "¡AYÚDAME A PROBAR LA APP!",
+  tester_title: "Necesito 12 testers para publicar en Google Play",
+  tester_sub: "AuraFARM está en fase de pruebas. Únete como tester y descarga la app gratis. Cada tester cuenta para el lanzamiento oficial.",
+  tester_step1: "Entra al enlace de testers y toca \"Convertirme en probador\"",
+  tester_step2: "Acepta la invitación y espera unos segundos",
+  tester_step3: "Abre el enlace de la Play Store e instala AuraFARM",
+  tester_btn_join: "Unirme como tester",
+  tester_btn_install: "Instalar desde Play Store",
+  tester_note: "Solo Android · Gratis · 2 minutos · Ayudas a que la app sea real",
 };
 
 const pt: Dict = {
@@ -339,6 +348,15 @@ const pt: Dict = {
   org_pick_custom: "Ponto personalizado no mapa",
   org_pick_powered: "Pesquisa global via OpenStreetMap · Nominatim",
   geo_city: "Cidade", geo_state: "Estado", geo_province: "Província", geo_country: "País",
+  tester_badge: "¡AJUDA-ME A TESTAR O APP!",
+  tester_title: "Preciso de 12 testers para publicar na Google Play",
+  tester_sub: "AuraFARM está em fase de testes. Junte-se como tester e baixe o app grátis. Cada tester conta para o lançamento oficial.",
+  tester_step1: "Acesse o link de testers e toque em \"Tornar-me testador\"",
+  tester_step2: "Aceite o convite e aguarde alguns segundos",
+  tester_step3: "Abra o link da Play Store e instale o AuraFARM",
+  tester_btn_join: "Entrar como tester",
+  tester_btn_install: "Instalar na Play Store",
+  tester_note: "Apenas Android · Grátis · 2 minutos · Ajuda o app a virar realidade",
 };
 
 const fr: Dict = {
@@ -505,6 +523,15 @@ const fr: Dict = {
   org_pick_custom: "Point personnalisé sur la carte",
   org_pick_powered: "Recherche mondiale via OpenStreetMap · Nominatim",
   geo_city: "Ville", geo_state: "État", geo_province: "Province", geo_country: "Pays",
+  tester_badge: "AIDE-MOI À TESTER L'APP !",
+  tester_title: "J'ai besoin de 12 testeurs pour publier sur Google Play",
+  tester_sub: "AuraFARM est en phase de test. Rejoins comme testeur et télécharge l'app gratuitement. Chaque testeur compte pour le lancement officiel.",
+  tester_step1: "Va sur le lien des testeurs et clique \"Devenir testeur\"",
+  tester_step2: "Accepte l'invitation et attends quelques secondes",
+  tester_step3: "Ouvre le lien du Play Store et installe AuraFARM",
+  tester_btn_join: "Rejoindre comme testeur",
+  tester_btn_install: "Installer depuis le Play Store",
+  tester_note: "Android uniquement · Gratuit · 2 min · Aide l'app à devenir réelle",
 };
 
 const en: Dict = {
@@ -671,6 +698,15 @@ const en: Dict = {
   org_pick_custom: "Custom point on the map",
   org_pick_powered: "Global search via OpenStreetMap · Nominatim",
   geo_city: "City", geo_state: "State", geo_province: "Province", geo_country: "Country",
+  tester_badge: "HELP ME TEST THE APP!",
+  tester_title: "I need 12 testers to publish on Google Play",
+  tester_sub: "AuraFARM is in testing phase. Join as a tester and download the app free. Every tester helps make the official launch happen.",
+  tester_step1: "Open the tester link and tap \"Become a tester\"",
+  tester_step2: "Accept the invite and wait a few seconds",
+  tester_step3: "Open the Play Store link and install AuraFARM",
+  tester_btn_join: "Join as tester",
+  tester_btn_install: "Install from Play Store",
+  tester_note: "Android only · Free · 2 mins · Helps make the app real",
 };
 
 const DICTS: Record<Lang, Dict> = { es, pt, fr, en };
