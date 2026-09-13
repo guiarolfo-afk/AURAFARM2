@@ -4,5 +4,9 @@ build/
 *.log
 .env.local
 
+# Build outputs (se regeneran en CI/local)
+dist/
+docs/
+
 # Local Netlify folder
 .netlify

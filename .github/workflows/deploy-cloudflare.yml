@@ -1,0 +1,50 @@
+name: Deploy a Cloudflare Pages
+
+# Único despliegue en vivo: aurafarm-1e1.pages.dev
+# Cada push a main buildea desde fuente y sube el dist al proyecto
+# Cloudflare "aurafarm" (producción = rama main).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Comprobar secret CLOUDFLARE_API_TOKEN
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Falta el secret 'CLOUDFLARE_API_TOKEN'."
+            echo "Pásos: dash.cloudflare.com -> My Profile -> API Tokens -> Create Token"
+            echo "  Template: 'Edit Cloudflare Workers' (incluye Cloudflare Pages:Edit) o crea uno custom con"
+            echo "  Permissions: Cloudflare Pages -> Edit / Cloudflare Account -> Account Settings -> Read"
+            echo "  Account Resources: tu cuenta (Gui.arolfo@gmail.com's Account)"
+            echo "Luego: gh secret set CLOUDFLARE_API_TOKEN   (o Settings -> Secrets and variables -> Actions)"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Build
+        run: DEPLOY_ROOT=true npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy a Cloudflare Pages
+        run: npx wrangler@3 pages deploy dist --project-name aurafarm --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}:
