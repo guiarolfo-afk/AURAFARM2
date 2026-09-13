@@ -6,7 +6,6 @@ import { useT } from "../i18n";
 import { countryById } from "../data";
 import { AnimatedNumber, SectionHead, LiveBadge, ShareRow } from "./ui";
 import LiveMap from "./LiveMap";
-import TesterCTA from "./TesterCTA";
 
 const reveal = {
   initial: { opacity: 0, y: 22 },
@@ -56,8 +55,6 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
 
   return (
     <div className="space-y-8">
-      <TesterCTA compact />
-
       {/* ===== Signature opener: network aura counter + VOTE NOW ===== */}
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
         <motion.div {...reveal} className="panel p-6 sm:p-7 relative overflow-hidden">
@@ -111,6 +108,17 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
               className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
+            </button>
+
+            <button
+              onClick={() => setTab("org")}
+              className="relative mt-4 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span className="flex flex-col items-center leading-tight">
+                <span>{t("live_org_cta")}</span>
+                <span className="text-[10.5px] font-bold tracking-widest text-[#171200]/75 mt-0.5">{t("live_org_cta_sub")}</span>
+              </span>
+              <ArrowRight size={16} strokeWidth={3} />
             </button>
           </motion.div>
 

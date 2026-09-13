@@ -4,7 +4,6 @@ import { Lock, Mail, LogIn, UserPlus, Flame, X } from "lucide-react";
 import { useApp } from "../store";
 import { useT, LANGS } from "../i18n";
 import { Field, inputCls, btnGold } from "./ui";
-import TesterCTA from "./TesterCTA";
 
 function SocialButton({ onClick, children, busy }: { onClick: () => void; children: ReactNode; busy?: boolean }) {
   return (
@@ -113,8 +112,6 @@ export default function AuthScreen() {
               {t("au_google")}
             </SocialButton>
           </div>
-
-          <TesterCTA compact />
 
           <div className="flex items-center gap-3 my-5">
             <span className="flex-1 h-px bg-white/8" />
