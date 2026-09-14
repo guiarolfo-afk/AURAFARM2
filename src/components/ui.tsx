@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Star, Check } from "lucide-react";
+import { X, Star, Check, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../store";
 import { AURA_COLORS } from "../data";
 
@@ -322,6 +322,39 @@ export function Field({ label, children }: { label: string; children: React.Reac
       <span className="block text-[12px] font-bold uppercase tracking-wider text-white/40 mb-1.5">{label}</span>
       {children}
     </label>
+  );
+}
+
+/* ---------- Password field with visibility toggle ---------- */
+export function PasswordField({
+  label, value, onChange, placeholder, onKeyDown, className = "",
+}: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void; className?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const EyeIcon = visible ? EyeOff : Eye;
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          className={inputCls + " !pr-10 " + className}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          onKeyDown={onKeyDown}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/35 hover:text-white transition-colors cursor-pointer"
+          aria-label={visible ? "Hide password" : "Show password"}
+          tabIndex={-1}
+        >
+          <EyeIcon size={16} />
+        </button>
+      </div>
+    </Field>
   );
 }
 

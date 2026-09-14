@@ -278,7 +278,7 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
 
               <div className="grid sm:grid-cols-2 gap-3 text-[12.5px]">
                 <div className="flex items-center gap-2.5 panel p-3"><Calendar size={15} className="text-gold shrink-0" /><div><p className="font-bold">{fmtDate(detail.dateISO)}</p><p className="text-white/45 text-[11px] flex items-center gap-1"><Clock size={10} /> {detail.time} – {detail.endTime || "–"} h</p></div></div>
-                <div className="flex items-center gap-2.5 panel p-3"><MapPin size={15} className="text-rose shrink-0" /><div><p className="font-bold">{c.flag} {c.name[lang]}</p><p className="text-white/45 text-[11px]">{detail.address}</p></div></div>
+                <div className="flex items-center gap-2.5 panel p-3"><MapPin size={15} className="text-rose shrink-0" /><div><p className="font-bold">{c.flag} {c.name[lang]}</p><p className="text-white/45 text-[11px]">{detail.address && detail.address !== "." ? detail.address : t("c_no_data")}</p></div></div>
               </div>
 
               <div>
@@ -296,10 +296,14 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                       <div className="flex items-center gap-1.5"><Stars value={detail.organizerRating} size={11} /><span className="display text-[10.5px] font-bold text-gold">{detail.organizerRating.toFixed(1)}</span></div>
                     </div>
                   </div>
-                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/35 mt-3 mb-1.5">{t("ev_refs")}</p>
-                  <ul className="space-y-1">
-                    {detail.organizerRefs.map((r, i) => <li key={i} className="text-[11.5px] text-white/60 flex gap-1.5"><span className="text-gold">★</span>{r}</li>)}
-                  </ul>
+                  {detail.organizerRefs.length > 0 && (
+                    <>
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/35 mt-3 mb-1.5">{t("ev_refs")}</p>
+                      <ul className="space-y-1">
+                        {detail.organizerRefs.map((r, i) => <li key={i} className="text-[11.5px] text-white/60 flex gap-1.5"><span className="text-gold">★</span>{r}</li>)}
+                      </ul>
+                    </>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <div className="panel p-4">
@@ -315,10 +319,14 @@ export default function EventsBoard({ initialCountry }: { initialCountry: string
                     </div>
                   </div>
                     <div className="panel p-4">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">{t("ev_features")}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detail.features.map((f) => <span key={f} className="text-[10.5px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#FFD70014", border: "1px solid #FFD70035", color: "#FFD700" }}>{t(f)}</span>)}
-                      </div>
+                      {detail.features.length > 0 && (
+                        <>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2">{t("ev_features")}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {detail.features.map((f) => <span key={f} className="text-[10.5px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#FFD70014", border: "1px solid #FFD70035", color: "#FFD700" }}>{t(f)}</span>)}
+                          </div>
+                        </>
+                      )}
                       <p className="text-[11px] font-bold uppercase tracking-wider text-white/35 mt-3.5 mb-2">{t("ev_share")}</p>
                       <ShareRow title={detail.name} url={`${window.location.origin}${window.location.pathname}#/e/${detail.id}`} />
                     </div>

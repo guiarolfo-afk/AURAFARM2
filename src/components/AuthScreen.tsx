@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Lock, Mail, LogIn, UserPlus, Flame, X } from "lucide-react";
+import { Mail, LogIn, UserPlus, Flame, X } from "lucide-react";
 import { useApp } from "../store";
 import { useT, LANGS } from "../i18n";
-import { Field, inputCls, btnGold } from "./ui";
+import { Field, PasswordField, inputCls, btnGold } from "./ui";
 
 function SocialButton({ onClick, children, busy }: { onClick: () => void; children: ReactNode; busy?: boolean }) {
   return (
@@ -119,7 +119,7 @@ export default function AuthScreen() {
             <span className="flex-1 h-px bg-white/8" />
           </div>
 
-          <div className="space-y-3">
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
             {mode === "register" && (
               <>
                 <Field label={t("au_name")}>
@@ -133,22 +133,17 @@ export default function AuthScreen() {
                 <input type="email" className={inputCls + " !pl-8"} value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("au_email_ph")} />
               </div>
             </Field>
-            <Field label={t("au_password")}>
-              <div className="relative">
-                <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input type="password" className={inputCls + " !pl-8"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("au_password_ph")} onKeyDown={(e) => e.key === "Enter" && submit()} />
-              </div>
-            </Field>
+            <PasswordField label={t("au_password")} value={password} onChange={setPassword} placeholder={t("au_password_ph")} className="!pl-8" />
 
             {mode === "login" && (
-              <button onClick={() => setResetOpen(true)} className="text-[12px] text-white/40 hover:text-gold transition-colors cursor-pointer">{t("au_forgot")}</button>
+              <button type="button" onClick={() => setResetOpen(true)} className="text-[12px] text-white/40 hover:text-gold transition-colors cursor-pointer">{t("au_forgot")}</button>
             )}
 
             {err && <p className="text-[12px] text-ember font-semibold">{err}</p>}
             {info && <p className="text-[12px] text-mint font-semibold">{info}</p>}
 
             <button
-              onClick={submit}
+              type="submit"
               disabled={s.authBusy}
               className="w-full py-3.5 min-h-[48px] rounded-xl display text-[14px] font-extrabold bg-gold text-[#171200] hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
@@ -158,15 +153,15 @@ export default function AuthScreen() {
             <p className="text-center text-[12px] text-white/40">
               {mode === "login" ? (
                 <>
-                  {t("au_not_account")} <button onClick={() => setMode("register")} className="text-gold font-bold hover:underline cursor-pointer">{t("au_register_tab")}</button>
+                  {t("au_not_account")} <button type="button" onClick={() => setMode("register")} className="text-gold font-bold hover:underline cursor-pointer">{t("au_register_tab")}</button>
                 </>
               ) : (
                 <>
-                  {t("au_already")} <button onClick={() => setMode("login")} className="text-gold font-bold hover:underline cursor-pointer">{t("au_login_tab")}</button>
+                  {t("au_already")} <button type="button" onClick={() => setMode("login")} className="text-gold font-bold hover:underline cursor-pointer">{t("au_login_tab")}</button>
                 </>
               )}
             </p>
-          </div>
+          </form>
         </div>
       </motion.div>
 

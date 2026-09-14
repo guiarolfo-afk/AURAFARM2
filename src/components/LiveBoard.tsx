@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown, Search, X } from "lucide-react";
+import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown, Search, X, Clock } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -103,12 +103,19 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => enterArena(liveEvents[0]?.id ?? events[0].id)}
-              className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
-            </button>
+            {liveEvents.length > 0 ? (
+              <button
+                onClick={() => enterArena(liveEvents[0]?.id ?? events[0].id)}
+                className="relative mt-5 w-full py-3.5 rounded-xl display text-sm font-extrabold tracking-widest bg-gold text-[#171200] pulse-glow hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {t("live_vote_now")} <ArrowRight size={16} strokeWidth={3} />
+              </button>
+            ) : (
+              <div className="relative mt-5 w-full py-3.5 rounded-xl border border-white/10 bg-white/4 flex items-center justify-center gap-2.5 text-center px-4">
+                <Clock size={16} className="text-gold shrink-0" />
+                <span className="text-[12px] font-semibold text-white/55">{t("live_no_live_now")}</span>
+              </div>
+            )}
             <p className="mt-2.5 text-center text-[10.5px] font-medium text-white/40 leading-relaxed">{t("live_vote_hint")}</p>
 
             <button
