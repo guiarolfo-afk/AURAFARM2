@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown, Search, X, Clock, Smartphone } from "lucide-react";
+import { Radio, Globe2, ChevronRight, Vote, ArrowRight, Calendar, MapPin, Share2, Trophy, Crown, Search, X, Clock } from "lucide-react";
 import { useApp, userNameById } from "../store";
 import { useT } from "../i18n";
 import { countryById } from "../data";
@@ -12,90 +12,7 @@ const reveal = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-40px" },
   transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
-};
-
-const HIDE_BETA_KEY = "hideBetaBanner";
-
-function BetaBanner() {
-  const t = useT();
-  const { betaSubmitted, registerBetaTester } = useApp();
-  const [dismissed, setDismissed] = useState(() => {
-    try { return localStorage.getItem(HIDE_BETA_KEY) === "1"; } catch { return false; }
-  });
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  if (betaSubmitted || dismissed) return null;
-
-  const dismiss = () => {
-    setDismissed(true);
-    try { localStorage.setItem(HIDE_BETA_KEY, "1"); } catch { }
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    const ok = await registerBetaTester(email, name);
-    if (ok) { setEmail(""); setName(""); }
-    setBusy(false);
-  };
-
-  return (
-    <motion.div
-      {...(reveal as any)}
-      className="panel p-5 sm:p-6 relative overflow-hidden"
-    >
-      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-violet/12 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-8 w-36 h-36 rounded-full bg-gold/8 blur-3xl pointer-events-none" />
-      <button
-        onClick={dismiss}
-        aria-label={t("c_close")}
-        className="absolute right-3 top-3 z-10 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/8 transition-colors cursor-pointer"
-      >
-        <X size={16} />
-      </button>
-      <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
-        <span className="w-11 h-11 rounded-xl bg-gold/12 border border-gold/30 grid place-items-center shrink-0 floaty">
-          <Smartphone size={19} className="text-gold" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="display text-[15px] sm:text-base font-extrabold text-white">{t("beta_title")}</h2>
-          <p className="text-[12px] text-white/50 mt-0.5">{t("beta_sub")}</p>
-        </div>
-        <form onSubmit={submit} className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("beta_email_ph")}
-            className="flex-1 min-w-[140px] px-3.5 py-2.5 rounded-lg bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-gold/60 transition-colors placeholder:text-white/35"
-            aria-label={t("beta_email_ph")}
-          />
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("beta_name_ph")}
-            className="flex-1 min-w-[120px] px-3.5 py-2.5 rounded-lg bg-white/5 border border-white/12 text-[13px] font-semibold text-white/85 outline-none focus:border-gold/60 transition-colors placeholder:text-white/35"
-            aria-label={t("beta_name_ph")}
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="px-4 py-2.5 rounded-lg display text-[12.5px] font-extrabold tracking-widest bg-gold text-[#171200] hover:brightness-110 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-default whitespace-nowrap"
-          >
-            {busy ? "…" : t("beta_join")}
-          </button>
-        </form>
-      </div>
-    </motion.div>
-  );
-}
-
-export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
+};export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: string) => void }) {
   const t = useT();
   const { totalAura, events, lang, enterArena, setTab } = useApp();
   const [q, setQ] = useState("");
@@ -136,9 +53,6 @@ export default function LiveBoard({ onBrowseCountry }: { onBrowseCountry: (c: st
 
   return (
     <div className="space-y-8">
-      {/* ===== Google Play beta testers recruitment ===== */}
-      <BetaBanner />
-
       {/* ===== Signature opener: network aura counter + VOTE NOW ===== */}
       <div className="grid lg:grid-cols-[1.6fr_1fr] gap-4">
         <motion.div {...reveal} className="panel p-6 sm:p-7 relative overflow-hidden">
