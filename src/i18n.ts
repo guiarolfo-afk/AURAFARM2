@@ -183,6 +183,12 @@ const es: Dict = {
   tester_btn_join: "Unirme como tester",
   tester_btn_install: "Instalar desde Play Store",
   tester_note: "Solo Android · Gratis · 2 minutos · Ayudas a que la app sea real",
+  beta_title: "¡Únete a los testers de Google Play! 📱",
+  beta_sub: "Ayúdanos a testear la app Android en vivo.",
+  beta_email_ph: "tu@email.com",
+  beta_name_ph: "Nombre (opcional)",
+  beta_join: "Unirme",
+  beta_thanks: "¡Gracias! Te contactaremos pronto.",
 };
 
 const pt: Dict = {
@@ -357,6 +363,12 @@ const pt: Dict = {
   tester_btn_join: "Entrar como tester",
   tester_btn_install: "Instalar na Play Store",
   tester_note: "Apenas Android · Grátis · 2 minutos · Ajuda o app a virar realidade",
+  beta_title: "Junte-se aos testers do Google Play! 📱",
+  beta_sub: "Ajude-nos a testar o app Android ao vivo.",
+  beta_email_ph: "tuo@email.com",
+  beta_name_ph: "Nome (opcional)",
+  beta_join: "Juntar-me",
+  beta_thanks: "Obrigado! Entraremos em contato em breve.",
 };
 
 const fr: Dict = {
@@ -532,6 +544,12 @@ const fr: Dict = {
   tester_btn_join: "Rejoindre comme testeur",
   tester_btn_install: "Installer depuis le Play Store",
   tester_note: "Android uniquement · Gratuit · 2 min · Aide l'app à devenir réelle",
+  beta_title: "Rejoignez les testeurs Google Play ! 📱",
+  beta_sub: "Aidez-nous à tester l'app Android en direct.",
+  beta_email_ph: "tuo@email.com",
+  beta_name_ph: "Nom (optionnel)",
+  beta_join: "Rejoindre",
+  beta_thanks: "Merci ! Nous vous contacterons bientôt.",
 };
 
 const en: Dict = {
@@ -707,6 +725,12 @@ const en: Dict = {
   tester_btn_join: "Join as tester",
   tester_btn_install: "Install from Play Store",
   tester_note: "Android only · Free · 2 mins · Helps make the app real",
+  beta_title: "Join Google Play beta testers! 📱",
+  beta_sub: "Help us test the Android app live.",
+  beta_email_ph: "tuo@email.com",
+  beta_name_ph: "Name (optional)",
+  beta_join: "Join",
+  beta_thanks: "Thanks! We'll contact you soon.",
 };
 
 const DICTS: Record<Lang, Dict> = { es, pt, fr, en };

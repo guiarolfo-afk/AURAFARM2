@@ -273,6 +273,7 @@ interface AppState {
   finishedEventIds: string[];
   toasts: Toast[];
   premium: boolean;
+  betaSubmitted: boolean;
   organizer: OrganizerAccount | null; orgUnlocked: boolean;
   banners: Banner[];
   settings: { notifFarm: boolean; notifEvents: boolean; publicProfile: boolean; showCountry: boolean };
@@ -330,6 +331,7 @@ interface AppState {
   registerOrganizerReal: (email: string, password: string, name: string, contact: string, country: string, refs: string) => Promise<boolean>;
   loginOrganizerReal: (email: string, password: string) => Promise<boolean>;
   becomeOrganizer: (name: string, contact: string, refs: string) => Promise<boolean>;
+  registerBetaTester: (email: string, name: string) => Promise<boolean>;
   setProfile: (p: Partial<Profile>) => void; toggleSetting: (k: keyof AppState["settings"]) => void;
   activatePremium: () => void;
   adminLogin: (pass: string) => Promise<boolean>; adminExit: () => void;
@@ -352,7 +354,7 @@ export const useApp = create<AppState>()(
 
       challenges: CHALLENGES, streak: 0, lastStreakDate: new Date().toDateString(), challengeDay: new Date().toDateString(),
       profile: {
-        name: "Usuario", country: "mx", photo: null, contact: "",
+        name: "Usuario", country: "es", photo: null, contact: "",
         socials: { ig: "", x: "", tt: "" },
         aura: 0, auraByVotes: 0, trophies: 0,
         attended: 0, participated: 0, organized: 0,
@@ -364,7 +366,7 @@ export const useApp = create<AppState>()(
       events: [], deletedEventIds: [], finishedEventIds: [],
 
 
-      toasts: [], premium: false, organizer: null, orgUnlocked: false,
+      toasts: [], premium: false, betaSubmitted: false, organizer: null, orgUnlocked: false,
       banners: [],
       settings: { notifFarm: true, notifEvents: true, publicProfile: true, showCountry: true },
       adminUnlocked: false, organizerScore: null, organizerScoreCount: 0,
@@ -1098,7 +1100,7 @@ export const useApp = create<AppState>()(
         if (error || !data.user) { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
         const { data: profile } = await supabase.from("profiles").select("id, name, role").eq("auth_id", data.user.id).maybeSingle();
         if (!profile || profile.role !== "organizer") { s.toast(translate(s.lang, "t_wrong_pin"), "warn"); return false; }
-        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "mx", refs: "", email }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
+        set({ supabaseUserId: data.user.id, supabaseProfileId: profile.id, organizer: { name: profile.name, contact: "", country: "es", refs: "", email }, orgUnlocked: true, profile: { ...get().profile, name: profile.name }, userEmail: data.user.email ?? null });
         await get().loadEventsFromSupabase();
         get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
@@ -1116,6 +1118,27 @@ export const useApp = create<AppState>()(
         });
         get().loadOrganizerScore();
         s.toast(translate(s.lang, "t_unlocked"), "gold");
+        return true;
+      },
+      registerBetaTester: async (email, name) => {
+        const s = get();
+        const trimmed = email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return false;
+        const { error } = await supabase
+          .from("beta_testers")
+          .insert({ email: trimmed, name: name.trim() || null });
+        if (error) {
+          if ((error as any).code === "23505") {
+            set({ betaSubmitted: true });
+            s.toast(translate(s.lang, "beta_thanks"), "ok");
+            return true;
+          }
+          console.error("Error registrando beta tester:", error.message);
+          s.toast(translate(s.lang, "t_admin_bad"), "warn");
+          return false;
+        }
+        set({ betaSubmitted: true });
+        s.toast(translate(s.lang, "beta_thanks"), "ok");
         return true;
       },
       setProfile: (p) => {
@@ -1555,6 +1578,7 @@ status: pastIds.has(row.id) ? "finished" : finishedEventIds.includes(row.id) ? "
         lang: s.lang, guestMode: s.guestMode, profile: s.profile, premium: s.premium, banners: s.banners,
         challenges: s.challenges, streak: s.streak, lastStreakDate: s.lastStreakDate, challengeDay: s.challengeDay,
         organizer: s.organizer, orgUnlocked: s.orgUnlocked, settings: s.settings,
+        betaSubmitted: s.betaSubmitted,
         organizerScore: s.organizerScore, organizerScoreCount: s.organizerScoreCount,
         votesCast: s.votesCast, dailyVotes: s.dailyVotes, dailyVotesDate: s.dailyVotesDate,
         myVotes: s.myVotes, battleVotes: s.battleVotes,
