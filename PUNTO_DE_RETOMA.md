@@ -1,6 +1,6 @@
 # AURAFARM2 — Punto de retoma (resumen de sesión)
 
-**Última actualización**: 2026-09-07
+**Última actualización**: 2026-09-11
 
 > Las sesiones de opencode se guardan automáticamente en `~/.local/share/opencode/opencode.db`.
 > Si quieres retomar, abre opencode en `/home/guiarolfo/AURAFARM2` y continúa; o usa este documento.
@@ -9,55 +9,54 @@
 Publicar AuraFARM (PWA → TWA Android) en Google Play Store. Hosting web en Cloudflare Pages gratis (`https://aurafarm-1e1.pages.dev`). Fee único $25 USD ya pagado. Sin otros costos.
 
 ## Estado actual
-- **Última sesión (2026-09-07) desplegada en producción** : `https://aurafarm-1e1.pages.dev` (Cloudflare Pages, main).
+- **Última sesión (2026-09-14) AAB nuevo generado y verificado** : `build local bubblewrap 1.25 + JDK 17 (Temurin ~/.bubblewrap/jdk/jdk-17.0.11)` + Android SDK (`~/Android/Sdk`, build-tools 36.1.0, platform android-36).
+- Web desplegada en producción: `https://aurafarm-1e1.pages.dev` (Cloudflare Pages, main).
 - TWA → `io.github.guiarolfo_afk.twa`, apunta a `https://aurafarm-1e1.pages.dev`.
-- AAB `1.0.0.0` en **Internal testing** (Play Console). Fingerprint de App Signing **válido** `3A:39:AB:...` en `assetlinks.json` (los otros fingerprints eran incorrectos, no usar).
+- **Nuevo AAB firmado**: `/home/guiarolfo/AURA/AURAFARM2/app-release-bundle.aab` (v2.2.0, versionCode 4) + APK `app-release-signed.apk`. Firmado con `AuraFARM - Google Play package/signing.keystore` → SHA1 `B6:72:27:...` (la **única** que Play acepta). **NO usar** el keystore de `AURAFARM 2.1/` (SHA1 `2F:F3:D7` = el del `.bak-wrongsig`).
+- AAB anterior `1.0.0.0` en **Internal testing** (Play Console). Fingerprint de App Signing **válido** `3A:39:AB:...` en `assetlinks.json` (los otros fingerprints eran incorrectos, no usar).
 
-## Funcionalidades implementadas y desplegadas en esta sesión (2026-09-07)
+## Build local del AAB (comandos)
+- Setup (una vez): `npm i -g @bubblewrap/cli`; JDK 17 en `~/.bubblewrap/jdk/jdk-17.0.11`; SDK en `~/Android/Sdk`; config en `~/.bubblewrap/config.json` (`jdkPath` + `androidSdkPath`).
+- Regenerar proyecto + checksum (sin prompts): `node /tmp/opencode/scaffold-twa.js` (usa el core de bubblewrap directo; requiere `appVersion` + `enableNotifications` + `iconUrl` en el manifest, si no el template queda roto).
+- Build: `BUBBLEWRAP_KEYSTORE_PASSWORD=<pass> BUBBLEWRAP_KEY_PASSWORD=<pass> bubblewrap build` (passwords por env = sin prompts). Salidas: `app-release-bundle.aab` y `app-release-signed.apk`.
+- Ojo: en `AURAFARM2` había un archivo `build` (0 bytes) que rompía Gradle (`Could not create problems-report directory`); eliminado.
+- El proyecto Android generado (`app/`, `build.gradle`, `gradlew`, etc.) queda en la raíz; es artefacto local, no commitear.
 
-### 1. Compartir (fix + mejora)
-- Pestaña **En Vivo → Compartir**: copia SOLO el enlace de la app (pantalla principal). Antes generaba `#/e/` con id vacío (evento inexistente) o compartía un próximo evento mostrándolo "EN VIVO". (`LiveBoard.tsx`)
-- **Vista pública de evento `#/e/:id`** (`PublicEventView.tsx`): nueva tarjeta de info con **dirección, fecha/hora, inscritos `X/max`, asistentes, organizador** y **características** (píldoras `t_stream/t_prize/t_food/...`). El share nativo incluye esos datos.
-- `store.ts`: `createEvent` guarda `features`; `loadEventsFromSupabase` lee `features` (columna nueva) y **carga los perfiles de los organizadores** (nombre visible en eventos ajenos).
+## Funcionalidades implementadas y desplegadas en esta sesión (2026-09-11)
 
-### 2. Eventos viejos ya no aparecen "en vivo"
-- `isEventPast(dateISO, time, endTime)` in `store.ts`: los eventos cuya fecha/fin ya pasó se **auto-finalizan** (al cargar y en `tick`, cada 2.2s) y se **persisten con `status=finished` en Supabase**. Antes quedaban "live" con votación abierta tras reinstalar.
+### 1. CTA de Testers (reclutamiento público)
+- **AuthScreen.tsx**: Sección completa antes de "Entrar sin registro" — la ven **todos los visitantes no autenticados**.
+- **LiveBoard.tsx**: Banner compacto al inicio de "En Vivo" — la ven **usuarios autenticados/invitados**.
+- Componente `TesterCTA.tsx` con dos variantes: completa (3 pasos + botones grandes) y compacta (badge + 2 botones).
+- i18n en 4 idiomas: `tester_badge`, `tester_title`, `tester_sub`, `tester_step1-3`, `tester_btn_join`, `tester_btn_install`, `tester_note`.
+- Enlaces: Tester `https://play.google.com/apps/testing/io.github.guiarolfo_afk.twa` + Play Store `https://play.google.com/store/apps/details?id=io.github.guiarolfo_afk.twa`.
 
-### 3. Búsqueda por país, ciudad y evento (En Vivo)
-- Barra de búsqueda sobre el selector de país en "Competencias activas por país": busca por **nombre de país (en 4 idiomas), ciudad, evento o dirección**; mín. 2 letras; resultados van a la arena, "EN VIVO" primero. Nuevas claves i18n: `live_search`, `live_search_empty` (4 idiomas).
+### 2. Migración `features` en Supabase ✅ EJECUTADA
+- SQL: `alter table public.events add column if not exists features text[] default '{}';` (idempotente).
+- `createEvent` ahora guarda `features` correctamente; `PublicEventView` muestra píldoras traducidas.
 
-### 4. Iconos PWA (más visibles) — rutas versionadas `icons/v2/`
-- Iconos regenerados: **fondo sólido** noche/violeta (antes ~90% transparentes) + **logo ~62%** del cuadro + brillo sutil. `icon-192` (también `apple-touch-icon` 180px), `icon-512`, `icon-maskable-512`, `favicon-32`.
-- `src/public/icons/v2/*.png`; manifest (`vite.config.js`) e `index.html` apuntan a `icons/v2/`.
-- Importante: para ver el icono nuevo hay que **desinstalar y reinstalar** la app (los launchers cachean por URL; el cambio de ruta `v2` fuerza actualización).
+### 3. Verificación completa de lógica de datos (typecheck ✅ PASS)
+- Auto-finalizar eventos pasados (`tick` + `loadEventsFromSupabase` con `isEventPast`).
+- Votación dual: logged-in (`votes` FK) + anónimos (`public_votes`) con merge en `fetchVoteTallies`.
+- Límite 100 votos/día con reset automático por fecha.
+- Retos/racha/aura con persistencia en `profiles`.
+- Realtime votes via canal `votes-realtime` (INSERT en `votes` + `public_votes`).
+- Inscripción persistida entre dispositivos (`event_participants` → `myAttendance`).
 
-## Cambios de sesión anterior (2026-09-05)
-- Inscripción persistida entre dispositivos (`loadEventsFromSupabase` reconstruye `myAttendance` desde `event_participants`; `confirmAttendance` usa `supabaseProfileId || "me"`).
-- Votación solo permitida con `ev.status === "live"` (Arena + vista pública); key `ar_vote_locked`.
-- Barra de votación responsive (flex-wrap) en Arena.
-- Filtro por **estado/provincia** en Eventos (deriva de `e.city` tras coma; key `ev_filter_province`).
-- **Mapa con pines** en En Vivo (`LiveMap.tsx` + CSS `.af-map-pin`; keys `live_map`, `live_map_sub`).
+## Funcionalidades previas (2026-09-07 y 2026-09-05)
+- Compartir fix + vista pública `#/e/:id` con características.
+- Búsqueda por país/ciudad/evento/dirección (4 idiomas).
+- Iconos PWA v2 (fondo sólido, rutas versionadas `icons/v2/`).
+- Filtro por provincia, mapa con pines, barra de votación responsive.
 
-## ⚠️ Acción pendiente en Supabase (¡NO OLVIDAR!)
-- Ejecutar el SQL de `supabase/event_features.sql` en Supabase → SQL Editor (idempotente):
-  `alter table public.events add column if not exists features text[] default '{}';`
-  - Sin la columna `features`, `createEvent` **fallará** al guardar eventos (el resto funciona; `select("*")` tolera columnas ausentes).
-
-## Sesión de login (aclaración — ver también "Sesión de opencode" abajo)
-- "GUARDA SESIÓN" se refería a **guardar la sesión de opencode**, NO al login de la app. La conversación de opencode se guarda sola en `~/.local/share/opencode/opencode.db`.
-- En la app, la sesión de Supabase se guarda en `localStorage` por defecto (persistSession/autoRefreshToken están activos por defecto en `src/supabaseClient.ts`).
-- **Desinstalar la PWA borra el almacenamiento** → pide login de nuevo (normal). Cada URL de previsualización de Cloudflare (ej. `2c179108.aurafarm-1e1.pages.dev`) tiene su propio storage: usar siempre `https://aurafarm-1e1.pages.dev`.
+## ⚠️ Próximos pasos (en orden)
+1. **Probar en dispositivo desde Play Console (Internal testing)** → verificar TWA fullscreen, login Google, crear evento con features, vista pública `#/e/:id`.
+2. **Completar requisitos de Play** (content rating, data safety, store listing, producción) — manual, en Play Console.
+3. **Publicar release a producción** cuando el usuario lo pida (NO desplegar sin confirmación).
 
 ## Datos técnicos clave
 - Build raíz limpia (`dist/` para Cloudflare):
   `DEPLOY_ROOT=true npm run build && npx -y wrangler@3 pages deploy dist --project-name aurafarm --branch=main --commit-dirty=true`
 - Build normal (GitHub Pages → `docs/`): `npm run build`.
-- `supabase/event_features.sql` = migración nueva; otras migraciones en `supabase/`.
 - i18n: diccionario inline en `src/i18n.ts` con **4 idiomas** (es, pt, fr, en). Cualquier texto nuevo debe ir en las 4.
 - Keystore/credenciales: `/home/guiarolfo/AuraFARM - Google Play package/` (no exponer).
-
-## Próximos pasos (en orden)
-1. **Ejecutar la migración `features` en Supabase** (ver arriba) antes de crear/editar eventos.
-2. Probar en dispositivo desde Play Console (Internal testing) → verificar TWA fullscreen.
-3. Completar requisitos de Play (content rating, data safety, store listing, producción) — manual, en Play Console.
-4. Publicar release a producción cuando el usuario lo pida (NO desplegar sin confirmación).
