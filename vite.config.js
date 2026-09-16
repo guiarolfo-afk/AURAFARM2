@@ -73,6 +73,16 @@ export default defineConfig({
           },
         ],
       },
+      workbox: {
+        runtimeCaching: [
+          {
+            // Estado mutable de una app de competencia EN VIVO → nunca cachear (evita datos vencidos)
+            urlPattern: /supabase\.co\//i,
+            handler: 'NetworkOnly',
+            options: { cacheName: 'supabase-no-cache' },
+          },
+        ],
+      },
     }),
   ],
 })
