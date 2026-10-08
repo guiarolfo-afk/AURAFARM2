@@ -60,3 +60,13 @@ Publicar AuraFARM (PWA → TWA Android) en Google Play Store. Hosting web en Clo
 - Build normal (GitHub Pages → `docs/`): `npm run build`.
 - i18n: diccionario inline en `src/i18n.ts` con **4 idiomas** (es, pt, fr, en). Cualquier texto nuevo debe ir en las 4.
 - Keystore/credenciales: `/home/guiarolfo/AuraFARM - Google Play package/` (no exponer).
+## Sesión 2026-10-08 — recuperación en Chromebook nuevo
+
+- Código recuperado desde GitHub en `~/AURAFARM2`. Toolchain reinstalado: Node 22 (`~/nodejs`), JDK 17 del sistema, Android SDK (`~/android-sdk`, cmdline-tools + platforms;android-36 + build-tools;36.1.0), Bubblewrap CLI global, config en `~/.bubblewrap/config.json` (ojo: `~/android-sdk/bin` es symlink a `cmdline-tools/latest/bin` porque Bubblewrap valida esa ruta).
+- **CI arreglado**: un `:` sobrante en `deploy-cloudflare.yml` rompía el secret; ya despliega solo en cada push a `main` (secret `CLOUDFLARE_API_TOKEN` = token «Edit Cloudflare Workers»).
+- Producción desplegada con los headers de seguridad (`_headers`) activos.
+- **Play Console (OfloraGM)**: la clave de firma de aplicación se rotó el 2026-10-08 14:35 → huella nueva SHA-256 `A5:79:FA:BF:…:BB:19:7B`; `assetlinks.json` actualizado con las 3 huellas. No había clave de subida registrada, así que no hizo falta el trámite de cambio.
+- **Clave de subida definitiva**: `~/aurafarm-upload-key-v2.jks` (alias `upload`, SHA-256 `6B:DD:FC:…:82:33`). Contraseña en `~/.aurafarm/upload-keystore-password.txt` (no commitear).
+- **AAB 2.2.1 (versionCode 5) firmado y verificado** (`jarsigner -verify` OK): `~/aurafarm-2.2.1-code5.aab`. Generado con `bubblewrap build` en `~/twabuild` (usa `twa-manifest.json` con el signingKey nuevo).
+- Pendiente: subir el AAB a **Prueba cerrada**; la ficha exige 12 testers × 14 días (llevan 9).
+- Regla intacta: **no publicar en producción sin confirmación del usuario**.

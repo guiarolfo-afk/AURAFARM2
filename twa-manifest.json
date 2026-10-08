@@ -17,8 +17,8 @@
   "splashScreenFadeOutDuration": 300,
   "splashScreenBackgroundColor": "#1F2937",
   "signingKey": {
-    "path": "/home/guiarolfo/AURA/AuraFARM - Google Play package/signing.keystore",
-    "alias": "my-key-alias"
+    "path": "/home/gma/aurafarm-upload-key-v2.jks",
+    "alias": "upload"
   },
   "appVersion": "2.2.1",
   "appVersionName": "2.2.1",
