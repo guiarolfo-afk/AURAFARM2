@@ -47,4 +47,4 @@ jobs:
       - name: Deploy a Cloudflare Pages
         run: npx wrangler@3 pages deploy dist --project-name aurafarm --branch main
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
